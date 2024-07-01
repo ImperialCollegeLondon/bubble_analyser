@@ -1,0 +1,61 @@
+[project]
+name = "bubble_analyser"
+version = "0.1.0"
+description = "Bubble Analyser is a Python application for processing and quantifying bubble images, normally taken for assessing froth flotation equipment."
+authors = [
+    { name = "Diego Alonso Álvarez", email = "d.alonso-alvarez@imperial.ac.uk" },
+    { name = "Imperial College London RSE Team", email = "ict-rse-team@imperial.ac.uk" }
+]
+requires-python = ">=3.12"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "mypy",
+    "pip-tools",
+    "pre-commit",
+    "pytest",
+    "pytest-cov",
+    "pytest-mypy",
+    "pytest-mock"
+]
+
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+exclude = ["htmlcov"] # Exclude the coverage report file from setuptools package finder
+
+[tool.mypy]
+disallow_any_explicit = true
+disallow_any_generics = true
+warn_unreachable = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+exclude = [".venv/"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+addopts = "-v --mypy -p no:warnings --cov=bubble_analyser --cov-report=html --doctest-modules --ignore=bubble_analyser/__main__.py"
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "D",   # pydocstyle
+    "E",   # pycodestyle
+    "F",   # Pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "RUF"  # ruff
+]
+pydocstyle.convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D100", "D104"] # Missing docstring in public module, Missing docstring in public package
