@@ -33,14 +33,16 @@ min_size_range = [0, 50]
 px2mm = 1.0
 
 # Target image
-target_img = "./tests/sample_images/03.jpg"
+target_img_path = "./tests/sample_images/03.jpg"
 
 # Background image
-background_img = "./tests/calibration_files/Background.png"
+background_img_path = "./tests/calibration_files/Background.png"
+
+# Threshold value for background subtraction
 threshold_value = 0.1
 
 # Ruler image
-ruler_img = "./tests/calibration_files/Ruler.png"
+ruler_img_path = "./tests/calibration_files/Ruler.png"
 
 # Batch processing flag
 do_batch = false
