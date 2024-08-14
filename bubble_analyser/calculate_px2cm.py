@@ -5,8 +5,8 @@ from numpy.typing import NDArray
 
 
 def resize_to_target_width(
-    image: NDArray[np.uint8], target_width: int = 1000) -> tuple[np.ndarray, float]:
-    
+    image: NDArray[np.uint8], target_width: int = 1000
+) -> tuple[np.ndarray, float]:
     """Resizes an image to a specified target width while maintaining the aspect ratio.
 
     Args:
