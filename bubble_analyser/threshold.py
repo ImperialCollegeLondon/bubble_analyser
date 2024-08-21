@@ -1,5 +1,5 @@
 import numpy as np
-from background_subtraction_threshold import background_subtraction_threshold
+from .background_subtraction_threshold import background_subtraction_threshold
 from numpy.typing import NDArray
 from skimage import (
     filters,
