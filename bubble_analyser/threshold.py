@@ -1,5 +1,5 @@
 import numpy as np
-from numpy.typing import NDArray
+from numpy import typing as npt
 from skimage import (
     filters,
 )
@@ -7,7 +7,7 @@ from skimage import (
 from .background_subtraction_threshold import background_subtraction_threshold
 
 
-def otsu_threshold(target_img: np.ndarray) -> np.ndarray:
+def otsu_threshold(target_img: npt.NDArray[np.int_]) -> npt.NDArray[np.bool_]:
     """Apply Otsu's thresholding to the target image and return an inverted binary mask.
 
     This function takes a target image and a background image. It applies Otsu's thresholding
@@ -23,7 +23,7 @@ def otsu_threshold(target_img: np.ndarray) -> np.ndarray:
     Returns:
         A binary (inverted) image where the foreground and background are swapped.
     """
-    binary_image: NDArray[np.bool_] = target_img > filters.threshold_otsu(
+    binary_image = target_img > filters.threshold_otsu(
         target_img
     )  # Binary image using Otsu's thresholding
     return ~binary_image  # Invert the binary image
@@ -47,17 +47,19 @@ def select_threshold_method() -> str:
 
 
 def threshold(
-    target_img: np.ndarray, bknd_img: np.ndarray, threshold_value: float
-) -> np.ndarray:
+    target_img: npt.NDArray[np.int_],
+    bknd_img: npt.NDArray[np.int_],
+    threshold_value: float,
+) -> npt.NDArray[np.bool]:
     """Applies a threshold to the target image based on the selected method.
 
     Args:
-        target_img (np.ndarray): The target image to apply the threshold to.
-        bknd_img (np.ndarray): The background image used for background subtraction.
+        target_img (npt.NDArray): The target image to apply the threshold to.
+        bknd_img (npt.NDArray): The background image used for background subtraction.
         threshold_value (float): The threshold value used for background subtraction.
 
     Returns:
-        np.ndarray: The thresholded image.
+        npt.NDArray: The thresholded image.
     """
     method = select_threshold_method()
     if method == "OTSU's method":
