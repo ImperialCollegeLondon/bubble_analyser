@@ -28,24 +28,25 @@ entire process from loading configurations and images to running the analysis an
 displaying results.
 """
 
-import tomllib
+import toml as tomllib
 from pprint import pprint
 
-import Config
+
+from .Config import Config
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-from calculate_circle_properties import calculate_circle_properties
-from calculate_px2cm import calculate_px2cm
-from image_preprocess import image_preprocess
-from morphological_process import morphological_process
+from .calculate_circle_properties import calculate_circle_properties
+from .calculate_px2cm import calculate_px2cm
+from .image_preprocess import image_preprocess
+from .morphological_process import morphological_process
 from skimage import (
     color,
     io,
     morphology,
     transform,
 )
-from threshold import threshold
+from .threshold import threshold
 
 
 def load_image(image_path: str, img_resample: float) -> tuple[np.ndarray, np.ndarray]:
@@ -237,3 +238,9 @@ def default() -> None:
 
 if __name__ == "__main__":
     default()
+
+# First background subtraction (optional) then otsu thresholding
+# Let user define limitations based on the properties of the bubbles for filtering them
+# Output the image that eliminate the bubbles being filtered out
+# Table and Histogram
+# Let user modify the parameters in UI

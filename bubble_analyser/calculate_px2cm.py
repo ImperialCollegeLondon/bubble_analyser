@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from image_preprocess import load_image
+from .image_preprocess import load_image
 from numpy.typing import NDArray
 
 
