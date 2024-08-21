@@ -34,7 +34,7 @@ from pydantic import (
 )
 
 
-class Config(BaseModel):
+class Config(BaseModel):  # type: ignore
     """A Pydantic model for storing and validating configuration parameters.
 
     The class contains parameters for image processing and analysis, such as
