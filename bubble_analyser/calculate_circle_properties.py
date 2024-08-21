@@ -1,9 +1,10 @@
 import numpy as np
+from numpy import typing as npt
 from skimage import measure
 
 
 def calculate_circle_properties(
-    labels: np.ndarray, px2cm: float
+    labels: npt.NDArray[np.int_], px2cm: float
 ) -> list[dict[str, float]]:
     """Calculate geometric properties of labeled regions in an image.
 

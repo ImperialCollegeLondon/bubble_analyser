@@ -1,4 +1,5 @@
 import numpy as np
+from numpy import typing as npt
 from scipy import ndimage
 from skimage import (
     morphology,
@@ -6,7 +7,9 @@ from skimage import (
 )
 
 
-def morphological_process(target_img: np.ndarray, element_size: int) -> np.ndarray:
+def morphological_process(
+    target_img: npt.NDArray[np.bool_], element_size: int
+) -> npt.NDArray[np.int_]:
     """Apply morphological operations to process the target image.
 
     This function performs a series of morphological operations on the input image,

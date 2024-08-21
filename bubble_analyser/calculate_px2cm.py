@@ -1,21 +1,24 @@
+from pathlib import Path
+from typing import cast
+
 import cv2
 import numpy as np
-from numpy.typing import NDArray
+import numpy.typing as npt
 
 from .image_preprocess import load_image
 
 
 def resize_to_target_width(
-    image: NDArray[np.uint8], target_width: int = 1000
-) -> tuple[np.ndarray, float]:
+    image: npt.NDArray[np.int_], target_width: int = 1000
+) -> tuple[npt.NDArray[np.int_], float]:
     """Resizes an image to a specified target width while maintaining the aspect ratio.
 
     Args:
-        image (NDArray[np.uint8]): The input image to be resized.
+        image (npt.npt.NDArray[np.int_]): The input image to be resized.
         target_width (int, optional): The desired width of the resized image. Defaults to 1000.
 
     Returns:
-        NDArray[np.uint8]: The resized image.
+        npt.npt.NDArray[np.int_]: The resized image.
         scale_percent: The scaling percentage applied to the image during resizing.
     """
     # Scale down the image to a width of 1000 pixels, keeping the aspect ratio the same
@@ -27,9 +30,11 @@ def resize_to_target_width(
         image.shape[0] * scale_percent
     )  # Adjust the height to maintain the aspect ratio
     dim: tuple[int, int] = (width, height)  # Define the new dimensions
-    image = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)  # Resize the image
+    image_resized = cv2.resize(
+        image, dim, interpolation=cv2.INTER_AREA
+    )  # Resize the image
 
-    return image, scale_percent
+    return cast(npt.NDArray[np.int_], image_resized), scale_percent
 
 
 def draw_line(event: int, x: int, y: int, flags: int, param: dict[str, object]) -> None:
@@ -44,12 +49,9 @@ def draw_line(event: int, x: int, y: int, flags: int, param: dict[str, object]) 
         flags: Any relevant flags passed by OpenCV.
         param: A dictionary containing reference points and drawing state.
     """
-    refPt, drawing, img, img_copy = (
-        param["refPt"],
-        param["drawing"],
-        param["img"],
-        param["img_copy"],
-    )
+    refPt = cast(list[tuple[int, int]], param["refPt"])
+    img = cast(npt.NDArray[np.uint8], param["img"])
+    img_copy = cast(npt.NDArray[np.uint8], param["img_copy"])
 
     if event == cv2.EVENT_LBUTTONDOWN:
         refPt.append((x, y))
@@ -68,7 +70,7 @@ def draw_line(event: int, x: int, y: int, flags: int, param: dict[str, object]) 
         cv2.imshow("image", img)
 
 
-def get_pixel_distance(img: NDArray[np.uint8]) -> float:
+def get_pixel_distance(img: npt.NDArray[np.int_]) -> float:
     """Display the image and allow the user to draw a line representing 1 cm.
 
     This function uses OpenCV to display the image and capture the user input
@@ -84,12 +86,12 @@ def get_pixel_distance(img: NDArray[np.uint8]) -> float:
     """
     refPt: list[tuple[int, int]] = []
     drawing: bool = False
-    img_copy: NDArray[np.uint8] = img.copy()
+    img_copy: npt.NDArray[np.int_] = img.copy()
 
     cv2.namedWindow("image")
     cv2.setMouseCallback(
         "image",
-        draw_line,
+        draw_line,  # type: ignore
         {"refPt": refPt, "drawing": drawing, "img": img, "img_copy": img_copy},
     )
 
@@ -135,7 +137,7 @@ def get_cm_per_pixel(
     return cm_per_pixel
 
 
-def calculate_px2cm(image_path: str, img_resample: float) -> float:
+def calculate_px2cm(image_path: Path, img_resample: float) -> float:
     """Calculates the conversion factor from pixels to centimeters.
     This function reads an image of a ruler, allows the user to draw a line corresponding
     to 1 cm on the ruler, and calculates the pixel-to-centimeter conversion factor. The
