@@ -1,9 +1,10 @@
 import numpy as np
-from .background_subtraction_threshold import background_subtraction_threshold
 from numpy.typing import NDArray
 from skimage import (
     filters,
 )
+
+from .background_subtraction_threshold import background_subtraction_threshold
 
 
 def otsu_threshold(target_img: np.ndarray) -> np.ndarray:
