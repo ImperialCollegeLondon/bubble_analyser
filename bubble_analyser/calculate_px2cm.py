@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
-from .image_preprocess import load_image
 from numpy.typing import NDArray
+
+from .image_preprocess import load_image
 
 
 def resize_to_target_width(
