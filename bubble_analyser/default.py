@@ -28,24 +28,24 @@ entire process from loading configurations and images to running the analysis an
 displaying results.
 """
 
-import toml as tomllib
 from pprint import pprint
 
-
-from .Config import Config
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-from .calculate_circle_properties import calculate_circle_properties
-from .calculate_px2cm import calculate_px2cm
-from .image_preprocess import image_preprocess
-from .morphological_process import morphological_process
+import toml as tomllib
 from skimage import (
     color,
     io,
     morphology,
     transform,
 )
+
+from .calculate_circle_properties import calculate_circle_properties
+from .calculate_px2cm import calculate_px2cm
+from .Config import Config
+from .image_preprocess import image_preprocess
+from .morphological_process import morphological_process
 from .threshold import threshold
 
 
