@@ -182,7 +182,6 @@ def run_algorithm(
     _, labels = cv2.connectedComponents(distThresh)
     plt.title("5. Labels")
     plt.imshow(labels)
-    plt.savefig("plot_1.png")
 
     # Apply watershed segmentation
     plt.figure()
@@ -194,7 +193,6 @@ def run_algorithm(
 
     # Display the images
     plt.show()
-    plt.savefig("plot_2.png")
 
     # Calculate and print the circle properties
     circle_properties = calculate_circle_properties(labels, px2cm)
