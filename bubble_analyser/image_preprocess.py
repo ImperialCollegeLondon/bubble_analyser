@@ -1,3 +1,37 @@
+"""Image Preprocessing Functions.
+
+This module provides a collection of functions for image loading, color space conversion
+, and resizing. It supports the preprocessing steps required for image analysis tasks,
+especially in contexts where images need to be adapted for algorithmic processing and
+visualization.
+
+Key Functions:
+- load_image(image_path): Loads an image from a specified path into a NumPy array.
+- get_greyscale(image): Converts an RGB image to grayscale, facilitating algorithms
+  that require single-channel input.
+- get_RGB(image): Converts an image from BGR (common in OpenCV) to RGB format, suitable
+  for consistent image display and processing.
+- resize_for_RGB(image, img_resample_factor): Resizes an RGB image according to a
+  specified resampling factor, typically used to reduce the image size for faster
+  processing without losing significant detail.
+- resize_for_original_image(image, img_resample_factor): Similar to resize_for_RGB but
+  uses skimage's transform for resizing, providing a high-quality downsampling suitable
+  for analytical purposes.
+- image_preprocess(img_path, img_resample): Orchestrates the loading, converting, and
+  resizing of an image. It outputs both a grayscale version for processing and an RGB
+  version for visualization.
+
+These functions are designed to be modular and can be combined in different ways
+depending on the specific requirements of the image processing task at hand. For example
+, in a typical workflow for image analysis, an image might be loaded, converted to
+grayscale for analysis, and also kept in RGB for result visualization.
+
+Usage:
+These utilities are particularly useful in applications like computer vision and digital
+image processing where preprocessing steps are crucial for subsequent analysis, such as
+object detection, pattern recognition, and more.
+"""
+
 from pathlib import Path
 from typing import cast
 
@@ -57,8 +91,7 @@ def get_RGB(image: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
 def resize_for_RGB(
     image: npt.NDArray[np.int_], img_resample_factor: float
 ) -> npt.NDArray[np.int_]:
-    """Resizes an image in RGB format based on the provided resampling factor using method
-    provided by openCV.
+    """Resizes an image in RGB format based on the provided resampling factor.
 
     Args:
         image (npt.NDArray): The input image in RGB format.
@@ -81,8 +114,7 @@ def resize_for_RGB(
 def resize_for_original_image(
     image: npt.NDArray[np.int_], img_resample_factor: float
 ) -> npt.NDArray[np.int_]:
-    """Resizes an image based on the provided resampling factor for original image using method
-    provided by skimage.
+    """Resizes an image based on the provided resampling factor for original image.
 
     Args:
         image (npt.NDArray): The input image to be resized.
@@ -105,12 +137,12 @@ def resize_for_original_image(
 def image_preprocess(
     img_path: Path, img_resample: float
 ) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]:
-    """Preprocesses an image by loading it, converting it to 1. RGB, 2. grayscale
-    and resizing it based on a provided resampling factor.
-    The resized grayscale image (img) is for use in the following "default" watershed algorithm
-    as a target image. And the RGB image (imgRGB) is for the visualization of the results.
-    They are resized in different ways for different use cases (the output format of the
-    methods are differnt).
+    """Load an image, resizing it based on a provided resampling factor.
+
+    The resized grayscale image (img) is for use in the following "default" watershed
+    algorithm as a target image. And the RGB image (imgRGB) is for the visualization of
+    the results. They are resized in different ways for different use cases (the output
+    format of the methods are differnt).
 
     Args:
         img_path (str): The file path of the image to preprocess.
