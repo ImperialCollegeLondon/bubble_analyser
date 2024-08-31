@@ -34,6 +34,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import toml as tomllib
+from numpy import typing as npt
 from skimage import (
     color,
     io,
@@ -43,13 +44,15 @@ from skimage import (
 
 from .calculate_circle_properties import calculate_circle_properties
 from .calculate_px2cm import calculate_px2cm
-from .Config import Config
+from .config import Config
 from .image_preprocess import image_preprocess
 from .morphological_process import morphological_process
 from .threshold import threshold
 
 
-def load_image(image_path: str, img_resample: float) -> tuple[np.ndarray, np.ndarray]:
+def load_image(
+    image_path: str, img_resample: float
+) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]:
     """Read and preprocess the input image.
 
     This function loads an image from the specified path, resizes it according to the
@@ -101,20 +104,16 @@ def load_toml(file_path: str) -> Config:
     Returns:
         A dictionary containing the configuration parameters from the TOML file.
     """
-    # with open(file_path, "rb") as f:
-    #     toml_data: dict[str, str | int | float] = tomllib.load(f)
-    #     return toml_data
-    with open(file_path, "rb") as f:
-        toml_data = tomllib.load(f)
+    toml_data = tomllib.load(file_path)
 
-    return Config.Config(**toml_data)
+    return Config(**toml_data)
 
 
 def run_algorithm(
-    target_img: np.ndarray,
-    bknd_img: np.ndarray,
-    imgRGB: np.ndarray,
-    params: Config.Config,
+    target_img: npt.NDArray[np.int_],
+    bknd_img: npt.NDArray[np.int_],
+    imgRGB: npt.NDArray[np.int_],
+    params: Config,
     px2cm: float,
     threshold_value: float,
 ) -> None:
@@ -158,8 +157,8 @@ def run_algorithm(
 
     # Apply thresholding and morphological processing
     plt.subplot(232)
-    imgThreshold = threshold(target_img, bknd_img, threshold_value)
-    imgThreshold = morphological_process(imgThreshold, element_size)
+    imgThreshold_ = threshold(target_img, bknd_img, threshold_value)
+    imgThreshold = morphological_process(imgThreshold_, element_size)
     plt.title("2. Thresh&morph process")
     plt.imshow(imgThreshold * 255, cmap="gray")
 
@@ -179,7 +178,7 @@ def run_algorithm(
 
     # Apply connected component labeling
     plt.subplot(235)
-    distThresh = np.uint8(distThresh)
+    distThresh = distThresh.astype(np.uint8)
     _, labels = cv2.connectedComponents(distThresh)
     plt.title("5. Labels")
     plt.imshow(labels)
@@ -187,8 +186,8 @@ def run_algorithm(
     # Apply watershed segmentation
     plt.figure()
     plt.subplot(121)
-    labels = np.int32(labels)
-    labels = cv2.watershed(imgRGB, labels)
+    labels = labels.astype(np.int32)
+    labels = cv2.watershed(imgRGB, labels).astype(np.int_)
     plt.title("6. Final graph after watershed")
     plt.imshow(labels)
 
@@ -218,11 +217,11 @@ def default() -> None:
     params = load_toml("./bubble_analyser/config.toml")
 
     # Read path and image resample factor
-    ruler_img_path: str = params.ruler_img_path
-    target_img_path: str = params.target_img_path
-    bknd_img_path: str = params.background_img_path
-    img_resample_factor: float = params.resample
-    threshold_value: float = params.threshold_value
+    ruler_img_path = params.ruler_img_path
+    target_img_path = params.target_img_path
+    bknd_img_path = params.background_img_path
+    img_resample_factor = params.resample
+    threshold_value = params.threshold_value
 
     # Calculate the pixel to cm ratio
     px2cm = calculate_px2cm(ruler_img_path, img_resample_factor)
@@ -244,3 +243,5 @@ if __name__ == "__main__":
 # Output the image that eliminate the bubbles being filtered out
 # Table and Histogram
 # Let user modify the parameters in UI
+
+# Merge default branchx
