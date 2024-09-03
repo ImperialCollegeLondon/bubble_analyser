@@ -20,7 +20,7 @@ typing-extensions = "^4.12.2"
 opencv-python = "^4.10.0.84"
 
 [tool.poetry.group.docs.dependencies]
-mkdocs = "^1.6.0"
+mkdocs = "^1.6.1"
 mkdocs-material = "^9.5.29"
 
 [tool.poetry.group.dev.dependencies]
