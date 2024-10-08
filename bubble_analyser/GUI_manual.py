@@ -1,11 +1,10 @@
-"""
-GUI Manual Module: A graphical user interface (GUI) for the Bubble Analyser application.
+"""GUI Manual Module: A graphical user interface (GUI) for the Bubble Analyser application.
 
-This module provides a graphical user interface (GUI) for the Bubble Analyser 
-application. It contains classes and functions for creating and managing the GUI, 
+This module provides a graphical user interface (GUI) for the Bubble Analyser
+application. It contains classes and functions for creating and managing the GUI,
 including the main window, image processing, and data visualization.
 
-Author: Yiyang Guan 
+Author: Yiyang Guan
 Date: 06-Oct-2024
 
 Classes:
@@ -13,22 +12,23 @@ Classes:
     MainWindow: The main window of the GUI application.
 
 """
+
+import csv
 import os
 import sys
-import toml as tomllib
-import numpy as np
-import matplotlib.pyplot as plt
-import csv
-
 from datetime import datetime
-from numpy import typing as npt
 from pathlib import Path
+
+import numpy as np
+import toml as tomllib
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+from numpy import typing as npt
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QPixmap, QImage
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QComboBox,
     QFileDialog,
     QFrame,
@@ -38,40 +38,39 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QListWidget,
     QMainWindow,
+    QMessageBox,
     QPushButton,
+    QSpinBox,
     QTableWidget,
+    QTableWidgetItem,
     QTabWidget,
     QVBoxLayout,
     QWidget,
-    QMessageBox,
-    QTableWidgetItem,
-    QCheckBox,
-    QSpinBox
 )
 from skimage import (
     morphology,
 )
 
-from .config import Config
 from .calculate_px2mm import calculate_px2mm
-from .default import load_image, run_watershed_segmentation
-from .threshold import threshold, threshold_without_background
+from .config import Config
+from .default import run_watershed_segmentation
 from .image_preprocess import image_preprocess
 from .morphological_process import morphological_process
+from .threshold import threshold
+
 
 class MplCanvas(FigureCanvas):
-    """
-    A class for creating a Matplotlib figure within a PySide6 application.
+    """A class for creating a Matplotlib figure within a PySide6 application.
 
     Attributes:
         fig: The Matplotlib figure.
         axes: The axes of the figure.
     """
-    def __init__(self, parent: QMainWindow, 
-                 width: float = 5, height: float = 4, 
-                 dpi: float = 100) -> None:
-        """
-        The constructor for MplCanvas.
+
+    def __init__(
+        self, parent: QMainWindow, width: float = 5, height: float = 4, dpi: float = 100
+    ) -> None:
+        """The constructor for MplCanvas.
 
         Parameters:
             parent: The parent widget.
@@ -86,16 +85,15 @@ class MplCanvas(FigureCanvas):
 
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
-        """
-        The constructor for the main window.
+        """The constructor for the main window.
 
         Loads the configuration parameters from the TOML file, sets the window title and
         geometry, and creates the main widgets, including the folder, calibration, image
         processing and results tabs.
         """
         super().__init__()
-        
-        self.params = self.load_toml("./bubble_analyser/config.toml")        
+
+        self.params = self.load_toml("./bubble_analyser/config.toml")
         self.img_resample_factor = self.params.resample
         self.threshold_value = self.params.threshold_value
         self.element_size = self.params.Morphological_element_size
@@ -104,10 +102,10 @@ class MainWindow(QMainWindow):
         self.min_solidity = self.params.Min_Solidity
         self.min_circularity = self.params.Min_Circularity
         self.min_size = self.params.min_size
-        
+
         self.bknd_img_exist = False
         self.calibration_confirmed = False
-        
+
         self.setWindowTitle("Bubble Analyser")
         self.setGeometry(100, 100, 1200, 800)
 
@@ -132,7 +130,7 @@ class MainWindow(QMainWindow):
         self.image_processing_tab = QWidget()
         self.tabs.addTab(self.image_processing_tab, "Bubble detection and filtering")
         self.setup_image_processing_tab()
-        
+
         self.results_tab = QWidget()
         self.tabs.addTab(self.results_tab, "Results")
         self.setup_results_tab()
@@ -154,8 +152,7 @@ class MainWindow(QMainWindow):
         return Config(**toml_data)
 
     def setup_folder_tab(self) -> None:
-        """
-        Set up the folder tab, which contains the following components:
+        """Set up the folder tab, which contains the following components:
         1. A text box for user to input the folder path.
         2. A button to select the folder.
         3. A button to confirm the folder selection.
@@ -209,13 +206,16 @@ class MainWindow(QMainWindow):
     def select_folder(self) -> None:
         """Open a folder selection dialog and update the folder path edit
         and image list if a valid folder is selected. If the sample images
-        have already been confirmed, display a warning message and do nothing."""
-        
+        have already been confirmed, display a warning message and do nothing.
+        """
         if self.sample_images_confirmed:
-            QMessageBox.warning(self, "Selection Locked", 
-                                "You have already confirmed the folder selection.")
+            QMessageBox.warning(
+                self,
+                "Selection Locked",
+                "You have already confirmed the folder selection.",
+            )
             return
-        
+
         folder_path = QFileDialog.getExistingDirectory(self, "Select Folder")
         if folder_path:
             self.folder_path_edit.setText(folder_path)
@@ -225,19 +225,22 @@ class MainWindow(QMainWindow):
         """Confirm the folder selection and lock the folder path edit. If the
         selection has already been confirmed, display a warning message and do
         nothing. Otherwise, set the folder path edit to read-only, load the
-        images to process from the selected folder, and switch to the next tab."""
-        
+        images to process from the selected folder, and switch to the next tab.
+        """
         if not self.sample_images_confirmed:
             self.sample_images_confirmed = True
-             # Lock the folder path edit and confirm the selection
+            # Lock the folder path edit and confirm the selection
             self.folder_path_edit.setReadOnly(True)
             self.load_images_to_process()
             self.tabs.setCurrentIndex(self.tabs.currentIndex() + 1)
-            
+
         else:
-             QMessageBox.warning(self, "Selection Locked",
-                                 "You have already confirmed the folder selection.")
- 
+            QMessageBox.warning(
+                self,
+                "Selection Locked",
+                "You have already confirmed the folder selection.",
+            )
+
     def populate_image_list(self, folder_path: str) -> None:
         """Populate the image list with the names of images in the given folder path,
         and store the full paths to the images in the image_list_full_path list.
@@ -251,38 +254,39 @@ class MainWindow(QMainWindow):
         the names of images in the selected folder, so that the user can select
         specific images to process. The full paths to the selected images are stored
         in the image_list_full_path list, and are used later to load the images when
-        the user clicks the "Next" button."""
-        
+        the user clicks the "Next" button.
+        """
         self.image_list.clear()
         self.image_list_full_path: list[str] = []
-        
+
         for file_name in os.listdir(folder_path):
             if file_name.lower().endswith((".png", ".jpg", ".jpeg", ".bmp", ".tiff")):
                 self.image_list.addItem(file_name)
                 self.image_list_full_path.append(os.path.join(folder_path, file_name))
-                
+
         print("self_image_list_full_path", self.image_list_full_path)
-                
+
     def preview_image(self) -> None:
         """Preview the currently selected image in the GUI. This function is
         called when the user selects an image from the image list. It gets the
         currently selected image, loads it as a QPixmap, and sets it to the
         image preview label on the GUI. The image is scaled to fit the size of
-        the label while keeping the aspect ratio."""
-        
+        the label while keeping the aspect ratio.
+        """
         self.selected_image = self.image_list.currentItem().text()
         folder_path = self.folder_path_edit.text()
         image_path = os.path.join(folder_path, self.selected_image)
         pixmap = QPixmap(image_path)
-        
-        self.image_preview.setPixmap(pixmap.scaled(self.image_preview.size(), 
-                                                   Qt.KeepAspectRatio))
-        
-        self.sample_image_preview.setPixmap(pixmap.scaled(self.sample_image_preview.size(),
-                                                          Qt.KeepAspectRatio))
+
+        self.image_preview.setPixmap(
+            pixmap.scaled(self.image_preview.size(), Qt.KeepAspectRatio)
+        )
+
+        self.sample_image_preview.setPixmap(
+            pixmap.scaled(self.sample_image_preview.size(), Qt.KeepAspectRatio)
+        )
 
     def load_images_to_process(self) -> None:
-
         """Populate the image list with the names of images in the folder path
         set in the folder path edit, and store the full paths to the images in
         the image_list_full_path list. This function is called after the user
@@ -291,12 +295,12 @@ class MainWindow(QMainWindow):
         selected folder, so that the user can select specific images to
         process. The full paths to the selected images are stored in the
         image_list_full_path list, and are used later to load the images when
-        the user clicks the "Next" button."""
-        
+        the user clicks the "Next" button.
+        """
         folder_path = self.folder_path_edit.text()
         if os.path.exists(folder_path):
             self.populate_image_list(folder_path)
-            
+
     def setup_calibration_tab(self) -> None:
         """Set up the calibration tab, which contains the following components:
 
@@ -315,8 +319,8 @@ class MainWindow(QMainWindow):
         ratio will be calculated and stored in the "px_mm" attribute of the
         MainWindow object. The background image will be stored in the
         "bknd_img" attribute of the MainWindow object. The tab will then be
-        switched to the next tab."""
-        
+        switched to the next tab.
+        """
         layout = QGridLayout(self.calibration_tab)
 
         # Create top frame
@@ -378,7 +382,7 @@ class MainWindow(QMainWindow):
         bottom_frame = QFrame()
         bottom_frame_layout = QVBoxLayout()
         bottom_frame.setLayout(bottom_frame_layout)
-        
+
         manualcalibration_frame = QFrame()
         manualcalibration_layout = QHBoxLayout(manualcalibration_frame)
         manualcalibration_layout.addWidget(QLabel("or:"))
@@ -386,10 +390,12 @@ class MainWindow(QMainWindow):
         self.manual_px_mm_input.setPlaceholderText("Calibrate manually")
         manualcalibration_layout.addWidget(self.manual_px_mm_input)
         manualcalibration_layout.addWidget(QLabel("px/mm"))
-        
+
         confirm_px_mm_button = QPushButton("Confirm calibration and background image")
-        confirm_px_mm_button.clicked.connect(self.confirm_calibration)  # Connect confirm button to the handler
-        
+        confirm_px_mm_button.clicked.connect(
+            self.confirm_calibration
+        )  # Connect confirm button to the handler
+
         bottom_frame_layout.addWidget(manualcalibration_frame)
         bottom_frame_layout.addWidget(confirm_px_mm_button)
 
@@ -403,7 +409,11 @@ class MainWindow(QMainWindow):
             self.bg_image_confirmed = True
             self.bg_corr_image_name.setReadOnly(True)  # Lock the input field
         else:
-            QMessageBox.warning(self, "Selection Locked", "You have already confirmed the background selection.")
+            QMessageBox.warning(
+                self,
+                "Selection Locked",
+                "You have already confirmed the background selection.",
+            )
 
     def select_px_res_image(self) -> None:
         """Open a file dialog to select an image for pixel resolution calibration.
@@ -413,10 +423,14 @@ class MainWindow(QMainWindow):
         If a valid image path is selected, the image name will be displayed in the
         corresponding text box and the image will be previewed in the image preview
         section. The image is scaled to fit the size of the label while keeping the
-        aspect ratio."""
-        
+        aspect ratio.
+        """
         if self.calibration_confirmed == True:
-            QMessageBox.warning(self, "Selection Locked", "You have already confirmed the pixel resolution.")
+            QMessageBox.warning(
+                self,
+                "Selection Locked",
+                "You have already confirmed the pixel resolution.",
+            )
             return
         image_path, _ = QFileDialog.getOpenFileName(
             self,
@@ -424,7 +438,7 @@ class MainWindow(QMainWindow):
             "",
             "Image Files (*.png *.jpg *.bmp)",
         )
-        
+
         if image_path:
             self.px_res_image_name.setText(image_path)
             pixmap = QPixmap(image_path)
@@ -434,19 +448,31 @@ class MainWindow(QMainWindow):
 
     def process_calibration_image(self) -> None:
         if self.calibration_confirmed:
-            QMessageBox.warning(self, "Selection Locked", "You have already confirmed the pixel resolution.")
+            QMessageBox.warning(
+                self,
+                "Selection Locked",
+                "You have already confirmed the pixel resolution.",
+            )
             return
-        
+
         image_path: Path = Path(self.px_res_image_name.text())
         if image_path and os.path.exists(image_path):
-            __, mm2px = calculate_px2mm(image_path, img_resample=0.5)  # Use the stored full path
+            __, mm2px = calculate_px2mm(
+                image_path, img_resample=0.5
+            )  # Use the stored full path
             self.manual_px_mm_input.setText(f"{mm2px:.3f}")
         else:
-            self.statusBar().showMessage("Image file does not exist or not selected.", 5000)
+            self.statusBar().showMessage(
+                "Image file does not exist or not selected.", 5000
+            )
 
     def select_bg_corr_image(self) -> None:
         if self.calibration_confirmed:
-            QMessageBox.warning(self, "Selection Locked", "You have already confirmed the background selection.")
+            QMessageBox.warning(
+                self,
+                "Selection Locked",
+                "You have already confirmed the background selection.",
+            )
             return
         image_path, _ = QFileDialog.getOpenFileName(
             self,
@@ -461,22 +487,26 @@ class MainWindow(QMainWindow):
                 pixmap.scaled(self.bg_corr_image_preview.size(), Qt.KeepAspectRatio)
             )
             self.bknd_img_exist = True
-            
+
     def confirm_calibration(self) -> None:
         """Confirm the manual calibration and lock the input."""
-        
         if not self.calibration_confirmed:
             self.calibration_confirmed = True
-            self.px2mm = float(self.manual_px_mm_input.text())  # Store the pixel to mm ratio
+            self.px2mm = float(
+                self.manual_px_mm_input.text()
+            )  # Store the pixel to mm ratio
             self.mm2px = 1 / self.px2mm
             self.manual_px_mm_input.setReadOnly(True)  # Lock the input field
             self.tabs.setCurrentIndex(self.tabs.currentIndex() + 1)
 
         else:
-            QMessageBox.warning(self, "Selection Locked", "You have already confirmed the calibration process.")
+            QMessageBox.warning(
+                self,
+                "Selection Locked",
+                "You have already confirmed the calibration process.",
+            )
 
     def setup_image_processing_tab(self) -> None:
-        
         layout = QGridLayout(self.image_processing_tab)
 
         # Left Column: Algorithm selection and processing options
@@ -506,7 +536,7 @@ class MainWindow(QMainWindow):
         # Parameter table
         self.param_table = QTableWidget(8, 2)
         self.param_table.setHorizontalHeaderLabels(["Parameter", "Value"])
-        
+
         # Populate the table with initial values
         self.param_table.setItem(0, 0, QTableWidgetItem("img_resample_factor"))
         self.param_table.setItem(0, 1, QTableWidgetItem(str(self.img_resample_factor)))
@@ -519,26 +549,26 @@ class MainWindow(QMainWindow):
 
         self.param_table.setItem(3, 0, QTableWidgetItem("connectivity"))
         self.param_table.setItem(3, 1, QTableWidgetItem(str(self.connectivity)))
-        
+
         self.param_table.setItem(4, 0, QTableWidgetItem("max_eccentricity"))
         self.param_table.setItem(4, 1, QTableWidgetItem(str(self.max_eccentricity)))
-        
+
         self.param_table.setItem(5, 0, QTableWidgetItem("min_circularity"))
         self.param_table.setItem(5, 1, QTableWidgetItem(str(self.min_circularity)))
-        
+
         self.param_table.setItem(6, 0, QTableWidgetItem("min_solidity"))
         self.param_table.setItem(6, 1, QTableWidgetItem(str(self.min_solidity)))
-        
+
         self.param_table.setItem(7, 0, QTableWidgetItem("min_size"))
         self.param_table.setItem(7, 1, QTableWidgetItem(str(self.min_size)))
-        
+
         left_layout.addWidget(self.param_table)
 
         # Add Confirm Parameter Button
         preview_button = QPushButton("Confirm parameter and preview")
         preview_button.clicked.connect(self.confirm_parameter_and_preview)
         left_layout.addWidget(preview_button)
-        
+
         # Add Processing Button
         process_button = QPushButton("Batch process images")
         process_button.clicked.connect(self.ask_if_batch)
@@ -555,7 +585,7 @@ class MainWindow(QMainWindow):
         next_button = QPushButton("Next Img >")
         prev_button.clicked.connect(lambda: self.update_sample_image("prev"))
         next_button.clicked.connect(lambda: self.update_sample_image("next"))
-        
+
         middle_layout.addWidget(self.sample_image_preview)
         middle_button_layout = QHBoxLayout()
         middle_button_layout.addWidget(prev_button)
@@ -565,7 +595,7 @@ class MainWindow(QMainWindow):
         # Right Column: Processed Image Preview
         right_frame = QFrame()
         right_layout = QVBoxLayout(right_frame)
-        
+
         # Original Image Preview
         self.label_before_filtering = MplCanvas(self, width=5, height=4, dpi=100)
         right_layout.addWidget(QLabel("Processed Image_Before Filtering"))
@@ -581,30 +611,31 @@ class MainWindow(QMainWindow):
         layout.addWidget(right_frame, 0, 2)
 
     def confirm_parameter_and_preview(self) -> None:
+        self.check_parameters()  # Check the validity of the parameters
 
-        self.check_parameters() # Check the validity of the parameters
-        
         # Processing the image and displaying it on the right side
         selected_image = self.selected_image
         folder_path = self.folder_path_edit.text()
         image_path = os.path.join(folder_path, selected_image)
 
         imgThreshold, imgRGB = self.load_image_for_processing(image_path)
-        preview_processed_image, labels_before_filtering, _, _ = self.run_processing(imgThreshold, 
-                                                                    imgRGB, 
-                                                                    self.mm2px, 
-                                                                    self.threshold_value,
-                                                                    self.element_size,
-                                                                    self.connectivity,
-                                                                    self.max_eccentricity,
-                                                                    self.min_solidity,
-                                                                    self.min_circularity,
-                                                                    self.min_size)
-        
+        preview_processed_image, labels_before_filtering, _, _ = self.run_processing(
+            imgThreshold,
+            imgRGB,
+            self.mm2px,
+            self.threshold_value,
+            self.element_size,
+            self.connectivity,
+            self.max_eccentricity,
+            self.min_solidity,
+            self.min_circularity,
+            self.min_size,
+        )
+
         self.processed_image_preview.axes.clear()
         self.processed_image_preview.axes.imshow(preview_processed_image)
         self.processed_image_preview.draw()
-        
+
         self.label_before_filtering.axes.clear()
         self.label_before_filtering.axes.imshow(labels_before_filtering)
         self.label_before_filtering.draw()
@@ -614,66 +645,74 @@ class MainWindow(QMainWindow):
         # Confirm dialog
         confirm_dialog = QMessageBox()
         confirm_dialog.setWindowTitle("Batch Processing Confirmation")
-        confirm_dialog.setText("The parameters will be applied to all the images. Confirm to process.")
+        confirm_dialog.setText(
+            "The parameters will be applied to all the images. Confirm to process."
+        )
         confirm_dialog.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
-    
+
         response = confirm_dialog.exec()
-        
+
         if response == QMessageBox.Ok:
             self.batch_process_images()
         else:
             print("Batch processing canceled.")
-        
+
     def batch_process_images(self) -> None:
         self.check_parameters()
-        
-        self.all_properties: list[dict[str, float]] = []  # To store properties of all images
-        
+
+        self.all_properties: list[
+            dict[str, float]
+        ] = []  # To store properties of all images
 
         for image_path in self.image_list_full_path:
             if image_path.lower().endswith((".png", ".jpg", ".jpeg", ".bmp", ".tiff")):
                 print("Current processing image:", image_path)
 
                 imgThreshold, imgRGB = self.load_image_for_processing(image_path)
-                _, _, circle_properties, _ = self.run_processing(imgThreshold, 
-                                            imgRGB, 
-                                            self.mm2px, 
-                                            self.threshold_value,
-                                            self.element_size,
-                                            self.connectivity,
-                                            self.max_eccentricity,
-                                            self.min_solidity,
-                                            self.min_circularity,
-                                            self.min_size)
-                
+                _, _, circle_properties, _ = self.run_processing(
+                    imgThreshold,
+                    imgRGB,
+                    self.mm2px,
+                    self.threshold_value,
+                    self.element_size,
+                    self.connectivity,
+                    self.max_eccentricity,
+                    self.min_solidity,
+                    self.min_circularity,
+                    self.min_size,
+                )
+
                 self.all_properties.append(circle_properties)
                 print("Circle properties for this image:", circle_properties)
-            print("Batch processing completed. Circle properties for all images:", 
-                  self.all_properties)
+            print(
+                "Batch processing completed. Circle properties for all images:",
+                self.all_properties,
+            )
             # self.process_bubble_image()  # Process the image
 
             # # Assuming process_bubble_image returns circle properties
-            # circle_properties = self.get_circle_properties()  
+            # circle_properties = self.get_circle_properties()
             # all_properties.append({
             #     "image": self.selected_image,
             #     "properties": circle_properties
             # })
-        
+
         # After processing, you can store the results in a file or display them.
         # For example, printing out the collected properties:
         # print("Batch processing completed. Circle properties for all images:")
         # for image_props in all_properties:
         #     print(f"Image: {image_props['image']}")
         #     print("Properties:", image_props['properties'])
-    
+
     def check_parameters(self) -> None:
-        
         if not self.calibration_confirmed:
-            QMessageBox.warning(self,
-                                "Process Locked", 
-                                "You have not yet confirmed the pixel resolution.")
+            QMessageBox.warning(
+                self,
+                "Process Locked",
+                "You have not yet confirmed the pixel resolution.",
+            )
             return
-        
+
         try:
             self.img_resample_factor = float(self.param_table.item(0, 1).text())
             self.threshold_value = float(self.param_table.item(1, 1).text())
@@ -683,67 +722,79 @@ class MainWindow(QMainWindow):
             self.min_circularity = float(self.param_table.item(5, 1).text())
             self.min_solidity = float(self.param_table.item(6, 1).text())
             self.min_size = float(self.param_table.item(7, 1).text())
-            
+
         except (ValueError, TypeError):
-            QMessageBox.warning(self, "Invalid Input", "Please ensure all parameters are valid numbers.")
-            return      
-        
-    def load_image_for_processing(self, image_path: str) -> tuple[npt.NDArray[np.int_], 
-                                                                  npt.NDArray[np.int_]]:
+            QMessageBox.warning(
+                self, "Invalid Input", "Please ensure all parameters are valid numbers."
+            )
+            return
+
+    def load_image_for_processing(
+        self, image_path: str
+    ) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]:
         # Load and return the image, possibly applying some processing
         # Placeholder for image processing before setting it on the label
         target_image_path: Path = Path(image_path)
-        target_img, imgRGB = image_preprocess(target_image_path, 
-                                              self.img_resample_factor)
+        target_img, imgRGB = image_preprocess(
+            target_image_path, self.img_resample_factor
+        )
         if self.bknd_img_exist:
             bg_img_path: Path = Path(self.bg_corr_image_name.text())
-            self.bknd_img, _ = image_preprocess(bg_img_path, 
-                                                self.img_resample_factor)
-            
-        imgThreshold = threshold(target_img, 
-                                self.bknd_img, 
-                                self.threshold_value)
-        
-        element_size = morphology.disk(
-            self.params.Morphological_element_size) 
+            self.bknd_img, _ = image_preprocess(bg_img_path, self.img_resample_factor)
+
+        imgThreshold = threshold(target_img, self.bknd_img, self.threshold_value)
+
+        element_size = morphology.disk(self.params.Morphological_element_size)
         imgThreshold = morphological_process(imgThreshold, element_size)
-        
+
         pixmap = QPixmap(image_path)
         return imgThreshold, imgRGB
 
-    def run_processing(self, 
-                       imgThreshold: npt.NDArray[np.int_], 
-                       imgRGB: npt.NDArray[np.int_], 
-                       mm2px: float, 
-                       threshold_value: float,
-                       element_size: int,
-                       connectivity: int,
-                       max_eccentricity: float,
-                       min_solidity: float,
-                       min_circularity: float,
-                       min_size: float) -> tuple[npt.NDArray[np.int_], 
-                                                 npt.NDArray[np.int_],
-                                                 list[dict[str, float]], 
-                                                 npt.NDArray[np.int_]]:
-        
+    def run_processing(
+        self,
+        imgThreshold: npt.NDArray[np.int_],
+        imgRGB: npt.NDArray[np.int_],
+        mm2px: float,
+        threshold_value: float,
+        element_size: int,
+        connectivity: int,
+        max_eccentricity: float,
+        min_solidity: float,
+        min_circularity: float,
+        min_size: float,
+    ) -> tuple[
+        npt.NDArray[np.int_],
+        npt.NDArray[np.int_],
+        list[dict[str, float]],
+        npt.NDArray[np.int_],
+    ]:
         print("Threshold_value:", threshold_value)
         print("element_size:", element_size)
         print("connectivity:", connectivity)
         print("mm2px:", mm2px)
         print("max ecccentricity from GUI:", max_eccentricity)
-        
-        preview_processed_image, labels_before_filtering, circle_properties, labels = run_watershed_segmentation(imgThreshold,
-                                               imgRGB, 
-                                               mm2px, 
-                                               threshold_value,
-                                               element_size,
-                                               connectivity,
-                                               max_eccentricity,
-                                               min_solidity,
-                                               min_circularity,
-                                               min_size)
-        return preview_processed_image, labels_before_filtering, circle_properties, labels
-        
+
+        preview_processed_image, labels_before_filtering, circle_properties, labels = (
+            run_watershed_segmentation(
+                imgThreshold,
+                imgRGB,
+                mm2px,
+                threshold_value,
+                element_size,
+                connectivity,
+                max_eccentricity,
+                min_solidity,
+                min_circularity,
+                min_size,
+            )
+        )
+        return (
+            preview_processed_image,
+            labels_before_filtering,
+            circle_properties,
+            labels,
+        )
+
     def update_sample_image(self, direction: str) -> None:
         # Update the sample image preview based on user navigation (prev/next)
         current_row = self.image_list.currentRow()
@@ -760,7 +811,7 @@ class MainWindow(QMainWindow):
 
         # Create canvas for displaying the graph
         self.histogram_canvas = MplCanvas(self, width=8, height=8, dpi=100)
-        
+
         # Controls for histogram options
         controls_frame = QFrame()
         controls_layout = QVBoxLayout(controls_frame)
@@ -773,18 +824,18 @@ class MainWindow(QMainWindow):
         # PDF/CDF Checkboxes
         self.pdf_checkbox = QCheckBox("PDF")
         self.cdf_checkbox = QCheckBox("CDF")
-        
+
         # Number of bins
         bins_label = QLabel("Number of bins:")
         self.bins_spinbox = QSpinBox()
         self.bins_spinbox.setValue(15)
         self.bins_spinbox.setRange(1, 100)
-        
+
         # X-axis limits
         x_axis_limits_label = QLabel("X-axis limits:")
         self.min_x_axis_input = QLineEdit("0.0")
         self.max_x_axis_input = QLineEdit("5.0")
-        
+
         legend_label = QLabel("Legend settings:")
         # Inside setup_results_tab (or wherever you are defining the layout of the results tab)
         legend_frame = QFrame()
@@ -793,7 +844,9 @@ class MainWindow(QMainWindow):
         # Legend position dropdown
         legend_layout.addWidget(QLabel("Position:"), 0, 0)
         self.legend_position_combobox = QComboBox()
-        self.legend_position_combobox.addItems(["North East", "North West", "South East", "South West"])
+        self.legend_position_combobox.addItems(
+            ["North East", "North West", "South East", "South West"]
+        )
         legend_layout.addWidget(self.legend_position_combobox, 0, 1)
 
         # Legend orientation dropdown
@@ -801,7 +854,7 @@ class MainWindow(QMainWindow):
         self.legend_orientation_combobox = QComboBox()
         self.legend_orientation_combobox.addItems(["Vertical", "Horizontal"])
         legend_layout.addWidget(self.legend_orientation_combobox, 1, 1)
-        
+
         # Descriptive size options
         # Descriptive Size Checkboxes Section
         descriptive_frame = QFrame()
@@ -828,11 +881,11 @@ class MainWindow(QMainWindow):
         descriptive_layout.addWidget(self.dxy_x_input, 2, 2)
         descriptive_layout.addWidget(QLabel("y"), 2, 3)
         descriptive_layout.addWidget(self.dxy_y_input, 2, 4)
-        
+
         # Add Save button
         save_frame = QFrame()
         save_layout = QVBoxLayout(save_frame)
-        
+
         # Folder selection box with button
         folder_selection_frame = QFrame()
         folder_selection_layout = QHBoxLayout(folder_selection_frame)
@@ -840,19 +893,21 @@ class MainWindow(QMainWindow):
         self.save_folder_edit.setPlaceholderText("No folder selected")
         self.save_folder_edit.setReadOnly(True)
         self.save_folder_edit.setMaximumWidth(300)
-        
+
         select_folder_button = QPushButton("Select Folder")
         select_folder_button.clicked.connect(self.select_save_folder)
-        
+
         folder_selection_layout.addWidget(self.save_folder_edit)
         folder_selection_layout.addWidget(select_folder_button)
-        
+
         # Graph filename input row
         graph_frame = QFrame()
         graph_filename_layout = QHBoxLayout(graph_frame)
         current_date = datetime.now().strftime("%Y%m%d")
-        
-        self.graph_filename_edit = QLineEdit(current_date)  # Default name as current date
+
+        self.graph_filename_edit = QLineEdit(
+            current_date
+        )  # Default name as current date
         graph_filename_label = QLabel(".png")
         graph_filename_layout.addWidget(QLabel("Graph Filename:"))
         graph_filename_layout.addWidget(self.graph_filename_edit)
@@ -866,7 +921,7 @@ class MainWindow(QMainWindow):
         csv_filename_layout.addWidget(QLabel("CSV Filename:"))
         csv_filename_layout.addWidget(self.csv_filename_edit)
         csv_filename_layout.addWidget(csv_filename_label)
-        
+
         # Save button
         save_button = QPushButton("Save graph and data")
         save_button.clicked.connect(self.save_results)
@@ -876,7 +931,6 @@ class MainWindow(QMainWindow):
         save_layout.addWidget(graph_frame)
         save_layout.addWidget(csv_filename_frame)
         save_layout.addWidget(save_button)
-
 
         # Assemble controls layout
         controls_layout.addWidget(histogram_by_label)
@@ -905,18 +959,20 @@ class MainWindow(QMainWindow):
         # Add a label to display the descriptive sizes
         self.descriptive_size_label = QLabel("")
         layout.addWidget(self.descriptive_size_label, 2, 0, 1, 2)
-    
+
     def select_save_folder(self) -> None:
         """Opens a QFileDialog to select a folder for saving."""
         folder_path = QFileDialog.getExistingDirectory(self, "Select Folder to Save")
         if folder_path:
             self.save_folder_edit.setText(folder_path)
-        
+
     def save_results(self) -> None:
         """Saves histogram and data to the selected folder."""
         folder_path = self.save_folder_edit.text()
         if folder_path == "" or not os.path.exists(folder_path):
-            QMessageBox.warning(self, "No Folder Selected", "Please select a folder to save the files.")
+            QMessageBox.warning(
+                self, "No Folder Selected", "Please select a folder to save the files."
+            )
             return
 
         # Get the user-specified filenames
@@ -924,44 +980,59 @@ class MainWindow(QMainWindow):
         csv_filename = self.csv_filename_edit.text()
 
         if not graph_filename or not csv_filename:
-            QMessageBox.warning(self, "Filename Missing", "Please provide filenames for both graph and CSV files.")
+            QMessageBox.warning(
+                self,
+                "Filename Missing",
+                "Please provide filenames for both graph and CSV files.",
+            )
             return
-        
+
         # Set file paths
         graph_path = os.path.join(folder_path, f"{graph_filename}.png")
         csv_path = os.path.join(folder_path, f"{csv_filename}.csv")
-        
+
         # Assuming `self.histogram_canvas` is a matplotlib canvas
         self.histogram_canvas.fig.savefig(graph_path)
 
-        headers = ['area', 'equivalent_diameter', 'eccentricity', 'solidity', 
-                   'circularity', 'surface_diameter'] 
+        headers = [
+            "area",
+            "equivalent_diameter",
+            "eccentricity",
+            "solidity",
+            "circularity",
+            "surface_diameter",
+        ]
         # Save the CSV data
         rows = []
         for image_properties in self.all_properties:
             for circle in image_properties:
-                rows.append([circle['area'], 
-                            circle['equivalent_diameter'], 
-                            circle['eccentricity'], 
-                            circle['solidity'], 
-                            circle['circularity'], 
-                            circle['surface_diameter']])
-                
+                rows.append(
+                    [
+                        circle["area"],
+                        circle["equivalent_diameter"],
+                        circle["eccentricity"],
+                        circle["solidity"],
+                        circle["circularity"],
+                        circle["surface_diameter"],
+                    ]
+                )
+
         # Write the data into a CSV file
-        with open(csv_path, mode='w', newline='') as data_file:
+        with open(csv_path, mode="w", newline="") as data_file:
             writer = csv.writer(data_file)
-            
+
             # Write the header
             writer.writerow(headers)
-            
+
             # Write the rows of data
             writer.writerows(rows)
 
-        QMessageBox.information(self, "Save Successful", f"Files saved to {folder_path}")
+        QMessageBox.information(
+            self, "Save Successful", f"Files saved to {folder_path}"
+        )
         return
-    
+
     def generate_histogram(self) -> None:
-        
         # Get settings
         num_bins = self.bins_spinbox.value()
         show_pdf = self.pdf_checkbox.isChecked()
@@ -969,7 +1040,7 @@ class MainWindow(QMainWindow):
         show_d32 = self.d32_checkbox.isChecked()
         show_dmean = self.dmean_checkbox.isChecked()
         show_dxy = self.dxy_checkbox.isChecked()
-        
+
         # Collect all equivalent diameters from the properties
         equivalent_diameters_list: list = []
         # self.all_properties = [[{'area': np.float64(8.026718750000002), 'equivalent_diameter': np.float64(3.1968634201302994), 'eccentricity': 0.413941107655173, 'solidity': np.float64(0.9788494883862732), 'circularity': np.float64(0.6629450637281152), 'surface_diameter': np.float64(3.1968634201303)}, {'area': np.float64(14.620156250000003), 'equivalent_diameter': np.float64(4.314505891490582), 'eccentricity': 0.6333234559264358, 'solidity': np.float64(0.980632382070281), 'circularity': np.float64(0.6313867763949964), 'surface_diameter': np.float64(4.314505891490583)}, {'area': np.float64(7.366718750000001), 'equivalent_diameter': np.float64(3.062612875869555), 'eccentricity': 0.46766243674101204, 'solidity': np.float64(0.961967721531901), 'circularity': np.float64(0.4843818599540233), 'surface_diameter': np.float64(3.062612875869555)}, {'area': np.float64(5.720625000000001), 'equivalent_diameter': np.float64(2.6988378926124095), 'eccentricity': 0.7744330502189362, 'solidity': np.float64(0.9717334182657855), 'circularity': np.float64(0.5973321381561341), 'surface_diameter': np.float64(2.6988378926124095)}, {'area': np.float64(11.256406250000003), 'equivalent_diameter': np.float64(3.785776217515246), 'eccentricity': 0.25076668065525254, 'solidity': np.float64(0.9887592643425748), 'circularity': np.float64(0.8170466439358144), 'surface_diameter': np.float64(3.785776217515246)}], [{'area': np.float64(14.291562500000003), 'equivalent_diameter': np.float64(4.265745249197861), 'eccentricity': 0.8033028975089082, 'solidity': np.float64(0.9673516440514843), 'circularity': np.float64(0.41154002411421614), 'surface_diameter': np.float64(4.265745249197862)}, {'area': np.float64(6.452812500000001), 'equivalent_diameter': np.float64(2.8663523945532883), 'eccentricity': 0.7822564058008267, 'solidity': np.float64(0.9598159295326191), 'circularity': np.float64(0.4250810026479738), 'surface_diameter': np.float64(2.8663523945532883)}, {'area': np.float64(7.928437500000001), 'equivalent_diameter': np.float64(3.1772315233487776), 'eccentricity': 0.3008953392910511, 'solidity': np.float64(0.9770289785308559), 'circularity': np.float64(0.6680694454520646), 'surface_diameter': np.float64(3.1772315233487776)}, {'area': np.float64(6.142187500000001), 'equivalent_diameter': np.float64(2.7965114010455974), 'eccentricity': 0.6160624375636934, 'solidity': np.float64(0.9809842283889), 'circularity': np.float64(0.6900546395419445), 'surface_diameter': np.float64(2.7965114010455974)}]]
@@ -978,10 +1049,10 @@ class MainWindow(QMainWindow):
             for circle in image_properties:
                 equivalent_diameters_list.append(circle["equivalent_diameter"])
         equivalent_diameters_array = np.array(equivalent_diameters_list)
-        
+
         x_min = float(np.min(equivalent_diameters_array))
         x_max = float(np.max(equivalent_diameters_array))
-        
+
         # Clear current graph
         self.histogram_canvas.axes.set_xlabel("")
         self.histogram_canvas.axes.set_ylabel("")
@@ -989,51 +1060,62 @@ class MainWindow(QMainWindow):
         try:
             if self.histogram_canvas.axes2:
                 self.histogram_canvas.axes2.clear()
-                self.histogram_canvas.axes2.set_ylabel('')
+                self.histogram_canvas.axes2.set_ylabel("")
                 self.histogram_canvas.axes2.set_yticklabels([])
                 self.histogram_canvas.axes2.set_yticks([])
                 del self.histogram_canvas.axes2
         except AttributeError:
             pass
-        
+
         # Plot histogram
-        counts, bins, patches = self.histogram_canvas.axes.hist(equivalent_diameters_array, 
-                                                                bins=num_bins, 
-                                                                range=(x_min, x_max))
+        counts, bins, patches = self.histogram_canvas.axes.hist(
+            equivalent_diameters_array, bins=num_bins, range=(x_min, x_max)
+        )
         # Set graph labels
         self.histogram_canvas.axes.set_xlabel("Equivalent diameter [mm]")
         self.histogram_canvas.axes.set_ylabel("Count [#]")
-        
+
         # Calculate descriptive sizes
         d32, d_mean, dxy = self.calculate_descriptive_sizes(equivalent_diameters_array)
-        
+
         # Update descriptive size label
-        desc_text = f"Results:\nd32 = {d32:.2f} mm\ndmean = {d_mean:.2f} mm\ndxy = {dxy:.2f} mm"
+        desc_text = (
+            f"Results:\nd32 = {d32:.2f} mm\ndmean = {d_mean:.2f} mm\ndxy = {dxy:.2f} mm"
+        )
         self.descriptive_size_label.setText(desc_text)
-        
+
         # Optionally add CDF
         if show_pdf or show_cdf:
             self.histogram_canvas.axes2 = self.histogram_canvas.axes.twinx()
-            self.histogram_canvas.axes2.set_ylabel('Probability [%]')
-            
+            self.histogram_canvas.axes2.set_ylabel("Probability [%]")
+
             if show_cdf:
-                cdf = np.cumsum(counts) / np.sum(counts) * 100   
-                self.histogram_canvas.axes2.plot(bins[:-1], cdf, 'r-', marker='o', label="CDF")
-                
+                cdf = np.cumsum(counts) / np.sum(counts) * 100
+                self.histogram_canvas.axes2.plot(
+                    bins[:-1], cdf, "r-", marker="o", label="CDF"
+                )
+
             if show_pdf:
                 pdf = counts / np.sum(counts) * 100
-                self.histogram_canvas.axes2.plot(bins[:-1], pdf, 'b-', marker='o', label="PDF")
+                self.histogram_canvas.axes2.plot(
+                    bins[:-1], pdf, "b-", marker="o", label="PDF"
+                )
 
         if show_d32:
-            self.histogram_canvas.axes.axvline(x=d32, color='r', linestyle='-', label="d32")
-        
+            self.histogram_canvas.axes.axvline(
+                x=d32, color="r", linestyle="-", label="d32"
+            )
+
         if show_dmean:
-            self.histogram_canvas.axes.axvline(x=d_mean, color='g', linestyle='--', label="dmean")
-            
+            self.histogram_canvas.axes.axvline(
+                x=d_mean, color="g", linestyle="--", label="dmean"
+            )
+
         if show_dxy:
-            self.histogram_canvas.axes.axvline(x=dxy, color='b', linestyle='--', label="dxy")
-            
-            
+            self.histogram_canvas.axes.axvline(
+                x=dxy, color="b", linestyle="--", label="dxy"
+            )
+
         # Apply Legend Options
         legend_position = self.legend_position_combobox.currentText()
         legend_orientation = self.legend_orientation_combobox.currentText()
@@ -1042,49 +1124,62 @@ class MainWindow(QMainWindow):
             "North East": "upper right",
             "North West": "upper left",
             "South East": "lower right",
-            "South West": "lower left"
+            "South West": "lower left",
         }
-        
+
         print("legend_position:", legend_position)
         print(legend_location_map.get(legend_position, "upper right"))
-        
+
         # Add legend to the graph
         if show_cdf or show_pdf or show_d32 or show_dmean or show_dxy:
             lines1, labels1 = self.histogram_canvas.axes.get_legend_handles_labels()
             if show_cdf or show_pdf:
-                lines2, labels2 = self.histogram_canvas.axes2.get_legend_handles_labels()
-                legend = self.histogram_canvas.axes.legend(lines1 + lines2, 
-                                                            labels1 + labels2, 
-                                                            loc=legend_location_map.get(legend_position, "upper right"))
+                lines2, labels2 = (
+                    self.histogram_canvas.axes2.get_legend_handles_labels()
+                )
+                legend = self.histogram_canvas.axes.legend(
+                    lines1 + lines2,
+                    labels1 + labels2,
+                    loc=legend_location_map.get(legend_position, "upper right"),
+                )
             else:
-                legend = self.histogram_canvas.axes.legend(lines1, labels1, 
-                                        loc=legend_location_map.get(legend_position, "upper right"))
+                legend = self.histogram_canvas.axes.legend(
+                    lines1,
+                    labels1,
+                    loc=legend_location_map.get(legend_position, "upper right"),
+                )
 
             if legend_orientation == "Horizontal":
-                legend.set_bbox_to_anchor((1, 1))  # Set orientation of the legend to horizontal if selected
+                legend.set_bbox_to_anchor(
+                    (1, 1)
+                )  # Set orientation of the legend to horizontal if selected
 
         # Redraw the canvas
-        self.histogram_canvas.draw()    
-        
+        self.histogram_canvas.draw()
+
         return
-    
+
     def calculate_descriptive_sizes(self, equivalent_diameters: np.ndarray) -> tuple:
         """Calculate d32, d mean, and dxy based on the equivalent diameters."""
-        dxy_x_power:int = int(self.dxy_x_input.text())
-        dxy_y_power:int = int(self.dxy_y_input.text())
+        dxy_x_power: int = int(self.dxy_x_input.text())
+        dxy_y_power: int = int(self.dxy_y_input.text())
         d32 = np.sum(equivalent_diameters**3) / np.sum(equivalent_diameters**2)
         # d32, Sauter diameter, should be calculated based on the area, and volume diameter
         # of a circle, which is unkown right now
         d_mean = np.mean(equivalent_diameters)
-        dxy = np.sum(equivalent_diameters**dxy_x_power) / np.sum(equivalent_diameters**dxy_y_power) 
+        dxy = np.sum(equivalent_diameters**dxy_x_power) / np.sum(
+            equivalent_diameters**dxy_y_power
+        )
 
         return d32, d_mean, dxy
-    
+
+
 def main() -> None:
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
+
 
 if __name__ == "__main__":
     main()

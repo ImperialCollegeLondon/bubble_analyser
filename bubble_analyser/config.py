@@ -94,7 +94,7 @@ class Config(BaseModel):  # type: ignore
     Min_Solidity_range: tuple[PositiveFloat, PositiveFloat]
     Min_Circularity: PositiveFloat
     Min_Circularity_range: tuple[PositiveFloat, PositiveFloat]
-    
+
     # Also ignore too small bubbles (equivalent diameter in mm)
     min_size: StrictFloat
     min_size_range: tuple[StrictFloat, StrictFloat]
@@ -270,10 +270,12 @@ class Config(BaseModel):  # type: ignore
         # Check if the lower bound is less than the upper bound
         if low >= high:
             # Raise a ValueError if the bounds are in the wrong order
-            raise ValueError("Limits for the Min_Circularity_range are in the wrong order")
+            raise ValueError(
+                "Limits for the Min_Circularity_range are in the wrong order"
+            )
 
         return self
-    
+
     @model_validator(mode="after")
     def check_min_size_range(self) -> typing_extensions.Self:
         """Validates the minimum size range.
