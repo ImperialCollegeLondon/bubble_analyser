@@ -318,12 +318,3 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 
-# First background subtraction (optional) then otsu thresholding - DONE
-# Let user define limitations based on the properties of the bubbles for filtering them
-# Output the image that eliminate the bubbles being filtered out 
-# Table and Histogram 
-# Let user modify the parameters in UI - DONE
-# Merge default branch - DONE
-
-# Manual input for bubble detection, e.g. img_resample, mask_size, element_size, etc.
-# Then filtering.
