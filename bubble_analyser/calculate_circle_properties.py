@@ -66,10 +66,9 @@ def calculate_circle_properties(
     properties = measure.regionprops(labels)
     circle_properties = []
     for prop in properties:
-        
         if prop.label == 1:  # Ignore the background, labeled as 1
             continue
-        
+
         area = prop.area * (mm2px**2)
         equivalent_diameter = prop.equivalent_diameter * mm2px
         eccentricity = prop.eccentricity
@@ -83,17 +82,18 @@ def calculate_circle_properties(
                 "eccentricity": eccentricity,
                 "solidity": solidity,
                 "circularity": circularity,
-                "surface_diameter": surface_diameter
+                "surface_diameter": surface_diameter,
             }
         )
     return circle_properties
+
 
 def filter_circle_properties(
     labels: np.ndarray,
     px2mm: float,
     max_eccentricity: float = 1.0,
     min_solidity: float = 0.9,
-    min_circularity: float = 0.1
+    min_circularity: float = 0.1,
 ) -> np.ndarray:
     """Filters out regions (circles) from the labeled image that don't meet certain property thresholds.
 
@@ -128,7 +128,7 @@ def filter_circle_properties(
         if not (
             eccentricity <= max_eccentricity
             and min_solidity <= solidity
-            and min_circularity <= circularity 
+            and min_circularity <= circularity
         ):
             # Remove the region by setting it to 1 (background)
             new_labels[new_labels == prop.label] = 1
