@@ -433,6 +433,19 @@ class MainWindow(QMainWindow):
             )
 
     def process_calibration_image(self) -> None:
+        """Process the selected image for pixel resolution calibration.
+
+        If a valid image path is selected, calculate the pixel-to-mm ratio and
+        display it in the manual calibration text box. If the image path is not
+        valid, display a status bar message. The function will lock if the
+        calibration has already been confirmed.
+
+        Args:
+            None.
+
+        Returns:
+            None.
+        """
         if self.calibration_confirmed:
             QMessageBox.warning(self, "Selection Locked", "You have already confirmed the pixel resolution.")
             return
@@ -445,9 +458,25 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("Image file does not exist or not selected.", 5000)
 
     def select_bg_corr_image(self) -> None:
+        """Open a file dialog to select an image for background correction.
+
+        If the background correction has already been confirmed, display a warning
+        message and do nothing. Otherwise, open a file dialog to select an image.
+        If a valid image path is selected, display the image in the background
+        correction image preview section, and set the path to the background
+        correction image name text box. The background image existence flag is
+        also set to True.
+
+        Args:
+            None.
+
+        Returns:
+            None.
+        """
         if self.calibration_confirmed:
             QMessageBox.warning(self, "Selection Locked", "You have already confirmed the background selection.")
             return
+        
         image_path, _ = QFileDialog.getOpenFileName(
             self,
             "Select Image for Background Correction",
@@ -471,12 +500,30 @@ class MainWindow(QMainWindow):
             self.mm2px = 1 / self.px2mm
             self.manual_px_mm_input.setReadOnly(True)  # Lock the input field
             self.tabs.setCurrentIndex(self.tabs.currentIndex() + 1)
-
         else:
             QMessageBox.warning(self, "Selection Locked", "You have already confirmed the calibration process.")
 
     def setup_image_processing_tab(self) -> None:
         
+        """
+        Set up the image processing tab, which contains the following components:
+
+        1. A box to select the image processing algorithm.
+        2. A table to display and edit the processing parameters.
+        3. A button to confirm the parameter settings and preview a sample image.
+        4. A button to batch process the sample images.
+        5. A section to display the sample image preview.
+        6. A section to display the processed image preview, including before and after 
+        filtering.
+
+        When the user selects an algorithm, the parameters will be loaded and displayed 
+        in the table. When the user confirms the parameter settings and previews a 
+        sample image, the sample image will be processed using the selected algorithm 
+        and displayed in the preview section.
+        When the user clicks the "Batch process images" button, the algorithm will be 
+        applied to all the images in the selected folder and the results will be saved 
+        in a new folder.
+        """
         layout = QGridLayout(self.image_processing_tab)
 
         # Left Column: Algorithm selection and processing options
@@ -488,14 +535,6 @@ class MainWindow(QMainWindow):
         algorithm_selection.addItems(["Default algorithm"])
         left_layout.addWidget(QLabel("Step 1: Select image processing algorithm"))
         left_layout.addWidget(algorithm_selection)
-
-        # Image processing sandbox options
-        # processing_group = QButtonGroup(left_frame)
-        # default_params_radio = QRadioButton("Using default parameters")
-        # custom_params_radio = QRadioButton("Choosing my own parameters")
-        # custom_params_radio.setChecked(True)
-        # processing_group.addButton(default_params_radio)
-        # processing_group.addButton(custom_params_radio)
 
         # Add processing options to layout
         left_layout.addWidget(QLabel("Step 2:"))
@@ -581,7 +620,22 @@ class MainWindow(QMainWindow):
         layout.addWidget(right_frame, 0, 2)
 
     def confirm_parameter_and_preview(self) -> None:
+        """
+        Confirm the parameter settings and preview a sample image.
 
+        This function is connected to the "Confirm parameter and preview" button
+        in the image processing tab. When the button is clicked, the function
+        checks the validity of the parameters, processes the selected image with
+        the chosen algorithm, and displays the processed image on the right side
+        of the tab.
+
+        The function first checks the validity of the parameters, then processes
+        the selected image with the chosen algorithm and displays the processed
+        image on the right side of the tab. The processed image is displayed
+        before and after filtering.
+
+        :return: None
+        """
         self.check_parameters() # Check the validity of the parameters
         
         # Processing the image and displaying it on the right side
@@ -625,6 +679,19 @@ class MainWindow(QMainWindow):
             print("Batch processing canceled.")
         
     def batch_process_images(self) -> None:
+        """
+        Function to handle the batch processing of all images in the folder.
+
+        This function checks the parameters, processes each image with the
+        `run_processing` function, and stores the properties of all images in
+        the `all_properties` list of dictionaries. The properties of each image
+        are stored as a dictionary with keys 'image' and 'properties', where
+        'properties' is the dictionary returned by `get_circle_properties`.
+
+        After processing, the function prints out the collected properties.
+
+        return: None
+        """
         self.check_parameters()
         
         self.all_properties: list[dict[str, float]] = []  # To store properties of all images
@@ -667,8 +734,17 @@ class MainWindow(QMainWindow):
         #     print("Properties:", image_props['properties'])
     
     def check_parameters(self) -> None:
-        
+        """Check if parameters are valid numbers and calibration is confirmed.
+
+        This function checks if the user has confirmed the calibration and if the
+        parameters in the table are valid numbers. If not, it displays a warning
+        message and returns without performing any action.
+
+        Returns:
+            None
+        """    
         if not self.calibration_confirmed:
+
             QMessageBox.warning(self,
                                 "Process Locked", 
                                 "You have not yet confirmed the pixel resolution.")
@@ -690,8 +766,22 @@ class MainWindow(QMainWindow):
         
     def load_image_for_processing(self, image_path: str) -> tuple[npt.NDArray[np.int_], 
                                                                   npt.NDArray[np.int_]]:
-        # Load and return the image, possibly applying some processing
-        # Placeholder for image processing before setting it on the label
+        """
+        Load and return the image, possibly applying some processing.
+
+        This function loads an image using image_preprocess, applies background subtraction
+        and thresholding, and morphological processing using a disk element of size
+        Morphological_element_size. (If no background image is provided, the function
+        applies thresholding without background subtraction.)
+
+        Args:
+            image_path (str): The path to the image to be processed.
+
+        Returns:
+            tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]: A tuple of two arrays, the
+                first being the processed image and the second being the original image in
+                RGB format.
+        """
         target_image_path: Path = Path(image_path)
         target_img, imgRGB = image_preprocess(target_image_path, 
                                               self.img_resample_factor)
@@ -700,9 +790,12 @@ class MainWindow(QMainWindow):
             self.bknd_img, _ = image_preprocess(bg_img_path, 
                                                 self.img_resample_factor)
             
-        imgThreshold = threshold(target_img, 
-                                self.bknd_img, 
-                                self.threshold_value)
+            imgThreshold = threshold(target_img, 
+                                    self.bknd_img, 
+                                    self.threshold_value)
+        else:
+            imgThreshold = threshold_without_background(target_img,
+                                                        self.threshold_value)
         
         element_size = morphology.disk(
             self.params.Morphological_element_size) 
@@ -726,6 +819,30 @@ class MainWindow(QMainWindow):
                                                  list[dict[str, float]], 
                                                  npt.NDArray[np.int_]]:
         
+        """
+        Run the image processing algorithm on the preprocessed image.
+
+        This function calls run_watershed_segmentation with the given parameters and
+        returns the processed image, the labeled image before filtering, the properties
+        of the detected circular features, and the labeled image after filtering.
+
+        Parameters:
+            imgThreshold (npt.NDArray[np.int_]): The preprocessed image after thresholding.
+            imgRGB (npt.NDArray[np.int_]): The original image in RGB format.
+            mm2px (float): The conversion factor from millimeters to pixels.
+            threshold_value (float): The threshold value for background subtraction.
+            element_size (int): The size of the morphological element for binary operations.
+            connectivity (int): The connectivity of the morphological operations.
+            max_eccentricity (float): The maximum eccentricity threshold for filtering.
+            min_solidity (float): The minimum solidity threshold for filtering.
+            min_circularity (float): The minimum circularity threshold for filtering.
+            min_size (float): The minimum size threshold for filtering in pixels.
+
+        Returns:
+            tuple[npt.NDArray[np.int_], npt.NDArray[np.int_], list[dict[str, float]], npt.NDArray[np.int_]]: A tuple of four arrays, the first being the
+                processed image, the second being the labeled image before filtering, the third being the properties of the detected circular features, and the
+                fourth being the labeled image after filtering.
+        """
         print("Threshold_value:", threshold_value)
         print("element_size:", element_size)
         print("connectivity:", connectivity)
@@ -745,7 +862,13 @@ class MainWindow(QMainWindow):
         return preview_processed_image, labels_before_filtering, circle_properties, labels
         
     def update_sample_image(self, direction: str) -> None:
-        # Update the sample image preview based on user navigation (prev/next)
+        """Update the sample image preview based on user navigation (prev/next).
+
+        This function updates the sample image preview by changing the currently
+        selected image in the image list. The direction parameter determines
+        whether the user is navigating to the previous or next image. The
+        function then calls the preview_image method to update the image preview.
+        """
         current_row = self.image_list.currentRow()
         if direction == "prev":
             if current_row > 0:
@@ -756,6 +879,27 @@ class MainWindow(QMainWindow):
         self.preview_image()
 
     def setup_results_tab(self) -> None:
+        """
+        Set up the results tab, which contains the following components:
+
+        1. A graph canvas for displaying the histogram.
+        2. Controls for histogram options, including the type of histogram to
+        generate (by number or volume), checkboxes for PDF and CDF, the number
+        of bins, and the x-axis limits.
+        3. A legend position and orientation dropdown.
+        4. A descriptive size options section, which includes checkboxes for
+        displaying d32, dmean, and dxy, as well as input boxes for x and y
+        values for dxy.
+        5. A save button that saves the graph and CSV data to a user-selected
+        folder.
+
+        This function creates the layout of the results tab, including the graph
+        canvas, controls, and save button. The controls include the histogram type,
+        PDF/CDF checkboxes, number of bins, x-axis limits, legend position and
+        orientation dropdown, and descriptive size options. The save button is
+        connected to the save_results slot, which saves the graph and CSV data to
+        the user-selected folder.
+        """
         layout = QGridLayout(self.results_tab)
 
         # Create canvas for displaying the graph
@@ -961,6 +1105,22 @@ class MainWindow(QMainWindow):
         return
     
     def generate_histogram(self) -> None:
+        """
+        Generate a histogram of equivalent diameters of all detected bubbles in all images
+
+        This function takes the following steps:
+
+        1. Collect all equivalent diameters from the properties of the detected bubbles
+        2. Plot histogram of the equivalent diameters
+        3. Calculate descriptive sizes (d32, dmean, dxy)
+        4. Update descriptive size label
+        5. Optionally add CDF and/or PDF to the histogram
+        6. Optionally add vertical lines for the descriptive sizes to the histogram
+        7. Add legend to the graph
+        8. Redraw the canvas
+
+        :return: None
+        """
         
         # Get settings
         num_bins = self.bins_spinbox.value()
@@ -1068,7 +1228,10 @@ class MainWindow(QMainWindow):
         
         return
     
-    def calculate_descriptive_sizes(self, equivalent_diameters: np.ndarray) -> tuple:
+    def calculate_descriptive_sizes(self, 
+                                    equivalent_diameters: np.ndarray) -> tuple[float, 
+                                                                               float, 
+                                                                               float]:
         """Calculate d32, d mean, and dxy based on the equivalent diameters."""
         dxy_x_power:int = int(self.dxy_x_input.text())
         dxy_y_power:int = int(self.dxy_y_input.text())
