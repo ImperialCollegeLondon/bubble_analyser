@@ -24,6 +24,8 @@ Max_Eccentricity = 0.85
 Max_Eccentricity_range = [0.1, 1.0]
 Min_Solidity = 0.9
 Min_Solidity_range = [0.1, 1.0]
+Min_Circularity = 0.1
+Min_Circularity_range = [0.1, 1.0]
 
 # Also ignore too small bubbles (equivalent diameter in mm)
 min_size = 0.1
@@ -39,7 +41,7 @@ target_img_path = "./tests/sample_images/03.jpg"
 background_img_path = "./tests/calibration_files/Background.png"
 
 # Threshold value for background subtraction
-threshold_value = 0.3
+threshold_value = 0.5
 
 # Ruler image
 ruler_img_path = "./tests/calibration_files/Ruler.png"
