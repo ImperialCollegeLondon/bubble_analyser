@@ -36,7 +36,7 @@ from skimage import measure
 
 
 def calculate_circle_properties(
-    labels: npt.NDArray[np.int_], px2cm: float
+    labels: npt.NDArray[np.int_], mm2px: float
 ) -> list[dict[str, float]]:
     """Calculate geometric properties of labeled regions in an image.
 
@@ -66,11 +66,16 @@ def calculate_circle_properties(
     properties = measure.regionprops(labels)
     circle_properties = []
     for prop in properties:
-        area = prop.area * (px2cm**2)
-        equivalent_diameter = prop.equivalent_diameter * px2cm
+        
+        if prop.label == 1:  # Ignore the background, labeled as 1
+            continue
+        
+        area = prop.area * (mm2px**2)
+        equivalent_diameter = prop.equivalent_diameter * mm2px
         eccentricity = prop.eccentricity
         solidity = prop.solidity
-        circularity = (4 * np.pi * area) / (prop.perimeter * px2cm) ** 2
+        circularity = (4 * np.pi * area) / (prop.perimeter * mm2px) ** 2
+        surface_diameter = 2 * np.sqrt(area / np.pi)
         circle_properties.append(
             {
                 "area": area,
@@ -78,6 +83,54 @@ def calculate_circle_properties(
                 "eccentricity": eccentricity,
                 "solidity": solidity,
                 "circularity": circularity,
+                "surface_diameter": surface_diameter
             }
         )
     return circle_properties
+
+def filter_circle_properties(
+    labels: np.ndarray,
+    px2mm: float,
+    max_eccentricity: float = 1.0,
+    min_solidity: float = 0.9,
+    min_circularity: float = 0.1
+) -> np.ndarray:
+    """Filters out regions (circles) from the labeled image that don't meet certain property thresholds.
+
+    Args:
+        labels: A labeled image where each distinct region is represented by a unique label.
+        px2mm: The pixel-to-mm conversion factor.
+        min_eccentricity: The minimum allowed eccentricity for circles.
+        max_eccentricity: The maximum allowed eccentricity for circles.
+        min_solidity: The minimum allowed solidity for circles.
+        max_solidity: The maximum allowed solidity for circles.
+        min_circularity: The minimum allowed circularity for circles.
+        max_circularity: The maximum allowed circularity for circles.
+
+    Returns:
+        Updated labels array where regions not meeting the thresholds are removed.
+    """
+    properties = measure.regionprops(labels)
+    new_labels = np.copy(labels)
+
+    for prop in properties:
+        if prop.label == 1:  # Ignore the background
+            continue
+
+        # Calculate circle properties in mm
+        area = prop.area * (px2mm**2)
+        equivalent_diameter = prop.equivalent_diameter * px2mm
+        eccentricity = prop.eccentricity
+        solidity = prop.solidity
+        circularity = (4 * np.pi * area) / (prop.perimeter * px2mm) ** 2
+
+        # Check if the circle properties meet the thresholds
+        if not (
+            eccentricity <= max_eccentricity
+            and min_solidity <= solidity
+            and min_circularity <= circularity 
+        ):
+            # Remove the region by setting it to 1 (background)
+            new_labels[new_labels == prop.label] = 1
+
+    return new_labels
