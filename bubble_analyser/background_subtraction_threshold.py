@@ -99,7 +99,7 @@ def background_subtraction_threshold(
 
     # Subtract the background image from the target image
     difference_img = background_subtraction(target_img, background_img)
-    
+
     # Apply a threshold to the difference image
     # thresholded_img = threshold(difference_img, threshold_value)
 

@@ -35,6 +35,7 @@ from skimage import (
 
 from .background_subtraction_threshold import background_subtraction_threshold
 
+
 def otsu_threshold(target_img: npt.NDArray[np.int_]) -> npt.NDArray[np.bool_]:
     """Apply Otsu's thresholding to the target image and return an inverted binary mask.
 
@@ -55,8 +56,9 @@ def otsu_threshold(target_img: npt.NDArray[np.int_]) -> npt.NDArray[np.bool_]:
     binary_image = target_img > filters.threshold_otsu(
         target_img
     )  # Binary image using Otsu's thresholding
-    
-    return binary_image  
+
+    return binary_image
+
 
 def select_threshold_method() -> str:
     """Selects a threshold method from a list of available options.
@@ -75,6 +77,7 @@ def select_threshold_method() -> str:
     choice = input("Enter the number of your choice: ")
     return options[int(choice) - 1]
 
+
 def threshold(
     target_img: npt.NDArray[np.int_],
     bknd_img: npt.NDArray[np.int_],
@@ -90,13 +93,13 @@ def threshold(
     Returns:
         npt.NDArray: The thresholded image.
     """
-    
     target_img = background_subtraction_threshold(target_img, bknd_img)
     return otsu_threshold(target_img)
 
 
-def threshold_without_background(target_img: npt.NDArray[np.int_], 
-                                 threshold_value: float) -> npt.NDArray[np.bool_]:
+def threshold_without_background(
+    target_img: npt.NDArray[np.int_], threshold_value: float
+) -> npt.NDArray[np.bool_]:
     """Applies a threshold to the target image without background subtraction.
 
     Args:
