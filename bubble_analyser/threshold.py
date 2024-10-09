@@ -59,6 +59,7 @@ def otsu_threshold(target_img: npt.NDArray[np.int_]) -> npt.NDArray[np.bool_]:
 
     return binary_image
 
+
 def threshold(
     target_img: npt.NDArray[np.int_],
     bknd_img: npt.NDArray[np.int_],

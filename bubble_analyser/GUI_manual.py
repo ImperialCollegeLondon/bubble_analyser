@@ -1,4 +1,4 @@
-"""GUI Manual Module: A graphical user interface (GUI) for the Bubble Analyser 
+"""GUI Manual Module: A graphical user interface (GUI) for the Bubble Analyser
 application.
 
 This module provides a graphical user interface (GUI) for the Bubble Analyser
@@ -503,7 +503,7 @@ class MainWindow(QMainWindow):
                 "You have already confirmed the background selection.",
             )
             return
-        
+
         image_path, _ = QFileDialog.getOpenFileName(
             self,
             "Select Image for Background Correction",
@@ -535,24 +535,23 @@ class MainWindow(QMainWindow):
                 "You have already confirmed the calibration process.",
             )
 
-    def setup_image_processing_tab(self) -> None:  
-        """
-        Set up the image processing tab, which contains the following components:
+    def setup_image_processing_tab(self) -> None:
+        """Set up the image processing tab, which contains the following components:
 
         1. A box to select the image processing algorithm.
         2. A table to display and edit the processing parameters.
         3. A button to confirm the parameter settings and preview a sample image.
         4. A button to batch process the sample images.
         5. A section to display the sample image preview.
-        6. A section to display the processed image preview, including before and after 
+        6. A section to display the processed image preview, including before and after
         filtering.
 
-        When the user selects an algorithm, the parameters will be loaded and displayed 
-        in the table. When the user confirms the parameter settings and previews a 
-        sample image, the sample image will be processed using the selected algorithm 
+        When the user selects an algorithm, the parameters will be loaded and displayed
+        in the table. When the user confirms the parameter settings and previews a
+        sample image, the sample image will be processed using the selected algorithm
         and displayed in the preview section.
-        When the user clicks the "Batch process images" button, the algorithm will be 
-        applied to all the images in the selected folder and the results will be saved 
+        When the user clicks the "Batch process images" button, the algorithm will be
+        applied to all the images in the selected folder and the results will be saved
         in a new folder.
         """
         layout = QGridLayout(self.image_processing_tab)
@@ -651,8 +650,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(right_frame, 0, 2)
 
     def confirm_parameter_and_preview(self) -> None:
-        """
-        Confirm the parameter settings and preview a sample image.
+        """Confirm the parameter settings and preview a sample image.
 
         This function is connected to the "Confirm parameter and preview" button
         in the image processing tab. When the button is clicked, the function
@@ -667,8 +665,8 @@ class MainWindow(QMainWindow):
 
         :return: None
         """
-        self.check_parameters() # Check the validity of the parameters
-        
+        self.check_parameters()  # Check the validity of the parameters
+
         # Processing the image and displaying it on the right side
         selected_image = self.selected_image
         folder_path = self.folder_path_edit.text()
@@ -754,7 +752,7 @@ class MainWindow(QMainWindow):
 
         Returns:
             None
-        """    
+        """
         if not self.calibration_confirmed:
             QMessageBox.warning(
                 self,
@@ -774,13 +772,15 @@ class MainWindow(QMainWindow):
             self.min_size = float(self.param_table.item(7, 1).text())
 
         except (ValueError, TypeError):
-            QMessageBox.warning(self, "Invalid Input", "Please ensure all parameters are valid numbers.")
-            return      
-        
-    def load_image_for_processing(self, image_path: str) -> tuple[npt.NDArray[np.int_], 
-                                                                  npt.NDArray[np.int_]]:
-        """
-        Load and return the image, possibly applying some processing.
+            QMessageBox.warning(
+                self, "Invalid Input", "Please ensure all parameters are valid numbers."
+            )
+            return
+
+    def load_image_for_processing(
+        self, image_path: str
+    ) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]:
+        """Load and return the image, possibly applying some processing.
 
         This function loads an image using image_preprocess, applies background subtraction
         and thresholding, and morphological processing using a disk element of size
@@ -801,18 +801,15 @@ class MainWindow(QMainWindow):
         )
         if self.bknd_img_exist:
             bg_img_path: Path = Path(self.bg_corr_image_name.text())
-            self.bknd_img, _ = image_preprocess(bg_img_path, 
-                                                self.img_resample_factor)
-            
-            imgThreshold = threshold(target_img, 
-                                    self.bknd_img, 
-                                    self.threshold_value)
+            self.bknd_img, _ = image_preprocess(bg_img_path, self.img_resample_factor)
+
+            imgThreshold = threshold(target_img, self.bknd_img, self.threshold_value)
         else:
-            imgThreshold = threshold_without_background(target_img,
-                                                        self.threshold_value)
-        
-        element_size = morphology.disk(
-            self.params.Morphological_element_size) 
+            imgThreshold = threshold_without_background(
+                target_img, self.threshold_value
+            )
+
+        element_size = morphology.disk(self.params.Morphological_element_size)
         imgThreshold = morphological_process(imgThreshold, element_size)
 
         pixmap = QPixmap(image_path)
@@ -836,8 +833,7 @@ class MainWindow(QMainWindow):
         list[dict[str, float]],
         npt.NDArray[np.int_],
     ]:
-        """
-        Run the image processing algorithm on the preprocessed image.
+        """Run the image processing algorithm on the preprocessed image.
 
         This function calls run_watershed_segmentation with the given parameters and
         returns the processed image, the labeled image before filtering, the properties
@@ -905,8 +901,7 @@ class MainWindow(QMainWindow):
         self.preview_image()
 
     def setup_results_tab(self) -> None:
-        """
-        Set up the results tab, which contains the following components:
+        """Set up the results tab, which contains the following components:
 
         1. A graph canvas for displaying the histogram.
         2. Controls for histogram options, including the type of histogram to
@@ -1152,8 +1147,7 @@ class MainWindow(QMainWindow):
         return
 
     def generate_histogram(self) -> None:
-        """
-        Generate a histogram of equivalent diameters of all detected bubbles in all images
+        """Generate a histogram of equivalent diameters of all detected bubbles in all images
 
         This function takes the following steps:
 
@@ -1168,7 +1162,6 @@ class MainWindow(QMainWindow):
 
         :return: None
         """
-        
         # Get settings
         num_bins = self.bins_spinbox.value()
         show_pdf = self.pdf_checkbox.isChecked()
@@ -1294,11 +1287,10 @@ class MainWindow(QMainWindow):
         self.histogram_canvas.draw()
 
         return
-    
-    def calculate_descriptive_sizes(self, 
-                                    equivalent_diameters: np.ndarray) -> tuple[float, 
-                                                                               float, 
-                                                                               float]:
+
+    def calculate_descriptive_sizes(
+        self, equivalent_diameters: np.ndarray
+    ) -> tuple[float, float, float]:
         """Calculate d32, d mean, and dxy based on the equivalent diameters."""
         dxy_x_power: int = int(self.dxy_x_input.text())
         dxy_y_power: int = int(self.dxy_y_input.text())
