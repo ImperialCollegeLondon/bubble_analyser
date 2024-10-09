@@ -195,29 +195,29 @@ def run_watershed_segmentation(
 
     # Display the images
     # First display window
-    # plt.figure()
-    # plt.subplot(331)
-    # plt.title("3. Distance Transform")
-    # plt.imshow(distTrans)
-    # plt.subplot(332)
-    # plt.title("4. Sure_fg (distThresh)")
-    # plt.imshow(sure_fg)
-    # plt.subplot(333)
-    # plt.title("5. Sure_bg")
-    # plt.imshow(sure_bg)
-    # plt.subplot(334)
-    # plt.title("6. Unknown")
-    # plt.imshow(unknown)
-    # plt.subplot(335)
-    # plt.title("5. Labels")
-    # plt.imshow(labels)
-    # plt.subplot(336)
-    # plt.title("6. Labels with unknown")
-    # plt.imshow(labels_with_unknown)
-    # plt.show()
-    # plt.subplot(337)
-    # plt.title("7. imgRGB with labels")
-    # plt.imshow(imgRGB_before_filtering)
+    plt.figure()
+    plt.subplot(331)
+    plt.title("3. Distance Transform")
+    plt.imshow(distTrans)
+    plt.subplot(332)
+    plt.title("4. Sure_fg (distThresh)")
+    plt.imshow(sure_fg)
+    plt.subplot(333)
+    plt.title("5. Sure_bg")
+    plt.imshow(sure_bg)
+    plt.subplot(334)
+    plt.title("6. Unknown")
+    plt.imshow(unknown)
+    plt.subplot(335)
+    plt.title("5. Labels")
+    plt.imshow(labels)
+    plt.subplot(336)
+    plt.title("6. Labels with unknown")
+    plt.imshow(labels_with_unknown)
+    plt.show()
+    plt.subplot(337)
+    plt.title("7. imgRGB with labels")
+    plt.imshow(imgRGB_before_filtering)
 
     print("max ecccentricity from default:", max_eccentricity)
     # Filter out the bubbles according to threshold of properties of being a circle
@@ -230,13 +230,13 @@ def run_watershed_segmentation(
 
     imgRGB_overlay = overlay_labels_on_rgb(imgRGB, labels_final)
 
-    # plt.subplot(338)
-    # plt.title("8. Labels after filtering")
-    # plt.imshow(labels_final)
-    # plt.subplot(339)
-    # plt.title("9. Final overlayed image")
-    # plt.imshow(imgRGB_overlay)
-    # plt.show()
+    plt.subplot(338)
+    plt.title("8. Labels after filtering")
+    plt.imshow(labels_final)
+    plt.subplot(339)
+    plt.title("9. Final overlayed image")
+    plt.imshow(imgRGB_overlay)
+    plt.show()
 
     return imgRGB_overlay, imgRGB_before_filtering, circle_properties, labels_final
 
@@ -312,7 +312,7 @@ def main() -> None:
     """
     imgThreshold, imgRGB, params, px2mm, threshold_value = pre_processing()
     # Run the default image processing algorithm
-    img_overlay, circle_properties, labels = run_watershed_segmentation(
+    img_overlay, _, circle_properties, labels = run_watershed_segmentation(
         imgThreshold,
         imgRGB,
         px2mm,
@@ -324,16 +324,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-<<<<<<< HEAD
-=======
-# First background subtraction (optional) then otsu thresholding - DONE
-# Let user define limitations based on the properties of the bubbles for filtering them
-# Output the image that eliminate the bubbles being filtered out
-# Table and Histogram
-# Let user modify the parameters in UI - DONE
-# Merge default branch - DONE
-
-# Manual input for bubble detection, e.g. img_resample, mask_size, element_size, etc.
-# Then filtering.
->>>>>>> 9387f5be40cc253f6c2cee74865d2fa0c3349844
