@@ -176,7 +176,7 @@ class MainWindow(QMainWindow):
         return Config(**toml_data)
 
     def setup_folder_tab(self) -> None:
-        """Set up the folder tab
+        """Set up the folder tab.
         
         This function sets up the folder tab, which contains the following components:
         1. A text box for user to input the folder path.
@@ -230,7 +230,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(bottom_frame, 6)
 
     def select_folder(self) -> None:
-        """Select a folder
+        """Select a folder.
         
         Open a folder selection dialog and update the folder path edit
         and image list if a valid folder is selected. If the sample images
@@ -250,7 +250,7 @@ class MainWindow(QMainWindow):
             self.populate_image_list(folder_path)
 
     def confirm_folder_selection(self) -> None:
-        """confirm the selection of folder
+        """confirm the selection of folder.
         
         Confirm the folder selection and lock the folder path edit. If the
         selection has already been confirmed, display a warning message and do
@@ -272,7 +272,7 @@ class MainWindow(QMainWindow):
             )
 
     def populate_image_list(self, folder_path: str) -> None:
-        """popultate the image list with the names of images in the given folder path
+        """popultate the image list with the names of images in the given folder path.
         
         Populate the image list with the names of images in the given folder path,
         and store the full paths to the images in the image_list_full_path list.
@@ -299,7 +299,7 @@ class MainWindow(QMainWindow):
         print("self_image_list_full_path", self.image_list_full_path)
 
     def preview_image(self) -> None:
-        """Preview the currently selected image
+        """Preview the currently selected image.
 
         Preview the currently selected image in the GUI. This function is
         called when the user selects an image from the image list. It gets the
@@ -321,7 +321,7 @@ class MainWindow(QMainWindow):
         )
 
     def load_images_to_process(self) -> None:
-        """ Load images to process
+        """ Load images to process.
         
         Populate the image list with the names of images in the folder path
         set in the folder path edit, and store the full paths to the images in
@@ -338,7 +338,7 @@ class MainWindow(QMainWindow):
             self.populate_image_list(folder_path)
 
     def setup_calibration_tab(self) -> None:
-        """ Set up the calibration tab
+        """ Set up the calibration tab.
         
         Set up the calibration tab, which contains the following components:
 
@@ -463,7 +463,7 @@ class MainWindow(QMainWindow):
         section. The image is scaled to fit the size of the label while keeping the
         aspect ratio.
         """
-        if self.calibration_confirmed == True:
+        if self.calibration_confirmed:
             QMessageBox.warning(
                 self,
                 "Selection Locked",
@@ -573,8 +573,9 @@ class MainWindow(QMainWindow):
             )
 
     def setup_image_processing_tab(self) -> None:
-        """Set up the image processing tab, which contains the following components:
+        """Set up the image processing tab, which contains the following components.
 
+        Set up the image processing tab, which contains the following components:
         1. A box to select the image processing algorithm.
         2. A table to display and edit the processing parameters.
         3. A button to confirm the parameter settings and preview a sample image.
@@ -953,8 +954,9 @@ class MainWindow(QMainWindow):
         self.preview_image()
 
     def setup_results_tab(self) -> None:
-        """Set up the results tab, which contains the following components:
+        """Set up the results tab.
 
+        This function sets up the results tab by creating the following widgets:
         1. A graph canvas for displaying the histogram.
         2. Controls for histogram options, including the type of histogram to
         generate (by number or volume), checkboxes for PDF and CDF, the number
@@ -1198,10 +1200,9 @@ class MainWindow(QMainWindow):
         return
 
     def generate_histogram(self) -> None:
-        """Generate a histogram of equivalent diameters of all detected bubbles 
+        """Generate a histogram of equivalent diameters of all detected bubbles.
 
         This function takes the following steps:
-
         1. Collect all equivalent diameters from the properties of the detected bubbles
         2. Plot histogram of the equivalent diameters
         3. Calculate descriptive sizes (d32, dmean, dxy)

@@ -38,31 +38,21 @@ from skimage import measure
 def calculate_circle_properties(
     labels: npt.NDArray[np.int_], mm2px: float
 ) -> list[dict[str, float]]:
-    """Calculate geometric properties of labeled regions in an image.
+    """
+    Calculate geometric properties of regions identified in an image.
 
-    This function computes various properties that describe the "circularity" of regions
-    within the labeled image, such as area, equivalent diameter, eccentricity, solidity,
-    and circularity. These properties are calculated in centimeters based on the
-    provided pixel-to-centimeter ratio.
-
-    Args:
-        labels: A labeled image where each distinct region (or "circle") is represented
-        by unique labels.
-        px2cm: The ratio of centimeters per pixel, used to convert measurements from
-        pixels to centimeters.
+    Parameters:
+        labels (npt.NDArray[np.int_]): A labeled image where each distinct region is
+            represented by a unique label.
+        mm2px (float): The conversion factor from millimeters to pixels.
 
     Returns:
-        A list of dictionaries, each containing the following properties for a region:
-        - area: The area of the region in square centimeters.
-        - equivalent_diameter: The diameter of a circle with the same area as the region
-        , in centimeters.
-        - eccentricity: The eccentricity of the ellipse that has the same second-moments
-        as the region.
-        - solidity: The proportion of the pixels in the convex hull that are also in the
-        region.
-        - circularity: A measure of how close the shape is to a perfect circle,
-        calculated using the perimeter and area.
+        list[dict[str, float]]: A list of dictionaries containing the properties of
+            each region, including area, equivalent diameter, eccentricity, solidity,
+            circularity, and surface diameter. The area is given in square millimeters,
+            while the diameters are given in millimeters.
     """
+
     properties = measure.regionprops(labels)
     circle_properties = []
     for prop in properties:
@@ -95,10 +85,11 @@ def filter_circle_properties(
     min_solidity: float = 0.9,
     min_circularity: float = 0.1,
 ) -> np.ndarray:
-    """Filters out regions (circles) from the labeled image that don't meet certain property thresholds.
+    """Filters out regions (circles) from the labeled image based on their properties.
 
     Args:
-        labels: A labeled image where each distinct region is represented by a unique label.
+        labels: A labeled image where each distinct region is represented by a unique 
+        label.
         px2mm: The pixel-to-mm conversion factor.
         min_eccentricity: The minimum allowed eccentricity for circles.
         max_eccentricity: The maximum allowed eccentricity for circles.
@@ -119,7 +110,7 @@ def filter_circle_properties(
 
         # Calculate circle properties in mm
         area = prop.area * (px2mm**2)
-        equivalent_diameter = prop.equivalent_diameter * px2mm
+        # equivalent_diameter = prop.equivalent_diameter * px2mm
         eccentricity = prop.eccentricity
         solidity = prop.solidity
         circularity = (4 * np.pi * area) / (prop.perimeter * px2mm) ** 2
