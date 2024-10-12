@@ -1,4 +1,4 @@
-"""GUI Manual Module: A graphical user interface (GUI) for the Bubble Analyser
+"""GUI Manual Module: A graphical user interface (GUI) for the Bubble Analyser.
 
 This module provides a graphical user interface (GUI) for the Bubble Analyser
 application. It contains classes and functions for creating and managing the GUI,
@@ -780,8 +780,9 @@ class MainWindow(QMainWindow):
                     self.min_circularity,
                     self.min_size,
                 )
-
-                self.all_properties.append(circle_properties)
+                for properties in circle_properties:
+                    self.all_properties.append(properties)
+                # self.all_properties.append(circle_properties)
                 print("Circle properties for this image:", circle_properties)
             print(
                 "Batch processing completed. Circle properties for all images:",
@@ -857,7 +858,6 @@ class MainWindow(QMainWindow):
         element_size = morphology.disk(self.params.Morphological_element_size)
         imgThreshold = morphological_process(imgThreshold, element_size)
 
-        pixmap = QPixmap(image_path)
         return imgThreshold, imgRGB
 
     def run_processing(
@@ -1221,11 +1221,10 @@ class MainWindow(QMainWindow):
         show_dxy = self.dxy_checkbox.isChecked()
 
         # Collect all equivalent diameters from the properties
-        equivalent_diameters_list: list = []
-
-        for image_properties in self.all_properties:
-            for circle in image_properties:
-                equivalent_diameters_list.append(circle["equivalent_diameter"])
+        equivalent_diameters_list: list[float] = []
+        
+        for circle in self.all_properties:
+            equivalent_diameters_list.append(circle["equivalent_diameter"])
         equivalent_diameters_array = np.array(equivalent_diameters_list)
 
         x_min = float(np.min(equivalent_diameters_array))
