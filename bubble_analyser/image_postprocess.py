@@ -6,7 +6,7 @@ the labeled regions overlaid on the original image. The labeled regions are repr
 with a unique color for each label, and the transparency of the overlay can be
 controlled using the 'alpha' parameter.
 
-The function returns the resulting image as a 3D array in float format with range [0, 1].
+The function returns the resulting image as a 3D array in float format with range[0, 1].
 """
 
 import numpy as np
@@ -21,7 +21,8 @@ def overlay_labels_on_rgb(
     Args:
         imgRGB: Original RGB image (3D array).
         labels: Labeled regions (2D array).
-        alpha: The transparency factor for the label overlay (0.0 is fully transparent, 1.0 is fully opaque).
+        alpha: The transparency factor for the label overlay (0.0 is fully transparent, 
+                1.0 is fully opaque).
 
     Returns:
         The RGB image with labeled regions overlaid.
