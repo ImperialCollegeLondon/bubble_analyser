@@ -130,39 +130,45 @@ def run_watershed_segmentation(
     list[dict[str, float]],
     npt.NDArray[np.int_],
 ]:
-    """Execute the image processing algorithm on the target image.
+    """
+    Run the image processing algorithm on the preprocessed image.
 
-    This function performs a series of image processing steps on the target image,
-    including thresholding, morphological processing, and watershed segmentation.
-    It then calculates properties of the detected circular features, such as equivalent
-    diameter and area, in centimeters using the provided pixel-to-centimeter ratio.
+    This function takes the preprocessed image, the original RGB image, the conversion
+    factor from millimeters to pixels, and several threshold values as input. It then
+    applies watershed segmentation to detect circular features in the image. The
+    detected features are then filtered based on their properties, such as eccentricity,
+    solidity, circularity, and size.
 
-    Args:
-        target_img: The preprocessed target image.
-        bknd_img: The background image used for thresholding.
-        imgRGB: The resized target image in RGB format.
-        params: A dictionary of parameters loaded from the TOML file.
-        px2cm: The conversion factor between pixels and centimeters.
-        threshold_value: Threshold value for background subtraction
+    The function returns the processed image, the labeled image before filtering, the
+    properties of the detected circular features, and the labeled image after filtering.
+
+    Parameters:
+        target_img (npt.NDArray[np.int_]): The preprocessed image after thresholding.
+        imgRGB (npt.NDArray[np.int_]): The original image in RGB format.
+        mm2px (float): The conversion factor from millimeters to pixels.
+        threshold_value (float, optional): The threshold value for background subtract.
+            Defaults to 0.3.
+        element_size (int, optional): The size of the morphological element for binary
+            operations. Defaults to 5.
+        connectivity (int, optional): The connectivity of the morphological operations.
+            Defaults to 4.
+        max_eccentricity (float, optional): The maximum eccentricity threshold for
+            filtering. Defaults to 1.0.
+        min_solidity (float, optional): The minimum solidity threshold for filtering.
+            Defaults to 0.9.
+        min_circularity (float, optional): The minimum circularity threshold for
+            filtering. Defaults to 0.1.
+        min_size (float, optional): The minimum size threshold for filtering in pixels.
+            Defaults to 0.1.
 
     Returns:
-        None. The function displays and saves various intermediary and final images, and
-        prints the properties of the detected circular features.
+        tuple[npt.NDArray[np.int_], npt.NDArray[np.int_], list[dict[str, float]],
+            npt.NDArray[np.int_]]: A tuple of four arrays, the first being the processed
+            image, the second being the labeled image before filtering, the third being
+            the properties of the detected circular features, and the fourth being the
+            labeled image after filtering.
     """
-    # Extract parameters from the dictionary
-    # element_size = morphology.disk(
-    #     params.Morphological_element_size)
-    # Structuring element for morphological operations
-
-    # Below are variables that might be used in the future coding
-    # connectivity = params.Connectivity  # Neighborhood connectivity (4 or 8)
-    # marker_size = params.Marker_size  # Marker size for watershed segmentation
-    # max_eccentricity = params.Max_Eccentricity  # Maximum eccentricity threshold
-    # min_solidity = params.Min_Solidity  # Minimum solidity threshold
-    # min_bubble_size = params.min_size  # Minimum bubble size (in mm)
-    # do_batch = params.do_batch  # Flag for batch processing
-
-    # Display the original image
+    
     distTrans = cv2.distanceTransform(target_img, cv2.DIST_L2, element_size)
 
     # Apply thresholding to the distance transform - sure foreground area
@@ -194,30 +200,30 @@ def run_watershed_segmentation(
     )
 
     # Display the images
-    # First display window
-    plt.figure()
-    plt.subplot(331)
-    plt.title("3. Distance Transform")
-    plt.imshow(distTrans)
-    plt.subplot(332)
-    plt.title("4. Sure_fg (distThresh)")
-    plt.imshow(sure_fg)
-    plt.subplot(333)
-    plt.title("5. Sure_bg")
-    plt.imshow(sure_bg)
-    plt.subplot(334)
-    plt.title("6. Unknown")
-    plt.imshow(unknown)
-    plt.subplot(335)
-    plt.title("5. Labels")
-    plt.imshow(labels)
-    plt.subplot(336)
-    plt.title("6. Labels with unknown")
-    plt.imshow(labels_with_unknown)
-    plt.show()
-    plt.subplot(337)
-    plt.title("7. imgRGB with labels")
-    plt.imshow(imgRGB_before_filtering)
+    # # First display window
+    # plt.figure()
+    # plt.subplot(331)
+    # plt.title("3. Distance Transform")
+    # plt.imshow(distTrans)
+    # plt.subplot(332)
+    # plt.title("4. Sure_fg (distThresh)")
+    # plt.imshow(sure_fg)
+    # plt.subplot(333)
+    # plt.title("5. Sure_bg")
+    # plt.imshow(sure_bg)
+    # plt.subplot(334)
+    # plt.title("6. Unknown")
+    # plt.imshow(unknown)
+    # plt.subplot(335)
+    # plt.title("5. Labels")
+    # plt.imshow(labels)
+    # plt.subplot(336)
+    # plt.title("6. Labels with unknown")
+    # plt.imshow(labels_with_unknown)
+    # plt.show()
+    # plt.subplot(337)
+    # plt.title("7. imgRGB with labels")
+    # plt.imshow(imgRGB_before_filtering)
 
     print("max ecccentricity from default:", max_eccentricity)
     # Filter out the bubbles according to threshold of properties of being a circle
@@ -230,13 +236,13 @@ def run_watershed_segmentation(
 
     imgRGB_overlay = overlay_labels_on_rgb(imgRGB, labels_final)
 
-    plt.subplot(338)
-    plt.title("8. Labels after filtering")
-    plt.imshow(labels_final)
-    plt.subplot(339)
-    plt.title("9. Final overlayed image")
-    plt.imshow(imgRGB_overlay)
-    plt.show()
+    # plt.subplot(338)
+    # plt.title("8. Labels after filtering")
+    # plt.imshow(labels_final)
+    # plt.subplot(339)
+    # plt.title("9. Final overlayed image")
+    # plt.imshow(imgRGB_overlay)
+    # plt.show()
 
     return imgRGB_overlay, imgRGB_before_filtering, circle_properties, labels_final
 
@@ -280,17 +286,17 @@ def pre_processing() -> (
     element_size = morphology.disk(params.Morphological_element_size)
     imgThreshold = morphological_process(imgThreshold, element_size)
 
-    plt.figure()
-    plt.subplot(231)
-    plt.title("1. Original image")
-    plt.imshow(target_img, cmap="gray")
-    plt.subplot(232)
-    plt.title("2. Thresh process")
-    plt.imshow(imgThreshold * 255, cmap="gray")
-    plt.subplot(233)
-    plt.title("3. morphological process")
-    plt.imshow(imgThreshold * 255, cmap="gray")
-    plt.show()
+    # plt.figure()
+    # plt.subplot(231)
+    # plt.title("1. Original image")
+    # plt.imshow(target_img, cmap="gray")
+    # plt.subplot(232)
+    # plt.title("2. Thresh process")
+    # plt.imshow(imgThreshold * 255, cmap="gray")
+    # plt.subplot(233)
+    # plt.title("3. morphological process")
+    # plt.imshow(imgThreshold * 255, cmap="gray")
+    # plt.show()
 
     # Run the default image processing algorithm
     return imgThreshold, imgRGB, params, mm2px, threshold_value
