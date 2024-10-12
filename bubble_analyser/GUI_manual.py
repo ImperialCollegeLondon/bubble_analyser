@@ -1,5 +1,4 @@
 """GUI Manual Module: A graphical user interface (GUI) for the Bubble Analyser
-application.
 
 This module provides a graphical user interface (GUI) for the Bubble Analyser
 application. It contains classes and functions for creating and managing the GUI,
@@ -81,10 +80,34 @@ class MplCanvas(FigureCanvas):
         """
         self.fig = Figure(figsize=(width, height), dpi=dpi)
         self.axes = self.fig.add_subplot(111)
-        super(MplCanvas, self).__init__(self.fig)
+        super().__init__(self.fig)
 
 
 class MainWindow(QMainWindow):
+    """
+    The main application window for the Bubble Analyser GUI.
+
+    This class is responsible for loading the configuration parameters, setting up the
+    window title and geometry, and creating the main widgets, including the folder,
+    calibration, image processing, and results tabs.
+
+    Attributes:
+        params (Config): The configuration parameters loaded from the TOML file.
+        img_resample_factor (float): The image resampling factor.
+        threshold_value (float): The threshold value for image processing.
+        element_size (int): The size of the morphological element.
+        connectivity (int): The connectivity for image processing.
+        max_eccentricity (float): The maximum eccentricity for feature detection.
+        min_solidity (float): The minimum solidity for feature detection.
+
+    Methods:
+        load_toml: Loads the configuration parameters from the TOML file.
+        setup_folder_tab: Sets up the folder tab widget.
+        setup_calibration_tab: Sets up the calibration tab widget.
+        setup_image_processing_tab: Sets up the image processing tab widget.
+        setup_results_tab: Sets up the results tab widget.
+    """
+    
     def __init__(self) -> None:
         """The constructor for the main window.
 
@@ -139,8 +162,8 @@ class MainWindow(QMainWindow):
     def load_toml(self, file_path: str) -> Config:
         """Load configuration parameters from a TOML file.
 
-        This function reads the TOML configuration file from the specified path and loads
-        its contents into a dictionary.
+        This function reads the TOML configuration file from the specified path and 
+        loads its contents into a dictionary.
 
         Args:
             file_path: The file path of the TOML configuration file.
@@ -153,7 +176,9 @@ class MainWindow(QMainWindow):
         return Config(**toml_data)
 
     def setup_folder_tab(self) -> None:
-        """Set up the folder tab, which contains the following components:
+        """Set up the folder tab
+        
+        This function sets up the folder tab, which contains the following components:
         1. A text box for user to input the folder path.
         2. A button to select the folder.
         3. A button to confirm the folder selection.
@@ -205,7 +230,9 @@ class MainWindow(QMainWindow):
         layout.addWidget(bottom_frame, 6)
 
     def select_folder(self) -> None:
-        """Open a folder selection dialog and update the folder path edit
+        """Select a folder
+        
+        Open a folder selection dialog and update the folder path edit
         and image list if a valid folder is selected. If the sample images
         have already been confirmed, display a warning message and do nothing.
         """
@@ -223,7 +250,9 @@ class MainWindow(QMainWindow):
             self.populate_image_list(folder_path)
 
     def confirm_folder_selection(self) -> None:
-        """Confirm the folder selection and lock the folder path edit. If the
+        """confirm the selection of folder
+        
+        Confirm the folder selection and lock the folder path edit. If the
         selection has already been confirmed, display a warning message and do
         nothing. Otherwise, set the folder path edit to read-only, load the
         images to process from the selected folder, and switch to the next tab.
@@ -243,7 +272,9 @@ class MainWindow(QMainWindow):
             )
 
     def populate_image_list(self, folder_path: str) -> None:
-        """Populate the image list with the names of images in the given folder path,
+        """popultate the image list with the names of images in the given folder path
+        
+        Populate the image list with the names of images in the given folder path,
         and store the full paths to the images in the image_list_full_path list.
 
         This function clears the image list, and then iterates over the files in the
@@ -268,7 +299,9 @@ class MainWindow(QMainWindow):
         print("self_image_list_full_path", self.image_list_full_path)
 
     def preview_image(self) -> None:
-        """Preview the currently selected image in the GUI. This function is
+        """Preview the currently selected image
+
+        Preview the currently selected image in the GUI. This function is
         called when the user selects an image from the image list. It gets the
         currently selected image, loads it as a QPixmap, and sets it to the
         image preview label on the GUI. The image is scaled to fit the size of
@@ -288,7 +321,9 @@ class MainWindow(QMainWindow):
         )
 
     def load_images_to_process(self) -> None:
-        """Populate the image list with the names of images in the folder path
+        """ Load images to process
+        
+        Populate the image list with the names of images in the folder path
         set in the folder path edit, and store the full paths to the images in
         the image_list_full_path list. This function is called after the user
         confirms the folder selection. The purpose of this function is to
@@ -303,7 +338,9 @@ class MainWindow(QMainWindow):
             self.populate_image_list(folder_path)
 
     def setup_calibration_tab(self) -> None:
-        """Set up the calibration tab, which contains the following components:
+        """ Set up the calibration tab
+        
+        Set up the calibration tab, which contains the following components:
 
         1. A text box for user to input the name of the image for pixel
            resolution calibration.
@@ -712,6 +749,15 @@ class MainWindow(QMainWindow):
             print("Batch processing canceled.")
 
     def batch_process_images(self) -> None:
+        """
+        Function to handle the batch processing of all images in the folder.
+
+        The parameters set by the user will be applied to all the images in the folder.
+        The function processes each image one by one and stores the properties of all 
+        images in the `all_properties` list.
+
+        :return: None
+        """
         self.check_parameters()
 
         self.all_properties: list[
@@ -782,18 +828,18 @@ class MainWindow(QMainWindow):
     ) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]:
         """Load and return the image, possibly applying some processing.
 
-        This function loads an image using image_preprocess, applies background subtraction
-        and thresholding, and morphological processing using a disk element of size
-        Morphological_element_size. (If no background image is provided, the function
-        applies thresholding without background subtraction.)
+        This function loads an image using image_preprocess, applies background 
+        subtraction and thresholding, and morphological processing using a disk 
+        element of size Morphological_element_size. (If no background image is provided,
+        the function applies thresholding without background subtraction.)
 
         Args:
             image_path (str): The path to the image to be processed.
 
         Returns:
-            tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]: A tuple of two arrays, the
-                first being the processed image and the second being the original image in
-                RGB format.
+            tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]: A tuple of two arrays, 
+                where the first being the processed image and the second being the 
+                original image in RGB format.
         """
         target_image_path: Path = Path(image_path)
         target_img, imgRGB = image_preprocess(
@@ -840,11 +886,13 @@ class MainWindow(QMainWindow):
         of the detected circular features, and the labeled image after filtering.
 
         Parameters:
-            imgThreshold (npt.NDArray[np.int_]): The preprocessed image after thresholding.
+            imgThreshold (npt.NDArray[np.int_]): The preprocessed image after 
+            thresholding.
             imgRGB (npt.NDArray[np.int_]): The original image in RGB format.
             mm2px (float): The conversion factor from millimeters to pixels.
             threshold_value (float): The threshold value for background subtraction.
-            element_size (int): The size of the morphological element for binary operations.
+            element_size (int): The size of the morphological element for binary 
+            operations.
             connectivity (int): The connectivity of the morphological operations.
             max_eccentricity (float): The maximum eccentricity threshold for filtering.
             min_solidity (float): The minimum solidity threshold for filtering.
@@ -852,9 +900,13 @@ class MainWindow(QMainWindow):
             min_size (float): The minimum size threshold for filtering in pixels.
 
         Returns:
-            tuple[npt.NDArray[np.int_], npt.NDArray[np.int_], list[dict[str, float]], npt.NDArray[np.int_]]: A tuple of four arrays, the first being the
-                processed image, the second being the labeled image before filtering, the third being the properties of the detected circular features, and the
-                fourth being the labeled image after filtering.
+            tuple[npt.NDArray[np.int_], 
+                npt.NDArray[np.int_], 
+                list[dict[str, float]], 
+                npt.NDArray[np.int_]]: A tuple of four arrays, the first being the
+                processed image, the second being the labeled image before filtering, 
+                the third being the properties of the detected circular features, and 
+                the fourth being the labeled image after filtering.
         """
         print("Threshold_value:", threshold_value)
         print("element_size:", element_size)
@@ -951,7 +1003,6 @@ class MainWindow(QMainWindow):
         self.max_x_axis_input = QLineEdit("5.0")
 
         legend_label = QLabel("Legend settings:")
-        # Inside setup_results_tab (or wherever you are defining the layout of the results tab)
         legend_frame = QFrame()
         legend_layout = QGridLayout(legend_frame)
 
@@ -1147,7 +1198,7 @@ class MainWindow(QMainWindow):
         return
 
     def generate_histogram(self) -> None:
-        """Generate a histogram of equivalent diameters of all detected bubbles in all images
+        """Generate a histogram of equivalent diameters of all detected bubbles 
 
         This function takes the following steps:
 
@@ -1172,7 +1223,6 @@ class MainWindow(QMainWindow):
 
         # Collect all equivalent diameters from the properties
         equivalent_diameters_list: list = []
-        # self.all_properties = [[{'area': np.float64(8.026718750000002), 'equivalent_diameter': np.float64(3.1968634201302994), 'eccentricity': 0.413941107655173, 'solidity': np.float64(0.9788494883862732), 'circularity': np.float64(0.6629450637281152), 'surface_diameter': np.float64(3.1968634201303)}, {'area': np.float64(14.620156250000003), 'equivalent_diameter': np.float64(4.314505891490582), 'eccentricity': 0.6333234559264358, 'solidity': np.float64(0.980632382070281), 'circularity': np.float64(0.6313867763949964), 'surface_diameter': np.float64(4.314505891490583)}, {'area': np.float64(7.366718750000001), 'equivalent_diameter': np.float64(3.062612875869555), 'eccentricity': 0.46766243674101204, 'solidity': np.float64(0.961967721531901), 'circularity': np.float64(0.4843818599540233), 'surface_diameter': np.float64(3.062612875869555)}, {'area': np.float64(5.720625000000001), 'equivalent_diameter': np.float64(2.6988378926124095), 'eccentricity': 0.7744330502189362, 'solidity': np.float64(0.9717334182657855), 'circularity': np.float64(0.5973321381561341), 'surface_diameter': np.float64(2.6988378926124095)}, {'area': np.float64(11.256406250000003), 'equivalent_diameter': np.float64(3.785776217515246), 'eccentricity': 0.25076668065525254, 'solidity': np.float64(0.9887592643425748), 'circularity': np.float64(0.8170466439358144), 'surface_diameter': np.float64(3.785776217515246)}], [{'area': np.float64(14.291562500000003), 'equivalent_diameter': np.float64(4.265745249197861), 'eccentricity': 0.8033028975089082, 'solidity': np.float64(0.9673516440514843), 'circularity': np.float64(0.41154002411421614), 'surface_diameter': np.float64(4.265745249197862)}, {'area': np.float64(6.452812500000001), 'equivalent_diameter': np.float64(2.8663523945532883), 'eccentricity': 0.7822564058008267, 'solidity': np.float64(0.9598159295326191), 'circularity': np.float64(0.4250810026479738), 'surface_diameter': np.float64(2.8663523945532883)}, {'area': np.float64(7.928437500000001), 'equivalent_diameter': np.float64(3.1772315233487776), 'eccentricity': 0.3008953392910511, 'solidity': np.float64(0.9770289785308559), 'circularity': np.float64(0.6680694454520646), 'surface_diameter': np.float64(3.1772315233487776)}, {'area': np.float64(6.142187500000001), 'equivalent_diameter': np.float64(2.7965114010455974), 'eccentricity': 0.6160624375636934, 'solidity': np.float64(0.9809842283889), 'circularity': np.float64(0.6900546395419445), 'surface_diameter': np.float64(2.7965114010455974)}]]
 
         for image_properties in self.all_properties:
             for circle in image_properties:
@@ -1295,8 +1345,8 @@ class MainWindow(QMainWindow):
         dxy_x_power: int = int(self.dxy_x_input.text())
         dxy_y_power: int = int(self.dxy_y_input.text())
         d32 = np.sum(equivalent_diameters**3) / np.sum(equivalent_diameters**2)
-        # d32, Sauter diameter, should be calculated based on the area, and volume diameter
-        # of a circle, which is unkown right now
+        # d32, Sauter diameter, should be calculated based on the area, and volume 
+        # diameter of a circle, which is unkown right now
         d_mean = np.mean(equivalent_diameters)
         dxy = np.sum(equivalent_diameters**dxy_x_power) / np.sum(
             equivalent_diameters**dxy_y_power
@@ -1306,6 +1356,10 @@ class MainWindow(QMainWindow):
 
 
 def main() -> None:
+    """Start the GUI application.
+
+    This function initializes the PySide6 application and displays the main window.
+    """
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
@@ -1314,3 +1368,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+# GUI - Jump generated graph after processing & every choice of additional elements 
+# Detection and filtering - Seperate process from filtering
+# Store last previewed images
