@@ -187,7 +187,6 @@ def run_watershed_segmentation(
     labels = labels.astype(np.int32)
     labels = labels + 1
     labels[unknown != 0] = 0
-    labels_with_unknown = labels.copy()
 
     # Apply watershed segmentation
     labels_final = cv2.watershed(imgRGB, labels).astype(np.int_)
