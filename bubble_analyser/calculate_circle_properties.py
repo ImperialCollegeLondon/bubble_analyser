@@ -38,8 +38,7 @@ from skimage import measure
 def calculate_circle_properties(
     labels: npt.NDArray[np.int_], mm2px: float
 ) -> list[dict[str, float]]:
-    """
-    Calculate geometric properties of regions identified in an image.
+    """Calculate geometric properties of regions identified in an image.
 
     Parameters:
         labels (npt.NDArray[np.int_]): A labeled image where each distinct region is
@@ -52,7 +51,6 @@ def calculate_circle_properties(
             circularity, and surface diameter. The area is given in square millimeters,
             while the diameters are given in millimeters.
     """
-
     properties = measure.regionprops(labels)
     circle_properties = []
     for prop in properties:
@@ -88,7 +86,7 @@ def filter_circle_properties(
     """Filters out regions (circles) from the labeled image based on their properties.
 
     Args:
-        labels: A labeled image where each distinct region is represented by a unique 
+        labels: A labeled image where each distinct region is represented by a unique
         label.
         px2mm: The pixel-to-mm conversion factor.
         min_eccentricity: The minimum allowed eccentricity for circles.
