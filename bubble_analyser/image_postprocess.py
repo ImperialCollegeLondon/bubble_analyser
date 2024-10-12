@@ -21,7 +21,7 @@ def overlay_labels_on_rgb(
     Args:
         imgRGB: Original RGB image (3D array).
         labels: Labeled regions (2D array).
-        alpha: The transparency factor for the label overlay (0.0 is fully transparent, 
+        alpha: The transparency factor for the label overlay (0.0 is fully transparent,
                 1.0 is fully opaque).
 
     Returns:

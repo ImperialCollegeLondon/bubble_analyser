@@ -84,8 +84,7 @@ class MplCanvas(FigureCanvas):
 
 
 class MainWindow(QMainWindow):
-    """
-    The main application window for the Bubble Analyser GUI.
+    """The main application window for the Bubble Analyser GUI.
 
     This class is responsible for loading the configuration parameters, setting up the
     window title and geometry, and creating the main widgets, including the folder,
@@ -107,7 +106,7 @@ class MainWindow(QMainWindow):
         setup_image_processing_tab: Sets up the image processing tab widget.
         setup_results_tab: Sets up the results tab widget.
     """
-    
+
     def __init__(self) -> None:
         """The constructor for the main window.
 
@@ -162,7 +161,7 @@ class MainWindow(QMainWindow):
     def load_toml(self, file_path: str) -> Config:
         """Load configuration parameters from a TOML file.
 
-        This function reads the TOML configuration file from the specified path and 
+        This function reads the TOML configuration file from the specified path and
         loads its contents into a dictionary.
 
         Args:
@@ -177,7 +176,7 @@ class MainWindow(QMainWindow):
 
     def setup_folder_tab(self) -> None:
         """Set up the folder tab.
-        
+
         This function sets up the folder tab, which contains the following components:
         1. A text box for user to input the folder path.
         2. A button to select the folder.
@@ -231,7 +230,7 @@ class MainWindow(QMainWindow):
 
     def select_folder(self) -> None:
         """Select a folder.
-        
+
         Open a folder selection dialog and update the folder path edit
         and image list if a valid folder is selected. If the sample images
         have already been confirmed, display a warning message and do nothing.
@@ -250,8 +249,8 @@ class MainWindow(QMainWindow):
             self.populate_image_list(folder_path)
 
     def confirm_folder_selection(self) -> None:
-        """confirm the selection of folder.
-        
+        """Confirm the selection of folder.
+
         Confirm the folder selection and lock the folder path edit. If the
         selection has already been confirmed, display a warning message and do
         nothing. Otherwise, set the folder path edit to read-only, load the
@@ -272,8 +271,8 @@ class MainWindow(QMainWindow):
             )
 
     def populate_image_list(self, folder_path: str) -> None:
-        """popultate the image list with the names of images in the given folder path.
-        
+        """Popultate the image list with the names of images in the given folder path.
+
         Populate the image list with the names of images in the given folder path,
         and store the full paths to the images in the image_list_full_path list.
 
@@ -321,8 +320,8 @@ class MainWindow(QMainWindow):
         )
 
     def load_images_to_process(self) -> None:
-        """ Load images to process.
-        
+        """Load images to process.
+
         Populate the image list with the names of images in the folder path
         set in the folder path edit, and store the full paths to the images in
         the image_list_full_path list. This function is called after the user
@@ -338,8 +337,8 @@ class MainWindow(QMainWindow):
             self.populate_image_list(folder_path)
 
     def setup_calibration_tab(self) -> None:
-        """ Set up the calibration tab.
-        
+        """Set up the calibration tab.
+
         Set up the calibration tab, which contains the following components:
 
         1. A text box for user to input the name of the image for pixel
@@ -750,11 +749,10 @@ class MainWindow(QMainWindow):
             print("Batch processing canceled.")
 
     def batch_process_images(self) -> None:
-        """
-        Function to handle the batch processing of all images in the folder.
+        """Function to handle the batch processing of all images in the folder.
 
         The parameters set by the user will be applied to all the images in the folder.
-        The function processes each image one by one and stores the properties of all 
+        The function processes each image one by one and stores the properties of all
         images in the `all_properties` list.
 
         :return: None
@@ -829,8 +827,8 @@ class MainWindow(QMainWindow):
     ) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]:
         """Load and return the image, possibly applying some processing.
 
-        This function loads an image using image_preprocess, applies background 
-        subtraction and thresholding, and morphological processing using a disk 
+        This function loads an image using image_preprocess, applies background
+        subtraction and thresholding, and morphological processing using a disk
         element of size Morphological_element_size. (If no background image is provided,
         the function applies thresholding without background subtraction.)
 
@@ -838,8 +836,8 @@ class MainWindow(QMainWindow):
             image_path (str): The path to the image to be processed.
 
         Returns:
-            tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]: A tuple of two arrays, 
-                where the first being the processed image and the second being the 
+            tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]: A tuple of two arrays,
+                where the first being the processed image and the second being the
                 original image in RGB format.
         """
         target_image_path: Path = Path(image_path)
@@ -887,12 +885,12 @@ class MainWindow(QMainWindow):
         of the detected circular features, and the labeled image after filtering.
 
         Parameters:
-            imgThreshold (npt.NDArray[np.int_]): The preprocessed image after 
+            imgThreshold (npt.NDArray[np.int_]): The preprocessed image after
             thresholding.
             imgRGB (npt.NDArray[np.int_]): The original image in RGB format.
             mm2px (float): The conversion factor from millimeters to pixels.
             threshold_value (float): The threshold value for background subtraction.
-            element_size (int): The size of the morphological element for binary 
+            element_size (int): The size of the morphological element for binary
             operations.
             connectivity (int): The connectivity of the morphological operations.
             max_eccentricity (float): The maximum eccentricity threshold for filtering.
@@ -901,12 +899,12 @@ class MainWindow(QMainWindow):
             min_size (float): The minimum size threshold for filtering in pixels.
 
         Returns:
-            tuple[npt.NDArray[np.int_], 
-                npt.NDArray[np.int_], 
-                list[dict[str, float]], 
+            tuple[npt.NDArray[np.int_],
+                npt.NDArray[np.int_],
+                list[dict[str, float]],
                 npt.NDArray[np.int_]]: A tuple of four arrays, the first being the
-                processed image, the second being the labeled image before filtering, 
-                the third being the properties of the detected circular features, and 
+                processed image, the second being the labeled image before filtering,
+                the third being the properties of the detected circular features, and
                 the fourth being the labeled image after filtering.
         """
         print("Threshold_value:", threshold_value)
@@ -1346,7 +1344,7 @@ class MainWindow(QMainWindow):
         dxy_x_power: int = int(self.dxy_x_input.text())
         dxy_y_power: int = int(self.dxy_y_input.text())
         d32 = np.sum(equivalent_diameters**3) / np.sum(equivalent_diameters**2)
-        # d32, Sauter diameter, should be calculated based on the area, and volume 
+        # d32, Sauter diameter, should be calculated based on the area, and volume
         # diameter of a circle, which is unkown right now
         d_mean = np.mean(equivalent_diameters)
         dxy = np.sum(equivalent_diameters**dxy_x_power) / np.sum(
@@ -1370,6 +1368,6 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 
-# GUI - Jump generated graph after processing & every choice of additional elements 
+# GUI - Jump generated graph after processing & every choice of additional elements
 # Detection and filtering - Seperate process from filtering
 # Store last previewed images

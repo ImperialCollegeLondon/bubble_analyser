@@ -31,7 +31,6 @@ displaying results.
 from pprint import pprint
 
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
 import toml as tomllib
 from numpy import typing as npt
@@ -130,8 +129,7 @@ def run_watershed_segmentation(
     list[dict[str, float]],
     npt.NDArray[np.int_],
 ]:
-    """
-    Run the image processing algorithm on the preprocessed image.
+    """Run the image processing algorithm on the preprocessed image.
 
     This function takes the preprocessed image, the original RGB image, the conversion
     factor from millimeters to pixels, and several threshold values as input. It then
@@ -168,7 +166,6 @@ def run_watershed_segmentation(
             the properties of the detected circular features, and the fourth being the
             labeled image after filtering.
     """
-    
     distTrans = cv2.distanceTransform(target_img, cv2.DIST_L2, element_size)
 
     # Apply thresholding to the distance transform - sure foreground area
