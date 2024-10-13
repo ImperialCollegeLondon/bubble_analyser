@@ -1170,16 +1170,16 @@ class MainWindow(QMainWindow):
         # Save the CSV data
         rows = []
         for circle in self.all_properties:
-                rows.append(
-                    [
-                        circle["area"],
-                        circle["equivalent_diameter"],
-                        circle["eccentricity"],
-                        circle["solidity"],
-                        circle["circularity"],
-                        circle["surface_diameter"],
-                    ]
-                )
+            rows.append(
+                [
+                    circle["area"],
+                    circle["equivalent_diameter"],
+                    circle["eccentricity"],
+                    circle["solidity"],
+                    circle["circularity"],
+                    circle["surface_diameter"],
+                ]
+            )
 
         # Write the data into a CSV file
         with open(csv_path, mode="w", newline="") as data_file:
