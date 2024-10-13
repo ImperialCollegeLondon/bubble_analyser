@@ -1169,8 +1169,7 @@ class MainWindow(QMainWindow):
         ]
         # Save the CSV data
         rows = []
-        for image_properties in self.all_properties:
-            for circle in image_properties:
+        for circle in self.all_properties:
                 rows.append(
                     [
                         circle["area"],
