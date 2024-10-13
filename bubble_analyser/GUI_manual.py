@@ -1222,7 +1222,7 @@ class MainWindow(QMainWindow):
 
         # Collect all equivalent diameters from the properties
         equivalent_diameters_list: list[float] = []
-        
+
         for circle in self.all_properties:
             equivalent_diameters_list.append(circle["equivalent_diameter"])
         equivalent_diameters_array = np.array(equivalent_diameters_list)
