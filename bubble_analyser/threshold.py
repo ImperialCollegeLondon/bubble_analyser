@@ -56,25 +56,8 @@ def otsu_threshold(target_img: npt.NDArray[np.int_]) -> npt.NDArray[np.bool_]:
     binary_image = target_img > filters.threshold_otsu(
         target_img
     )  # Binary image using Otsu's thresholding
-    return ~binary_image  # Invert the binary image
 
-
-def select_threshold_method() -> str:
-    """Selects a threshold method from a list of available options.
-
-    Prompts the user to choose a threshold method from the list of options.
-    The options are displayed with their corresponding numbers, and the user
-    is asked to input the number of their chosen method.
-
-    Returns:
-        str: The chosen threshold method.
-    """
-    options = ["OTSU's method", "Background subtraction"]
-    print("Select a threshold method:")
-    for i, option in enumerate(options):
-        print(f"{i+1}. {option}")
-    choice = input("Enter the number of your choice: ")
-    return options[int(choice) - 1]
+    return binary_image
 
 
 def threshold(
@@ -92,10 +75,20 @@ def threshold(
     Returns:
         npt.NDArray: The thresholded image.
     """
-    method = select_threshold_method()
-    if method == "OTSU's method":
-        return otsu_threshold(target_img)
-    elif method == "Background subtraction":
-        return background_subtraction_threshold(target_img, bknd_img, threshold_value)
-    else:
-        raise ValueError(f"Unsupported threshold method: {method}")
+    target_img = background_subtraction_threshold(target_img, bknd_img)
+    return otsu_threshold(target_img)
+
+
+def threshold_without_background(
+    target_img: npt.NDArray[np.int_], threshold_value: float
+) -> npt.NDArray[np.bool_]:
+    """Applies a threshold to the target image without background subtraction.
+
+    Args:
+        target_img (npt.NDArray): The target image to apply the threshold to.
+        threshold_value (float): The threshold value used for background subtraction.
+
+    Returns:
+        npt.NDArray: The thresholded image.
+    """
+    return ~otsu_threshold(target_img)
