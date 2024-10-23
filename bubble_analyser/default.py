@@ -28,8 +28,9 @@ entire process from loading configurations and images to running the analysis an
 displaying results.
 """
 
-from pprint import pprint
 import timeit
+from pprint import pprint
+
 import cv2
 import numpy as np
 import toml as tomllib
@@ -117,11 +118,8 @@ def run_watershed_segmentation(
     imgRGB: npt.NDArray[np.int_],
     threshold_value: float = 0.3,
     element_size: int = 5,
-    connectivity: int = 4
-) -> tuple[
-    npt.NDArray[np.int_],
-    npt.NDArray[np.int_]
-]:
+    connectivity: int = 4,
+) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]:
     """Run the image processing algorithm on the preprocessed image.
 
     This function takes the preprocessed image, the original RGB image, the conversion
@@ -173,10 +171,12 @@ def run_watershed_segmentation(
     start_time = timeit.default_timer()
     sure_fg = distThresh.copy()
     sure_bg = cv2.dilate(target_img, np.ones((3, 3), np.uint8), iterations=3)
-    
+
     sure_fg = np.uint8(sure_fg)
     unknown = cv2.subtract(sure_bg, sure_fg)
-    print(f"Morphological operations time: {timeit.default_timer() - start_time:.4f} sec")
+    print(
+        f"Morphological operations time: {timeit.default_timer() - start_time:.4f} sec"
+    )
 
     start_time = timeit.default_timer()
     distThresh = distThresh.astype(np.uint8)
@@ -195,8 +195,11 @@ def run_watershed_segmentation(
     imgRGB_before_filtering = overlay_labels_on_rgb(
         imgRGB_before_filtering, labels_watershed
     )
-    print(f"Overlay labels before filtering time: {timeit.default_timer() - start_time:.4f} sec")
+    print(
+        f"Overlay labels before filtering time: {timeit.default_timer() - start_time:.4f} sec"
+    )
     return imgRGB_before_filtering, labels_watershed
+
 
 def final_circles_filtering(
     imgRGB: npt.NDArray[np.int_],
@@ -205,9 +208,7 @@ def final_circles_filtering(
     max_eccentricity: float,
     min_solidity: float,
     min_circularity: float,
-) -> tuple[npt.NDArray[np.int_], 
-           npt.NDArray[np.int_], 
-           list[dict[str, float]]]:
+) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_], list[dict[str, float]]]:
     """Filter the circles in the image based on their properties.
 
     Args:
@@ -220,7 +221,6 @@ def final_circles_filtering(
     Returns:
         npt.NDArray[np.int_]: The filtered labels of the circles in the image.
     """
-
     start_time = timeit.default_timer()
     labels = filter_circle_properties(
         labels, mm2px, max_eccentricity, min_solidity, min_circularity
@@ -237,6 +237,7 @@ def final_circles_filtering(
     print(f"Overlay labels time: {timeit.default_timer() - start_time:.4f} sec")
 
     return imgRGB_overlay, labels, circle_properties
+
 
 def pre_processing() -> (
     tuple[npt.NDArray[np.int_], npt.NDArray[np.int_], Config, float, float]
@@ -314,13 +315,16 @@ def main() -> None:
         imgRGB,
         threshold_value,
         element_size=params.Morphological_element_size,
-        connectivity=4
+        connectivity=4,
     )
     imgRGB_overlay, labels, circle_properties = final_circles_filtering(
-        imgRGB, labels_watershed, px2mm, max_eccentricity=params.Max_Eccentricity,
-        min_solidity=params.Min_Solidity, min_circularity=params.Min_Circularity
+        imgRGB,
+        labels_watershed,
+        px2mm,
+        max_eccentricity=params.Max_Eccentricity,
+        min_solidity=params.Min_Solidity,
+        min_circularity=params.Min_Circularity,
     )
-
 
 
 if __name__ == "__main__":
