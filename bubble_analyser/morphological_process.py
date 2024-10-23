@@ -17,13 +17,13 @@ to remove partial objects, this function prepares images for more reliable and r
 analysis.
 """
 
-import numpy as np
 import time
+
 import cv2
+import numpy as np
 from numpy import typing as npt
 from scipy import ndimage
 from skimage import (
-    morphology,
     segmentation,
 )
 
@@ -49,10 +49,11 @@ def morphological_process(
         defined, with filled holes and cleared borders.
     """
     start_time = time.perf_counter()
-    
 
     # image_processed = morphology.closing(target_img, element_size)
-    image_processed = cv2.morphologyEx(target_img.astype(np.uint8), cv2.MORPH_CLOSE, element_size)
+    image_processed = cv2.morphologyEx(
+        target_img.astype(np.uint8), cv2.MORPH_CLOSE, element_size
+    )
     print("Time consumed for closing: ", time.perf_counter() - start_time)
     start_time = time.perf_counter()
     image_processed = ndimage.binary_fill_holes(image_processed)

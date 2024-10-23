@@ -32,18 +32,16 @@ image processing where preprocessing steps are crucial for subsequent analysis, 
 object detection, pattern recognition, and more.
 """
 
+import time
 from pathlib import Path
 from typing import cast
 
-
-import time
 import cv2
 import numpy as np
 from numpy import typing as npt
 from skimage import (
     color,
     io,
-    transform,
 )
 
 
@@ -139,8 +137,9 @@ def resize_for_original_image(
         (0, 0),
         fx=img_resample_factor,
         fy=img_resample_factor,
-        interpolation=cv2.INTER_AREA
+        interpolation=cv2.INTER_AREA,
     )
+
 
 def image_preprocess(
     img_path: Path, img_resample: float
@@ -181,4 +180,3 @@ def image_preprocess(
     print("Time used for resize_for_RGB: ", time.perf_counter() - start_time)
 
     return image, image_RGB
-
