@@ -9,21 +9,14 @@ controlled using the 'alpha' parameter.
 The function returns the resulting image as a 3D array in float format with range[0, 1].
 """
 
-import numpy as np
 import cv2
-from skimage.color import label2rgb
-
-import matplotlib.pyplot as plt
 import numpy as np
 
-from PIL import Image
-import numpy as np
 
 def overlay_labels_on_rgb(
     imgRGB: np.ndarray, labels: np.ndarray, alpha: float = 0.5
 ) -> np.ndarray:
-    """
-    Overlay labeled regions on an RGB image with a transparent color.
+    """Overlay labeled regions on an RGB image with a transparent color.
 
     Parameters
     ----------
@@ -36,12 +29,11 @@ def overlay_labels_on_rgb(
         The transparency of the overlay, with 0 being fully transparent and 1 being
         fully opaque. Default is 0.5.
 
-    Returns
+    Returns:
     -------
     ndarray
         The resulting image with the labeled regions overlaid on the original image.
     """
-    
     # Ensure imgRGB is in uint8 format
     imgRGB = (imgRGB * 255.0).astype(np.uint8) if imgRGB.max() <= 1 else imgRGB
 
@@ -49,7 +41,7 @@ def overlay_labels_on_rgb(
 
     # Convert the label image to BGR (OpenCV's color format is BGR, not RGB)
     colored_labels = np.zeros_like(imgRGB)
-    
+
     for label in unique_labels:
         if label == 1:  # Skip the background (assuming label 0 is background)
             continue
@@ -57,17 +49,19 @@ def overlay_labels_on_rgb(
         # Generate random hue (0-179 in OpenCV's HSV), max saturation, and max brightness
         hue = np.random.randint(0, 179)
         saturation = 255  # Max saturation
-        value = 255       # Max brightness
-        color_hsv = np.array([[[hue, saturation, value]]], dtype=np.uint8)  # HSV color format
-        color_bgr = cv2.cvtColor(color_hsv, cv2.COLOR_HSV2BGR)[0][0]  # Convert HSV to BGR color
-        
+        value = 255  # Max brightness
+        color_hsv = np.array(
+            [[[hue, saturation, value]]], dtype=np.uint8
+        )  # HSV color format
+        color_bgr = cv2.cvtColor(color_hsv, cv2.COLOR_HSV2BGR)[0][
+            0
+        ]  # Convert HSV to BGR color
+
         # Create a mask for the current label
         mask = labels == label
         colored_labels[mask] = color_bgr
 
-
     # Blend the colored labels with the original image using transparency (alpha)
     label_overlay = cv2.addWeighted(imgRGB, 1 - alpha, colored_labels, alpha, 0)
-
 
     return label_overlay
