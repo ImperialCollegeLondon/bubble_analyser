@@ -18,6 +18,8 @@ analysis.
 """
 
 import numpy as np
+import time
+import cv2
 from numpy import typing as npt
 from scipy import ndimage
 from skimage import (
@@ -46,10 +48,18 @@ def morphological_process(
         A processed binary image (numpy array) where the regions of interest are more
         defined, with filled holes and cleared borders.
     """
-    # Perform morphological closing and fill holes
-    image_processed = morphology.closing(target_img, element_size)
+    start_time = time.perf_counter()
+    
+
+    # image_processed = morphology.closing(target_img, element_size)
+    image_processed = cv2.morphologyEx(target_img.astype(np.uint8), cv2.MORPH_CLOSE, element_size)
+    print("Time consumed for closing: ", time.perf_counter() - start_time)
+    start_time = time.perf_counter()
     image_processed = ndimage.binary_fill_holes(image_processed)
+    print("Time consumed for filling holes: ", time.perf_counter() - start_time)
+    start_time = time.perf_counter()
     image_processed = segmentation.clear_border(image_processed)
+    print("Time consumed for clearing borders: ", time.perf_counter() - start_time)
 
     image_processed = image_processed.astype(np.uint8)
     # opening = cv2.morphologyEx(B,cv2.MORPH_OPEN,kernel, iterations = 2)

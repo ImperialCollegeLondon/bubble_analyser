@@ -19,12 +19,14 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import time
 import numpy as np
 import toml as tomllib
+from timeit import timeit
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from numpy import typing as npt
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -46,18 +48,86 @@ from PySide6.QtWidgets import (
     QTabWidget,
     QVBoxLayout,
     QWidget,
+    QProgressBar, 
+    QDialog
 )
 from skimage import (
-    morphology,
+    morphology
 )
 
 from .calculate_px2mm import calculate_px2mm
 from .config import Config
-from .default import run_watershed_segmentation
+from .default import run_watershed_segmentation, final_circles_filtering
 from .image_preprocess import image_preprocess
 from .morphological_process import morphological_process
 from .threshold import threshold, threshold_without_background
 
+class WorkerThread(QThread):
+    """Thread to handle batch image processing."""
+    update_progress = Signal(int)  # Signal to update the progress bar
+    processing_done = Signal()     # Signal to indicate the processing is complete
+
+    def __init__(self, main_window: "MainWindow") -> None:
+        """Initializes a WorkerThread instance.
+
+        Args:
+            main_window (MainWindow): Reference to the MainWindow instance.
+        """
+        super().__init__()
+        self.main_window = main_window  # Reference to the MainWindow instance
+
+    def run(self) -> None:
+        """
+        Process all images in the list, calculate circle properties for each, and
+        store them in the main_window.all_properties list.
+
+        This function is called when the WorkerThread is started and is responsible
+        for processing all images added to the image list. It iterates through the
+        list of images, applies the image processing algorithm to each image, and
+        stores the calculated properties in the main_window.all_properties list.
+
+        The function also emits signals to update the progress bar and to indicate
+        that the processing is complete.
+        """
+        # total_images = len(self.main_window.image_list_full_path)
+
+
+        for idx, image_path in enumerate(self.main_window.image_list_full_path):
+            if image_path.lower().endswith((".png", ".jpg", ".jpeg", ".bmp", ".tiff")):
+                print("Current processing image:", image_path)
+
+                imgThreshold, imgRGB = self.main_window.load_image_for_processing(image_path)
+                
+                # Run the image processing algorithm
+                _, labels_before_filtering = self.main_window.run_processing(
+                                                imgThreshold, 
+                                                imgRGB, 
+                                                self.main_window.threshold_value,
+                                                self.main_window.element_size,
+                                                self.main_window.connectivity
+                                            )
+                
+                # Run the filtering algorithm
+                _, _, circle_properties = self.main_window.run_filtering(
+                    imgRGB,
+                    labels_before_filtering,
+                    self.main_window.mm2px,
+                    self.main_window.max_eccentricity,
+                    self.main_window.min_solidity,
+                    self.main_window.min_circularity
+                )
+        
+
+                for properties in circle_properties:
+                    self.main_window.all_properties.append(properties)
+
+                print("Circle properties for this image:", circle_properties)
+
+                # Emit signal to update the progress bar
+                self.update_progress.emit(idx + 1)
+
+        # Emit signal indicating the processing is done
+        self.processing_done.emit()
 
 class MplCanvas(FigureCanvas):
     """A class for creating a Matplotlib figure within a PySide6 application.
@@ -125,6 +195,7 @@ class MainWindow(QMainWindow):
         self.min_solidity = self.params.Min_Solidity
         self.min_circularity = self.params.Min_Circularity
         self.min_size = self.params.min_size
+        self.all_properties : list = []
 
         self.bknd_img_exist = False
         self.calibration_confirmed = False
@@ -503,10 +574,16 @@ class MainWindow(QMainWindow):
                 "Selection Locked",
                 "You have already confirmed the pixel resolution.",
             )
+            
             return
 
         image_path: Path = Path(self.px_res_image_name.text())
         if image_path and os.path.exists(image_path):
+            QMessageBox.information(
+                self,
+                "Calibration",
+                "Drag a line of 1cm in the next window, then Press Q to confirm."
+            )
             __, mm2px = calculate_px2mm(
                 image_path, img_resample=0.5
             )  # Use the stored full path
@@ -593,115 +670,118 @@ class MainWindow(QMainWindow):
         """
         layout = QGridLayout(self.image_processing_tab)
 
-        # Left Column: Algorithm selection and processing options
-        left_frame = QFrame()
-        left_layout = QVBoxLayout(left_frame)
-
-        # Algorithm selection box
-        algorithm_selection = QComboBox()
-        algorithm_selection.addItems(["Default algorithm"])
-        left_layout.addWidget(QLabel("Step 1: Select image processing algorithm"))
-        left_layout.addWidget(algorithm_selection)
-
-        # Add processing options to layout
-        left_layout.addWidget(QLabel("Step 2:"))
-        left_layout.addWidget(QLabel("Image processing sandbox"))
-        # left_layout.addWidget(default_params_radio)
-        # left_layout.addWidget(custom_params_radio)
-
-        # Parameter table
-        self.param_table = QTableWidget(8, 2)
-        self.param_table.setHorizontalHeaderLabels(["Parameter", "Value"])
-
-        # Populate the table with initial values
-        self.param_table.setItem(0, 0, QTableWidgetItem("img_resample_factor"))
-        self.param_table.setItem(0, 1, QTableWidgetItem(str(self.img_resample_factor)))
-
-        self.param_table.setItem(1, 0, QTableWidgetItem("threshold_value"))
-        self.param_table.setItem(1, 1, QTableWidgetItem(str(self.threshold_value)))
-
-        self.param_table.setItem(2, 0, QTableWidgetItem("element_size"))
-        self.param_table.setItem(2, 1, QTableWidgetItem(str(self.element_size)))
-
-        self.param_table.setItem(3, 0, QTableWidgetItem("connectivity"))
-        self.param_table.setItem(3, 1, QTableWidgetItem(str(self.connectivity)))
-
-        self.param_table.setItem(4, 0, QTableWidgetItem("max_eccentricity"))
-        self.param_table.setItem(4, 1, QTableWidgetItem(str(self.max_eccentricity)))
-
-        self.param_table.setItem(5, 0, QTableWidgetItem("min_circularity"))
-        self.param_table.setItem(5, 1, QTableWidgetItem(str(self.min_circularity)))
-
-        self.param_table.setItem(6, 0, QTableWidgetItem("min_solidity"))
-        self.param_table.setItem(6, 1, QTableWidgetItem(str(self.min_solidity)))
-
-        self.param_table.setItem(7, 0, QTableWidgetItem("min_size"))
-        self.param_table.setItem(7, 1, QTableWidgetItem(str(self.min_size)))
-
-        left_layout.addWidget(self.param_table)
-
-        # Add Confirm Parameter Button
-        preview_button = QPushButton("Confirm parameter and preview")
-        preview_button.clicked.connect(self.confirm_parameter_and_preview)
-        left_layout.addWidget(preview_button)
-
-        # Add Processing Button
-        process_button = QPushButton("Batch process images")
-        process_button.clicked.connect(self.ask_if_batch)
-        left_layout.addWidget(process_button)
-
-        # Middle Column: Sample Image Preview
-        middle_frame = QFrame()
-        middle_layout = QVBoxLayout(middle_frame)
+        # ----------- First Column: Sample Image Preview -----------
+        
+        first_column_frame = QFrame()
+        first_column_layout = QVBoxLayout(first_column_frame)
+        
+        # Sample Image Preview Canvas
         self.sample_image_preview = QLabel("Sample image preview")
         self.sample_image_preview.setAlignment(Qt.AlignCenter)
-        self.sample_image_preview.setFixedSize(400, 300)
-
+        self.sample_image_preview.setFixedSize(400, 300)  # Adjust size as needed
+        
         prev_button = QPushButton("< Prev. Img")
         next_button = QPushButton("Next Img >")
         prev_button.clicked.connect(lambda: self.update_sample_image("prev"))
         next_button.clicked.connect(lambda: self.update_sample_image("next"))
-
-        middle_layout.addWidget(self.sample_image_preview)
-        middle_button_layout = QHBoxLayout()
-        middle_button_layout.addWidget(prev_button)
-        middle_button_layout.addWidget(next_button)
-        middle_layout.addLayout(middle_button_layout)
-
-        # Right Column: Processed Image Preview
-        right_frame = QFrame()
-        right_layout = QVBoxLayout(right_frame)
-
-        # Original Image Preview
+        
+        first_column_layout.addWidget(QLabel("Step 1: Select image and preview"))
+        first_column_layout.addWidget(self.sample_image_preview)
+        
+        # Prev/Next Buttons
+        first_column_buttons_layout = QHBoxLayout()
+        first_column_buttons_layout.addWidget(prev_button)
+        first_column_buttons_layout.addWidget(next_button)
+        first_column_layout.addLayout(first_column_buttons_layout)
+        
+        # ----------- Second Column: Processed Image Before Filtering and Sandbox ----
+        
+        second_column_frame = QFrame()
+        second_column_layout = QVBoxLayout(second_column_frame)
+        
+        # Processed Image Before Filtering Canvas
         self.label_before_filtering = MplCanvas(self, width=5, height=4, dpi=100)
-        right_layout.addWidget(QLabel("Processed Image_Before Filtering"))
-        right_layout.addWidget(self.label_before_filtering)
+        second_column_layout.addWidget(QLabel("Processed Image_Before Filtering"))
+        second_column_layout.addWidget(self.label_before_filtering)
 
+        # Parameter sandbox for img_resample_factor, threshold_value, element_size
+        sandbox1_label = QLabel("Step 2: Adjust parameters before filtering")
+        self.param_sandbox1 = QTableWidget(4, 2)
+        self.param_sandbox1.setHorizontalHeaderLabels(["Parameter", "Value"])
+
+        self.param_sandbox1.setItem(0, 0, QTableWidgetItem("img_resample_factor"))
+        self.param_sandbox1.setItem(0, 1, QTableWidgetItem(str(self.img_resample_factor)))
+        
+        self.param_sandbox1.setItem(1, 0, QTableWidgetItem("threshold_value"))
+        self.param_sandbox1.setItem(1, 1, QTableWidgetItem(str(self.threshold_value)))
+        
+        self.param_sandbox1.setItem(2, 0, QTableWidgetItem("element_size"))
+        self.param_sandbox1.setItem(2, 1, QTableWidgetItem(str(self.element_size)))
+        
+        self.param_sandbox1.setItem(3, 0, QTableWidgetItem("connectivity"))
+        self.param_sandbox1.setItem(3, 1, QTableWidgetItem(str(self.connectivity)))
+
+        # Confirm button for this sandbox
+        preview_button1 = QPushButton("Confirm parameter and preview")
+        preview_button1.clicked.connect(self.confirm_parameter_before_filtering)
+        
+        second_column_layout.addWidget(sandbox1_label)
+        second_column_layout.addWidget(self.param_sandbox1)
+        second_column_layout.addWidget(preview_button1)
+
+        # ----------- Third Column: Processed Image After Filtering and Sandbox ------
+        
+        third_column_frame = QFrame()
+        third_column_layout = QVBoxLayout(third_column_frame)
+        
+        # Processed Image After Filtering Canvas
         self.processed_image_preview = MplCanvas(self, width=5, height=4, dpi=100)
-        right_layout.addWidget(QLabel("Processed Image_After Filtering"))
-        right_layout.addWidget(self.processed_image_preview)
+        third_column_layout.addWidget(QLabel("Processed Image_After Filtering"))
+        third_column_layout.addWidget(self.processed_image_preview)
+        
+        # Parameter sandbox for max_eccentricity, min_circularity, min_solidity, min_size
+        sandbox2_label = QLabel("Step 3: Adjust parameters for circle properties")
+        self.param_sandbox2 = QTableWidget(4, 2)
+        self.param_sandbox2.setHorizontalHeaderLabels(["Parameter", "Value"])
+        
+        self.param_sandbox2.setItem(0, 0, QTableWidgetItem("max_eccentricity"))
+        self.param_sandbox2.setItem(0, 1, QTableWidgetItem(str(self.max_eccentricity)))
+        
+        self.param_sandbox2.setItem(1, 0, QTableWidgetItem("min_circularity"))
+        self.param_sandbox2.setItem(1, 1, QTableWidgetItem(str(self.min_circularity)))
+        
+        self.param_sandbox2.setItem(2, 0, QTableWidgetItem("min_solidity"))
+        self.param_sandbox2.setItem(2, 1, QTableWidgetItem(str(self.min_solidity)))
+        
+        self.param_sandbox2.setItem(3, 0, QTableWidgetItem("min_size"))
+        self.param_sandbox2.setItem(3, 1, QTableWidgetItem(str(self.min_size)))
 
-        # Add left, middle, and right frames to the main layout
-        layout.addWidget(left_frame, 0, 0)
-        layout.addWidget(middle_frame, 0, 1)
-        layout.addWidget(right_frame, 0, 2)
+        # Confirm and Batch Process buttons for this sandbox
+        preview_button2 = QPushButton("Confirm parameter and preview")
+        batch_process_button = QPushButton("Batch process images")
+        preview_button2.clicked.connect(self.confirm_parameter_after_filtering)
+        batch_process_button.clicked.connect(self.ask_if_batch)
+        
+        third_column_layout.addWidget(sandbox2_label)
+        third_column_layout.addWidget(self.param_sandbox2)
+        third_column_layout.addWidget(preview_button2)
+        third_column_layout.addWidget(batch_process_button)
 
-    def confirm_parameter_and_preview(self) -> None:
-        """Confirm the parameter settings and preview a sample image.
+        # Add the columns to the main layout
+        layout.addWidget(first_column_frame, 0, 0)
+        layout.addWidget(second_column_frame, 0, 1)
+        layout.addWidget(third_column_frame, 0, 2)
 
-        This function is connected to the "Confirm parameter and preview" button
-        in the image processing tab. When the button is clicked, the function
-        checks the validity of the parameters, processes the selected image with
-        the chosen algorithm, and displays the processed image on the right side
-        of the tab.
-
-        The function first checks the validity of the parameters, then processes
-        the selected image with the chosen algorithm and displays the processed
-        image on the right side of the tab. The processed image is displayed
-        before and after filtering.
-
-        :return: None
+    def confirm_parameter_before_filtering(self) -> None:
         """
+        Confirm the parameters for processing and preview the processed image.
+
+        This function is called when the user confirms the parameters for processing
+        and previews the processed image. It checks the validity of the parameters,
+        processes the image using the selected algorithm and parameters, and displays
+        the processed image on the right side of the window.
+        """
+        
         self.check_parameters()  # Check the validity of the parameters
 
         # Processing the image and displaying it on the right side
@@ -709,27 +789,37 @@ class MainWindow(QMainWindow):
         folder_path = self.folder_path_edit.text()
         image_path = os.path.join(folder_path, selected_image)
 
-        imgThreshold, imgRGB = self.load_image_for_processing(image_path)
-        preview_processed_image, labels_before_filtering, _, _ = self.run_processing(
-            imgThreshold,
-            imgRGB,
+        imgThreshold, self.imgRGB = self.load_image_for_processing(image_path)
+        preview_processed_image, self.labels_before_filtering = self.run_processing(
+                                                                imgThreshold,
+                                                                self.imgRGB,
+                                                                self.threshold_value,
+                                                                self.element_size,
+                                                                self.connectivity
+                                                            )
+        self.label_before_filtering.axes.clear()
+        self.label_before_filtering.axes.imshow(preview_processed_image)
+        self.label_before_filtering.draw()
+
+    def confirm_parameter_after_filtering(self) -> None:
+        """
+        Confirm the parameters for filtering and preview the filtered image.
+        """
+        self.check_parameters()  # Check the validity of the parameters
+
+        # Processing the image and displaying it on the right side
+        preview_processed_image, labels_after_filtering, _ = self.run_filtering(
+            self.imgRGB,
+            self.labels_before_filtering,
             self.mm2px,
-            self.threshold_value,
-            self.element_size,
-            self.connectivity,
             self.max_eccentricity,
             self.min_solidity,
-            self.min_circularity,
-            self.min_size,
+            self.min_circularity
         )
 
         self.processed_image_preview.axes.clear()
         self.processed_image_preview.axes.imshow(preview_processed_image)
         self.processed_image_preview.draw()
-
-        self.label_before_filtering.axes.clear()
-        self.label_before_filtering.axes.imshow(labels_before_filtering)
-        self.label_before_filtering.draw()
 
     def ask_if_batch(self) -> None:
         """Function to handle the batch processing of all images in the folder."""
@@ -759,36 +849,52 @@ class MainWindow(QMainWindow):
         """
         self.check_parameters()
 
-        self.all_properties: list[
-            dict[str, float]
-        ] = []  # To store properties of all images
+        total_images = len(self.image_list_full_path)
+        self.show_progress_window(total_images)
+        
+        # Create a worker thread to handle the processing
+        self.worker_thread = WorkerThread(self)
+        
+        self.worker_thread.update_progress.connect(self.update_progress_bar)  
+        # Connect signal to update progress bar
+        
+        self.worker_thread.processing_done.connect(self.on_processing_done)  
+        # Connect signal for when processing is done
+        
+        self.worker_thread.start()  # Start the worker thread
 
-        for image_path in self.image_list_full_path:
-            if image_path.lower().endswith((".png", ".jpg", ".jpeg", ".bmp", ".tiff")):
-                print("Current processing image:", image_path)
+    def show_progress_window(self, num_images: int) -> None:
+        """Create and show a progress window with a loading bar."""
+        self.progress_dialog = QDialog(self)
+        self.progress_dialog.setWindowTitle("Batch Processing in Progress")
+        self.progress_dialog.setFixedSize(400, 100)
 
-                imgThreshold, imgRGB = self.load_image_for_processing(image_path)
-                _, _, circle_properties, _ = self.run_processing(
-                    imgThreshold,
-                    imgRGB,
-                    self.mm2px,
-                    self.threshold_value,
-                    self.element_size,
-                    self.connectivity,
-                    self.max_eccentricity,
-                    self.min_solidity,
-                    self.min_circularity,
-                    self.min_size,
-                )
-                for properties in circle_properties:
-                    self.all_properties.append(properties)
-                # self.all_properties.append(circle_properties)
-                print("Circle properties for this image:", circle_properties)
-            print(
-                "Batch processing completed. Circle properties for all images:",
-                self.all_properties,
-            )
+        layout = QVBoxLayout(self.progress_dialog)
 
+        self.progress_bar = QProgressBar(self.progress_dialog)
+        self.progress_bar.setRange(0, num_images)
+        self.progress_bar.setValue(0)  # Start with 0 progress
+
+        layout.addWidget(self.progress_bar)
+
+        self.progress_dialog.setLayout(layout)
+        self.progress_dialog.show()
+
+    def update_progress_bar(self, value: int) -> None:
+        """Update the progress bar value."""
+        self.progress_bar.setValue(value)
+
+    def on_processing_done(self) -> None:
+        """Handle the completion of image processing."""
+        # Close the progress dialog
+        self.progress_dialog.close()
+        
+        # Automatically generate graph after batch processing
+        self.generate_histogram()
+        
+        # Switch to the final tab
+        self.tabs.setCurrentIndex(self.tabs.indexOf(self.results_tab))
+        
     def check_parameters(self) -> None:
         """Check if parameters are valid numbers and calibration is confirmed.
 
@@ -808,14 +914,14 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            self.img_resample_factor = float(self.param_table.item(0, 1).text())
-            self.threshold_value = float(self.param_table.item(1, 1).text())
-            self.element_size = int(self.param_table.item(2, 1).text())
-            self.connectivity = int(self.param_table.item(3, 1).text())
-            self.max_eccentricity = float(self.param_table.item(4, 1).text())
-            self.min_circularity = float(self.param_table.item(5, 1).text())
-            self.min_solidity = float(self.param_table.item(6, 1).text())
-            self.min_size = float(self.param_table.item(7, 1).text())
+            self.img_resample_factor = float(self.param_sandbox1.item(0, 1).text())
+            self.threshold_value = float(self.param_sandbox1.item(1, 1).text())
+            self.element_size = int(self.param_sandbox1.item(2, 1).text())
+            self.connectivity = int(self.param_sandbox1.item(3, 1).text())
+            self.max_eccentricity = float(self.param_sandbox2.item(0, 1).text())
+            self.min_circularity = float(self.param_sandbox2.item(1, 1).text())
+            self.min_solidity = float(self.param_sandbox2.item(2, 1).text())
+            self.min_size = float(self.param_sandbox2.item(3, 1).text())
 
         except (ValueError, TypeError):
             QMessageBox.warning(
@@ -841,99 +947,132 @@ class MainWindow(QMainWindow):
                 where the first being the processed image and the second being the
                 original image in RGB format.
         """
+        
+        start_time = time.perf_counter()
         target_image_path: Path = Path(image_path)
         target_img, imgRGB = image_preprocess(
             target_image_path, self.img_resample_factor
         )
+        print("Time take for image_preprocess: ", time.perf_counter() - start_time)
+        start_time = time.perf_counter()
         if self.bknd_img_exist:
             bg_img_path: Path = Path(self.bg_corr_image_name.text())
             self.bknd_img, _ = image_preprocess(bg_img_path, self.img_resample_factor)
 
             imgThreshold = threshold(target_img, self.bknd_img, self.threshold_value)
+            print("Time take for threshold: ", time.perf_counter() - start_time)
         else:
             imgThreshold = threshold_without_background(
                 target_img, self.threshold_value
             )
-
+            print("Time take for threshold_without_background: ", time.perf_counter() - start_time)
+        start_time = time.perf_counter()
         element_size = morphology.disk(self.params.Morphological_element_size)
         imgThreshold = morphological_process(imgThreshold, element_size)
-
+        print("Time take for morphological_process: ", time.perf_counter() - start_time)
+        
+        
         return imgThreshold, imgRGB
 
     def run_processing(
         self,
         imgThreshold: npt.NDArray[np.int_],
         imgRGB: npt.NDArray[np.int_],
-        mm2px: float,
         threshold_value: float,
         element_size: int,
         connectivity: int,
-        max_eccentricity: float,
-        min_solidity: float,
-        min_circularity: float,
-        min_size: float,
     ) -> tuple[
         npt.NDArray[np.int_],
-        npt.NDArray[np.int_],
-        list[dict[str, float]],
-        npt.NDArray[np.int_],
-    ]:
-        """Run the image processing algorithm on the preprocessed image.
+        npt.NDArray[np.int_]
+        ]:
+        
+        """
+        Run the image processing algorithm on the preprocessed image.
 
-        This function calls run_watershed_segmentation with the given parameters and
-        returns the processed image, the labeled image before filtering, the properties
-        of the detected circular features, and the labeled image after filtering.
+        This function takes the preprocessed image, the original RGB image, the
+        conversion factor from millimeters to pixels, and several threshold values as
+        input. It then applies watershed segmentation to detect circular features in
+        the image. The detected features are then filtered based on their properties,
+        such as eccentricity, solidity, circularity, and size.
 
         Parameters:
             imgThreshold (npt.NDArray[np.int_]): The preprocessed image after
-            thresholding.
+                thresholding.
             imgRGB (npt.NDArray[np.int_]): The original image in RGB format.
-            mm2px (float): The conversion factor from millimeters to pixels.
-            threshold_value (float): The threshold value for background subtraction.
+            threshold_value (float): The threshold value for background subtract.
             element_size (int): The size of the morphological element for binary
-            operations.
+                operations.
             connectivity (int): The connectivity of the morphological operations.
-            max_eccentricity (float): The maximum eccentricity threshold for filtering.
-            min_solidity (float): The minimum solidity threshold for filtering.
-            min_circularity (float): The minimum circularity threshold for filtering.
-            min_size (float): The minimum size threshold for filtering in pixels.
 
         Returns:
-            tuple[npt.NDArray[np.int_],
-                npt.NDArray[np.int_],
-                list[dict[str, float]],
-                npt.NDArray[np.int_]]: A tuple of four arrays, the first being the
-                processed image, the second being the labeled image before filtering,
-                the third being the properties of the detected circular features, and
-                the fourth being the labeled image after filtering.
+            tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]: A tuple of two arrays,
+                the first being the processed image and the second being the labeled
+                image before filtering.
         """
         print("Threshold_value:", threshold_value)
         print("element_size:", element_size)
         print("connectivity:", connectivity)
-        print("mm2px:", mm2px)
-        print("max ecccentricity from GUI:", max_eccentricity)
 
-        preview_processed_image, labels_before_filtering, circle_properties, labels = (
+        preview_processed_image, labels_before_filtering = (
             run_watershed_segmentation(
                 imgThreshold,
                 imgRGB,
-                mm2px,
                 threshold_value,
                 element_size,
-                connectivity,
-                max_eccentricity,
-                min_solidity,
-                min_circularity,
-                min_size,
+                connectivity
             )
         )
         return (
             preview_processed_image,
-            labels_before_filtering,
-            circle_properties,
-            labels,
+            labels_before_filtering
         )
 
+    def run_filtering(self,
+                    imgRGB: npt.NDArray[np.int_],
+                    labels: npt.NDArray[np.int_],
+                    mm2px: float,
+                    max_eccentricity: float,
+                    min_solidity: float,
+                    min_circularity: float,
+        ) -> tuple[npt.NDArray[np.int_], 
+                   npt.NDArray[np.int_], 
+                   list[dict[str, float]]]:
+        
+        
+        """
+        Run the image processing algorithm on the target image to detect and analyze
+        circular features.
+
+        This function takes the preprocessed image, the labeled image before filtering,
+        the conversion factor from millimeters to pixels, and several threshold values
+        as input. It then applies watershed segmentation to detect circular features in
+        the image. The detected features are then filtered based on their properties, 
+        such as eccentricity, solidity, circularity, and size.
+
+        The function returns the processed image, the labeled image after filtering, and
+        the properties of the detected circular features.
+
+        Parameters:
+            imgRGB (npt.NDArray[np.int_]): The preprocessed image in RGB format.
+            labels (npt.NDArray[np.int_]): The labeled image before filtering.
+            mm2px (float): The conversion factor from millimeters to pixels.
+            max_eccentricity (float): The maximum allowed eccentricity for circles.
+            min_solidity (float): The minimum allowed solidity for circles.
+            min_circularity (float): The minimum allowed circularity for circles.
+
+        Returns:
+            tuple[npt.NDArray[np.int_], npt.NDArray[np.int_], list[dict[str, float]]]:
+                A tuple of three arrays, the first being the processed image, the second
+                being the labeled image after filtering, and the third being the
+                properties of the detected circular features.
+        """
+
+        imgRGB_overlay, labels, circle_properties = final_circles_filtering(
+            imgRGB, labels, mm2px, max_eccentricity, min_solidity, min_circularity
+        )
+        
+        return imgRGB_overlay, labels, circle_properties
+        
     def update_sample_image(self, direction: str) -> None:
         """Update the sample image preview based on user navigation (prev/next).
 
@@ -986,21 +1125,27 @@ class MainWindow(QMainWindow):
         histogram_by_label = QLabel("Histogram by:")
         self.histogram_by = QComboBox()
         self.histogram_by.addItems(["Number", "Volume"])
-
+        self.histogram_by.currentIndexChanged.connect(self.generate_histogram)  # Connect to auto-update
+       
         # PDF/CDF Checkboxes
         self.pdf_checkbox = QCheckBox("PDF")
         self.cdf_checkbox = QCheckBox("CDF")
+        self.pdf_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
+        self.cdf_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
 
         # Number of bins
         bins_label = QLabel("Number of bins:")
         self.bins_spinbox = QSpinBox()
         self.bins_spinbox.setValue(15)
         self.bins_spinbox.setRange(1, 100)
+        self.bins_spinbox.valueChanged.connect(self.generate_histogram)  # Connect to auto-update
 
         # X-axis limits
         x_axis_limits_label = QLabel("X-axis limits:")
         self.min_x_axis_input = QLineEdit("0.0")
         self.max_x_axis_input = QLineEdit("5.0")
+        self.min_x_axis_input.textChanged.connect(self.generate_histogram)  # Connect to auto-update
+        self.max_x_axis_input.textChanged.connect(self.generate_histogram)  # Connect to auto-update
 
         legend_label = QLabel("Legend settings:")
         legend_frame = QFrame()
@@ -1012,12 +1157,14 @@ class MainWindow(QMainWindow):
         self.legend_position_combobox.addItems(
             ["North East", "North West", "South East", "South West"]
         )
+        self.legend_position_combobox.currentIndexChanged.connect(self.generate_histogram)  # Connect to auto-update
         legend_layout.addWidget(self.legend_position_combobox, 0, 1)
 
         # Legend orientation dropdown
         legend_layout.addWidget(QLabel("Orientation:"), 1, 0)
         self.legend_orientation_combobox = QComboBox()
         self.legend_orientation_combobox.addItems(["Vertical", "Horizontal"])
+        self.legend_orientation_combobox.currentIndexChanged.connect(self.generate_histogram)  # Connect to auto-update
         legend_layout.addWidget(self.legend_orientation_combobox, 1, 1)
 
         # Descriptive size options
@@ -1028,15 +1175,20 @@ class MainWindow(QMainWindow):
         self.d32_checkbox = QCheckBox("d32")
         self.dmean_checkbox = QCheckBox("d mean")
         self.dxy_checkbox = QCheckBox("dxy")
+        self.d32_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
+        self.dmean_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
+        self.dxy_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
 
         # Add input boxes for `x` and `y` values
         self.dxy_x_input = QLineEdit()
         self.dxy_x_input.setText("5")  # Set default value for x
         self.dxy_x_input.setMaximumWidth(40)
+        self.dxy_x_input.textChanged.connect(self.generate_histogram)  # Connect to auto-update
 
         self.dxy_y_input = QLineEdit()
         self.dxy_y_input.setText("4")  # Set default value for y
         self.dxy_y_input.setMaximumWidth(40)
+        self.dxy_y_input.textChanged.connect(self.generate_histogram)  # Connect to auto-update
 
         # Add elements to the descriptive layout
         descriptive_layout.addWidget(self.d32_checkbox, 0, 0)
@@ -1117,9 +1269,9 @@ class MainWindow(QMainWindow):
         layout.addWidget(controls_frame, 0, 1)
 
         # Button to generate graph
-        generate_button = QPushButton("Generate Graph")
-        generate_button.clicked.connect(self.generate_histogram)
-        layout.addWidget(generate_button, 1, 0, 1, 2)
+        # generate_button = QPushButton("Generate Graph")
+        # generate_button.clicked.connect(self.generate_histogram)
+        # layout.addWidget(generate_button, 1, 0, 1, 2)
 
         # Add a label to display the descriptive sizes
         self.descriptive_size_label = QLabel("")
