@@ -73,7 +73,6 @@ def load_image(
         grayscale image.
         - The resized image in RGB format.
     """
-    
     # Read the input image
     img = io.imread(image_path)
 
@@ -109,7 +108,6 @@ def load_toml(file_path: str) -> Config:
     Returns:
         A dictionary containing the configuration parameters from the TOML file.
     """
-    
     toml_data = tomllib.load(file_path)
 
     return Config(**toml_data)
@@ -159,7 +157,6 @@ def run_watershed_segmentation(
             the properties of the detected circular features, and the fourth being the
             labeled image after filtering.
     """
-    
     start_time = timeit.default_timer()
     distTrans = cv2.distanceTransform(target_img, cv2.DIST_L2, element_size)
     print(f"Distance transform time: {timeit.default_timer() - start_time:.4f} sec")
