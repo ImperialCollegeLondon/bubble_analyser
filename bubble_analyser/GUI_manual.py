@@ -282,7 +282,7 @@ class MainWindow(QMainWindow):
         bottom_right_frame = QFrame()
         bottom_right_layout = QVBoxLayout(bottom_right_frame)
         self.image_preview = QLabel()
-        self.image_preview.setAlignment(Qt.AlignCenter)
+        self.image_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.image_preview.setFixedSize(
             600, 600
         )  # Set a fixed size for the image preview
@@ -382,11 +382,11 @@ class MainWindow(QMainWindow):
         pixmap = QPixmap(image_path)
 
         self.image_preview.setPixmap(
-            pixmap.scaled(self.image_preview.size(), Qt.KeepAspectRatio)
+            pixmap.scaled(self.image_preview.size())
         )
 
         self.sample_image_preview.setPixmap(
-            pixmap.scaled(self.sample_image_preview.size(), Qt.KeepAspectRatio)
+            pixmap.scaled(self.sample_image_preview.size())
         )
 
     def load_images_to_process(self) -> None:
@@ -447,7 +447,7 @@ class MainWindow(QMainWindow):
         )
         px_res_select_button.clicked.connect(self.select_px_res_image)
         self.px_res_image_preview = QLabel()
-        self.px_res_image_preview.setAlignment(Qt.AlignCenter)
+        self.px_res_image_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.px_res_image_preview.setFixedSize(400, 300)
 
         px_res_layout.addWidget(QLabel("Step 1: Pixel resolution calibration"))
@@ -470,7 +470,7 @@ class MainWindow(QMainWindow):
         )
         bg_corr_select_button.clicked.connect(self.select_bg_corr_image)
         self.bg_corr_image_preview = QLabel()
-        self.bg_corr_image_preview.setAlignment(Qt.AlignCenter)
+        self.bg_corr_image_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.bg_corr_image_preview.setFixedSize(400, 300)
 
         bg_corr_layout.addWidget(QLabel("Step 2: Background correction image"))
@@ -550,7 +550,7 @@ class MainWindow(QMainWindow):
             self.px_res_image_name.setText(image_path)
             pixmap = QPixmap(image_path)
             self.px_res_image_preview.setPixmap(
-                pixmap.scaled(self.px_res_image_preview.size(), Qt.KeepAspectRatio)
+                pixmap.scaled(self.px_res_image_preview.size())
             )
 
     def process_calibration_image(self) -> None:
@@ -626,7 +626,7 @@ class MainWindow(QMainWindow):
             self.bg_corr_image_name.setText(image_path)
             pixmap = QPixmap(image_path)
             self.bg_corr_image_preview.setPixmap(
-                pixmap.scaled(self.bg_corr_image_preview.size(), Qt.KeepAspectRatio)
+                pixmap.scaled(self.bg_corr_image_preview.size())
             )
             self.bknd_img_exist = True
 
@@ -676,7 +676,7 @@ class MainWindow(QMainWindow):
 
         # Sample Image Preview Canvas
         self.sample_image_preview = QLabel("Sample image preview")
-        self.sample_image_preview.setAlignment(Qt.AlignCenter)
+        self.sample_image_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.sample_image_preview.setFixedSize(400, 300)  # Adjust size as needed
 
         prev_button = QPushButton("< Prev. Img")
@@ -826,11 +826,12 @@ class MainWindow(QMainWindow):
         confirm_dialog.setText(
             "The parameters will be applied to all the images. Confirm to process."
         )
-        confirm_dialog.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        confirm_dialog.setStandardButtons(QMessageBox.StandardButton.Ok | 
+                                          QMessageBox.StandardButton.Cancel)
 
         response = confirm_dialog.exec()
 
-        if response == QMessageBox.Ok:
+        if response == QMessageBox.StandardButton.Ok:
             self.batch_process_images()
         else:
             print("Batch processing canceled.")
@@ -1526,3 +1527,14 @@ if __name__ == "__main__":
 # GUI - Jump generated graph after processing & every choice of additional elements
 # Detection and filtering - Seperate process from filtering
 # Store last previewed images
+
+# Finishe bubble analyser first***
+# Fix problems and bugs before meeting 
+# Make sure it works on different environments
+# and make it ***executable***
+
+
+# Close the project -
+# Relation between variographics and froth properties (stability)
+# variographic feature -> mean size? (-> d32)
+# air recovery 
