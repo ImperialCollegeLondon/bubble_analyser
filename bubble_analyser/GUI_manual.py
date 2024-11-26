@@ -382,9 +382,7 @@ class MainWindow(QMainWindow):
         image_path = os.path.join(folder_path, self.selected_image)
         pixmap = QPixmap(image_path)
 
-        self.image_preview.setPixmap(
-            pixmap.scaled(self.image_preview.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        )
+        self.image_preview.setPixmap(pixmap.scaled(self.image_preview.size()))
 
         self.sample_image_preview.setPixmap(
             pixmap.scaled(self.sample_image_preview.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
@@ -827,8 +825,9 @@ class MainWindow(QMainWindow):
         confirm_dialog.setText(
             "The parameters will be applied to all the images. Confirm to process."
         )
-        confirm_dialog.setStandardButtons(QMessageBox.StandardButton.Ok | 
-                                          QMessageBox.StandardButton.Cancel)
+        confirm_dialog.setStandardButtons(
+            QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel
+        )
 
         response = confirm_dialog.exec()
 
@@ -1536,7 +1535,7 @@ if __name__ == "__main__":
 # Store last previewed images
 
 # Finishe bubble analyser first***
-# Fix problems and bugs before meeting 
+# Fix problems and bugs before meeting
 # Make sure it works on different environments
 # and make it ***executable***
 
@@ -1544,4 +1543,4 @@ if __name__ == "__main__":
 # Close the project -
 # Relation between variographics and froth properties (stability)
 # variographic feature -> mean size? (-> d32)
-# air recovery 
+# air recovery
