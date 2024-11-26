@@ -24,9 +24,6 @@ jobs:
 
       - name: Show Python Version
         run: python --version
-        
-      - name: Debug Poetry Environment
-        run: poetry env list
 
       - name: Install Poetry
         uses: abatilo/actions-poetry@v3.0.0
@@ -35,6 +32,9 @@ jobs:
 
       - name: Install dependencies
         run: poetry install
+
+      - name: Debug Poetry Environment
+        run: poetry env list
 
       - name: Run tests
         run: poetry run pytest
