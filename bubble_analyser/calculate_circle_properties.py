@@ -103,7 +103,6 @@ def filter_circle_properties(
     new_labels = np.copy(labels)
 
     for prop in properties:
-        
         if prop.label == 1:  # Ignore the background
             continue
 
