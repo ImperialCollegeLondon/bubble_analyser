@@ -24,7 +24,7 @@ jobs:
 
       - name: Show Python Version
         run: python --version
-        
+
       - name: Debug Poetry Environment
         run: poetry env list
 
