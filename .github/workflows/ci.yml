@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest, ubuntu-latest, macos-latest]
-        python-version: ["3.12", "3.11"]
+        python-version: ["3.12.3", "3.11"]
 
     steps:
       - uses: actions/checkout@v4
@@ -21,6 +21,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{matrix.python-version}}
+
+      - name: Show Python Version
+        run: python --version
+        
+      - name: Debug Poetry Environment
+        run: poetry env list
+
       - name: Install Poetry
         uses: abatilo/actions-poetry@v3.0.0
         with:

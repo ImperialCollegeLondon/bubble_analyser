@@ -59,7 +59,6 @@ from .image_preprocess import image_preprocess
 from .morphological_process import morphological_process
 from .threshold import threshold, threshold_without_background
 
-
 class WorkerThread(QThread):
     """Thread to handle batch image processing."""
 
@@ -357,6 +356,7 @@ class MainWindow(QMainWindow):
         in the image_list_full_path list, and are used later to load the images when
         the user clicks the "Next" button.
         """
+
         self.image_list.clear()
         self.image_list_full_path: list[str] = []
 
@@ -376,17 +376,18 @@ class MainWindow(QMainWindow):
         image preview label on the GUI. The image is scaled to fit the size of
         the label while keeping the aspect ratio.
         """
+        
         self.selected_image = self.image_list.currentItem().text()
         folder_path = self.folder_path_edit.text()
         image_path = os.path.join(folder_path, self.selected_image)
         pixmap = QPixmap(image_path)
 
         self.image_preview.setPixmap(
-            pixmap.scaled(self.image_preview.size())
+            pixmap.scaled(self.image_preview.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
         )
 
         self.sample_image_preview.setPixmap(
-            pixmap.scaled(self.sample_image_preview.size())
+            pixmap.scaled(self.sample_image_preview.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
         )
 
     def load_images_to_process(self) -> None:
@@ -1003,6 +1004,7 @@ class MainWindow(QMainWindow):
                 the first being the processed image and the second being the labeled
                 image before filtering.
         """
+        
         print("Threshold_value:", threshold_value)
         print("element_size:", element_size)
         print("connectivity:", connectivity)
@@ -1047,6 +1049,11 @@ class MainWindow(QMainWindow):
                 being the labeled image after filtering, and the third being the
                 properties of the detected circular features.
         """
+    
+        print("Max_eccentricity:", max_eccentricity)
+        print("Min_solidity:", min_solidity)
+        print("Min_circularity:", min_circularity)
+        
         imgRGB_overlay, labels, circle_properties = final_circles_filtering(
             imgRGB, labels, mm2px, max_eccentricity, min_solidity, min_circularity
         )
