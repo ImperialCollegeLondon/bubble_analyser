@@ -194,7 +194,7 @@ class MainWindow(QMainWindow):
         self.min_solidity = self.params.Min_Solidity
         self.min_circularity = self.params.Min_Circularity
         self.min_size = self.params.min_size
-        self.all_properties: list = []
+        self.all_properties: list[dict[str, float]] = []
 
         self.bknd_img_exist = False
         self.calibration_confirmed = False
@@ -381,13 +381,13 @@ class MainWindow(QMainWindow):
         image_path = os.path.join(folder_path, self.selected_image)
         pixmap = QPixmap(image_path)
 
-        self.image_preview.setPixmap(pixmap.scaled(self.image_preview.size()))
+        self.image_preview.setPixmap(pixmap.scaled(self.image_preview.size(),
+                                                   Qt.AspectRatioMode.KeepAspectRatio,))
 
         self.sample_image_preview.setPixmap(
             pixmap.scaled(
                 self.sample_image_preview.size(),
-                Qt.KeepAspectRatio,
-                Qt.SmoothTransformation,
+                Qt.AspectRatioMode.KeepAspectRatio,
             )
         )
 
@@ -971,10 +971,11 @@ class MainWindow(QMainWindow):
             )
         start_time = time.perf_counter()
         element_size = morphology.disk(self.params.Morphological_element_size)
-        imgThreshold = morphological_process(imgThreshold, element_size)
+        
+        imgThreshold_new: npt.NDArray[np.int_] = morphological_process(imgThreshold, element_size)
         print("Time take for morphological_process: ", time.perf_counter() - start_time)
 
-        return imgThreshold, imgRGB
+        return imgThreshold_new, imgRGB
 
     def run_processing(
         self,
@@ -1501,16 +1502,18 @@ class MainWindow(QMainWindow):
         return
 
     def calculate_descriptive_sizes(
-        self, equivalent_diameters: np.ndarray
+        self, equivalent_diameters: npt.NDArray[np.float64]
     ) -> tuple[float, float, float]:
         """Calculate d32, d mean, and dxy based on the equivalent diameters."""
         dxy_x_power: int = int(self.dxy_x_input.text())
         dxy_y_power: int = int(self.dxy_y_input.text())
-        d32 = np.sum(equivalent_diameters**3) / np.sum(equivalent_diameters**2)
+        d32: float = np.sum(equivalent_diameters**3) / np.sum(equivalent_diameters**2)
+        
         # d32, Sauter diameter, should be calculated based on the area, and volume
         # diameter of a circle, which is unkown right now
-        d_mean = np.mean(equivalent_diameters)
-        dxy = np.sum(equivalent_diameters**dxy_x_power) / np.sum(
+        
+        d_mean: float = float(np.mean(equivalent_diameters))
+        dxy: float = np.sum(equivalent_diameters**dxy_x_power) / np.sum(
             equivalent_diameters**dxy_y_power
         )
 
