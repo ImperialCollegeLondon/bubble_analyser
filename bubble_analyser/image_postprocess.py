@@ -46,7 +46,8 @@ def overlay_labels_on_rgb(
         if label == 1:  # Skip the background (assuming label 0 is background)
             continue
         # Create a mask for the current label
-        # Generate random hue (0-179 in OpenCV's HSV), max saturation, and max brightness
+        # Generate random hue (0-179 in OpenCV's HSV), max saturation,
+        # and max brightness
         hue = np.random.randint(0, 179)
         saturation = 255  # Max saturation
         value = 255  # Max brightness

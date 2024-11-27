@@ -200,7 +200,8 @@ def run_watershed_segmentation(
         imgRGB_before_filtering, labels_watershed
     )
     print(
-        f"Overlay labels before filtering time: {timeit.default_timer() - start_time:.4f} sec"
+        f"Overlay labels before filtering time: \
+            {timeit.default_timer() - start_time:.4f} sec"
     )
     return imgRGB_before_filtering, labels_watershed
 
@@ -216,6 +217,7 @@ def final_circles_filtering(
     """Filter the circles in the image based on their properties.
 
     Args:
+        imgRGB (npt.NDArray[np.int_]): The image in RGB format.
         labels (npt.NDArray[np.int_]): The labels of the circles in the image.
         mm2px (float): The conversion factor from millimeters to pixels.
         max_eccentricity (float): The maximum eccentricity threshold for filtering.
