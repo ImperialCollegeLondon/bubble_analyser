@@ -748,7 +748,7 @@ class MainWindow(QMainWindow):
         third_column_layout.addWidget(QLabel("Processed Image_After Filtering"))
         third_column_layout.addWidget(self.processed_image_preview)
 
-        # Parameter sandbox for max_eccentricity, min_circularity, 
+        # Parameter sandbox for max_eccentricity, min_circularity,
         # min_solidity, min_size
         sandbox2_label = QLabel("Step 3: Adjust parameters for circle properties")
         self.param_sandbox2 = QTableWidget(4, 2)
