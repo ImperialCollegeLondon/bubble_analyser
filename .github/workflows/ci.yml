@@ -35,7 +35,7 @@ jobs:
 
       - name: Install PySide6
         run: poetry add PySide6
-        
+
       - name: Debug Poetry Environment
         run: poetry env list
 
