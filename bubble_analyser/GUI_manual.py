@@ -76,8 +76,7 @@ class WorkerThread(QThread):
         self.main_window = main_window  # Reference to the MainWindow instance
 
     def run(self) -> None:
-        """Process all images in the list, calculate circle properties for each, and
-        store them in the main_window.all_properties list.
+        """Process all images in the list.
 
         This function is called when the WorkerThread is started and is responsible
         for processing all images added to the image list. It iterates through the
@@ -742,7 +741,8 @@ class MainWindow(QMainWindow):
         third_column_layout.addWidget(QLabel("Processed Image_After Filtering"))
         third_column_layout.addWidget(self.processed_image_preview)
 
-        # Parameter sandbox for max_eccentricity, min_circularity, min_solidity, min_size
+        # Parameter sandbox for max_eccentricity, min_circularity, 
+        # min_solidity, min_size
         sandbox2_label = QLabel("Step 3: Adjust parameters for circle properties")
         self.param_sandbox2 = QTableWidget(4, 2)
         self.param_sandbox2.setHorizontalHeaderLabels(["Parameter", "Value"])
@@ -1025,8 +1025,7 @@ class MainWindow(QMainWindow):
         min_solidity: float,
         min_circularity: float,
     ) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_], list[dict[str, float]]]:
-        """Run the image processing algorithm on the target image to detect and analyze
-        circular features.
+        """Run the image processing algorithm on the target image.
 
         This function takes the preprocessed image, the labeled image before filtering,
         the conversion factor from millimeters to pixels, and several threshold values
