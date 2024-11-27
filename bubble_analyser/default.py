@@ -170,21 +170,22 @@ def run_watershed_segmentation(
 
     start_time = timeit.default_timer()
     sure_fg_initial = distThresh.copy()
-        
-    sure_bg = np.array(cv2.dilate(target_img, np.ones((3, 3), np.uint8), iterations=3), dtype=np.uint8)
+
+    sure_bg = np.array(
+        cv2.dilate(target_img, np.ones((3, 3), np.uint8), iterations=3), dtype=np.uint8
+    )
     sure_fg = np.array(sure_fg_initial, dtype=np.uint8)
 
-    
     unknown = cv2.subtract(sure_bg, sure_fg)
-    
+
     print(
         f"Morphological operations time: {timeit.default_timer() - start_time:.4f} sec"
     )
 
     start_time = timeit.default_timer()
     distThresh = distThresh.astype(np.uint8)
-    
-    _, labels = cv2.connectedComponents(sure_fg, connectivity) # type: ignore
+
+    _, labels = cv2.connectedComponents(sure_fg, connectivity)  # type: ignore
     labels = labels.astype(np.int32)
     labels = labels + 1
     labels[unknown != 0] = 0
