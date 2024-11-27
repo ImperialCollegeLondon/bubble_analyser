@@ -33,11 +33,8 @@ jobs:
       - name: Install dependencies
         run: poetry install
 
-      - name: Install PySide6 for Matplotlib Qt Backend
+      - name: Install PySide6
         run: poetry add PySide6
-
-      - name: Set Matplotlib Backend
-        run: echo "MPLBACKEND=Agg" >> $GITHUB_ENV
         
       - name: Debug Poetry Environment
         run: poetry env list
