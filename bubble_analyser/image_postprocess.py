@@ -13,6 +13,7 @@ import cv2
 import numpy as np
 from numpy import typing as npt
 
+
 def overlay_labels_on_rgb(
     imgRGB: npt.NDArray[np.int_], labels: npt.NDArray[np.int_], alpha: float = 0.5
 ) -> npt.NDArray[np.int_]:
@@ -65,4 +66,4 @@ def overlay_labels_on_rgb(
     # Blend the colored labels with the original image using transparency (alpha)
     label_overlay = cv2.addWeighted(imgRGB, 1 - alpha, colored_labels, alpha, 0)
 
-    return label_overlay # type: ignore
+    return label_overlay  # type: ignore
