@@ -19,10 +19,11 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+
+import matplotlib
 import numpy as np
 import toml as tomllib
 
-import matplotlib
 matplotlib.use("Agg")  # Force backend to Agg for CI
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
