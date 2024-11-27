@@ -38,7 +38,7 @@ jobs:
 
       - name: Set Matplotlib Backend
         run: echo "MPLBACKEND=Agg" >> $GITHUB_ENV
-        
+
       - name: Debug Poetry Environment
         run: poetry env list
 
