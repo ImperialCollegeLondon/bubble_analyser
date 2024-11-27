@@ -132,14 +132,15 @@ def resize_for_original_image(
     #     anti_aliasing=True,
     # )
     # return image
-    return cv2.resize(
-        image,
-        (0, 0),
-        fx=img_resample_factor,
-        fy=img_resample_factor,
-        interpolation=cv2.INTER_AREA,
-    )
-
+    
+    resize_image: npt.NDArray[np.int_] = cv2.resize(
+                                                    image,
+                                                    (0, 0),
+                                                    fx=img_resample_factor,
+                                                    fy=img_resample_factor,
+                                                    interpolation=cv2.INTER_AREA,
+                                                ) # type: ignore
+    return resize_image
 
 def image_preprocess(
     img_path: Path, img_resample: float

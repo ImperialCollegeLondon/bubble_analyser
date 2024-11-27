@@ -169,18 +169,22 @@ def run_watershed_segmentation(
     print(f"Thresholding time: {timeit.default_timer() - start_time:.4f} sec")
 
     start_time = timeit.default_timer()
-    sure_fg = distThresh.copy()
-    sure_bg = cv2.dilate(target_img, np.ones((3, 3), np.uint8), iterations=3)
+    sure_fg_initial = distThresh.copy()
+        
+    sure_bg = np.array(cv2.dilate(target_img, np.ones((3, 3), np.uint8), iterations=3), dtype=np.uint8)
+    sure_fg = np.array(sure_fg_initial, dtype=np.uint8)
 
-    sure_fg = np.uint8(sure_fg)
+    
     unknown = cv2.subtract(sure_bg, sure_fg)
+    
     print(
         f"Morphological operations time: {timeit.default_timer() - start_time:.4f} sec"
     )
 
     start_time = timeit.default_timer()
     distThresh = distThresh.astype(np.uint8)
-    _, labels = cv2.connectedComponents(sure_fg, connectivity)
+    
+    _, labels = cv2.connectedComponents(sure_fg, connectivity) # type: ignore
     labels = labels.astype(np.int32)
     labels = labels + 1
     labels[unknown != 0] = 0
@@ -276,7 +280,7 @@ def pre_processing() -> (
     # Apply thresholding and morphological processing
     imgThreshold = threshold(target_img, bknd_img, threshold_value)
     element_size = morphology.disk(params.Morphological_element_size)
-    imgThreshold = morphological_process(imgThreshold, element_size)
+    imgThreshold_new = morphological_process(imgThreshold, element_size)
 
     # plt.figure()
     # plt.subplot(231)
@@ -291,7 +295,7 @@ def pre_processing() -> (
     # plt.show()
 
     # Run the default image processing algorithm
-    return imgThreshold, imgRGB, params, mm2px, threshold_value
+    return imgThreshold_new, imgRGB, params, mm2px, threshold_value
 
 
 def main() -> None:

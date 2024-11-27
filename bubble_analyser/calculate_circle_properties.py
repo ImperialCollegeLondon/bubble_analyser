@@ -77,12 +77,12 @@ def calculate_circle_properties(
 
 
 def filter_circle_properties(
-    labels: np.ndarray,
+    labels: npt.NDArray[np.int_],
     px2mm: float,
     max_eccentricity: float = 1.0,
     min_solidity: float = 0.9,
     min_circularity: float = 0.1,
-) -> np.ndarray:
+) -> npt.NDArray[np.int_]:
     """Filters out regions (circles) from the labeled image based on their properties.
 
     Args:

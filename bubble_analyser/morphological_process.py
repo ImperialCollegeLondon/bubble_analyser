@@ -53,7 +53,7 @@ def morphological_process(
     # image_processed = morphology.closing(target_img, element_size)
     image_processed = cv2.morphologyEx(
         target_img.astype(np.uint8), cv2.MORPH_CLOSE, element_size
-    )
+    ) # type: ignore
     print("Time consumed for closing: ", time.perf_counter() - start_time)
     start_time = time.perf_counter()
     image_processed = ndimage.binary_fill_holes(image_processed)

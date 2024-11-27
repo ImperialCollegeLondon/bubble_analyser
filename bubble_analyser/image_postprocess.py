@@ -11,11 +11,11 @@ The function returns the resulting image as a 3D array in float format with rang
 
 import cv2
 import numpy as np
-
+from numpy import typing as npt
 
 def overlay_labels_on_rgb(
-    imgRGB: np.ndarray, labels: np.ndarray, alpha: float = 0.5
-) -> np.ndarray:
+    imgRGB: npt.NDArray[np.int_], labels: npt.NDArray[np.int_], alpha: float = 0.5
+) -> npt.NDArray[np.int_]:
     """Overlay labeled regions on an RGB image with a transparent color.
 
     Parameters
@@ -64,4 +64,4 @@ def overlay_labels_on_rgb(
     # Blend the colored labels with the original image using transparency (alpha)
     label_overlay = cv2.addWeighted(imgRGB, 1 - alpha, colored_labels, alpha, 0)
 
-    return label_overlay
+    return label_overlay # type: ignore
