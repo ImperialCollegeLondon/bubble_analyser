@@ -381,8 +381,12 @@ class MainWindow(QMainWindow):
         image_path = os.path.join(folder_path, self.selected_image)
         pixmap = QPixmap(image_path)
 
-        self.image_preview.setPixmap(pixmap.scaled(self.image_preview.size(),
-                                                   Qt.AspectRatioMode.KeepAspectRatio,))
+        self.image_preview.setPixmap(
+            pixmap.scaled(
+                self.image_preview.size(),
+                Qt.AspectRatioMode.KeepAspectRatio,
+            )
+        )
 
         self.sample_image_preview.setPixmap(
             pixmap.scaled(
@@ -971,8 +975,10 @@ class MainWindow(QMainWindow):
             )
         start_time = time.perf_counter()
         element_size = morphology.disk(self.params.Morphological_element_size)
-        
-        imgThreshold_new: npt.NDArray[np.int_] = morphological_process(imgThreshold, element_size)
+
+        imgThreshold_new: npt.NDArray[np.int_] = morphological_process(
+            imgThreshold, element_size
+        )
         print("Time take for morphological_process: ", time.perf_counter() - start_time)
 
         return imgThreshold_new, imgRGB
@@ -1508,10 +1514,10 @@ class MainWindow(QMainWindow):
         dxy_x_power: int = int(self.dxy_x_input.text())
         dxy_y_power: int = int(self.dxy_y_input.text())
         d32: float = np.sum(equivalent_diameters**3) / np.sum(equivalent_diameters**2)
-        
+
         # d32, Sauter diameter, should be calculated based on the area, and volume
         # diameter of a circle, which is unkown right now
-        
+
         d_mean: float = float(np.mean(equivalent_diameters))
         dxy: float = np.sum(equivalent_diameters**dxy_x_power) / np.sum(
             equivalent_diameters**dxy_y_power
