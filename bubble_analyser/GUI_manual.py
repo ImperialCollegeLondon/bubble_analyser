@@ -1496,12 +1496,12 @@ class MainWindow(QMainWindow):
                     labels1 + labels2,
                     loc=legend_location_map.get(legend_position, "upper right"),
                 )
-            else:
-                legend = self.histogram_canvas.axes.legend(
-                    lines1,
-                    labels1,
-                    loc=legend_location_map.get(legend_position, "upper right"),
-                )
+            # else:
+            #     legend = self.histogram_canvas.axes.legend(
+            #         lines1,
+            #         labels1,
+            #         loc=legend_location_map.get(legend_position, "upper right"),
+            #     )
 
             # if legend_orientation == "Horizontal":
             #     legend.set_bbox_to_anchor(
