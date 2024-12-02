@@ -1171,8 +1171,8 @@ class MainWindow(QMainWindow):
             self.generate_histogram
         )  # Connect to auto-update
         legend_layout.addWidget(self.legend_position_combobox, 0, 1)
-        
-        '''
+
+        """
         # Legend orientation dropdown
         legend_layout.addWidget(QLabel("Orientation:"), 1, 0)
         self.legend_orientation_combobox = QComboBox()
@@ -1181,8 +1181,8 @@ class MainWindow(QMainWindow):
             self.generate_histogram
         )  # Connect to auto-update
         legend_layout.addWidget(self.legend_orientation_combobox, 1, 1)
-        '''
-        
+        """
+
         # Descriptive size options
         # Descriptive Size Checkboxes Section
         descriptive_frame = QFrame()
