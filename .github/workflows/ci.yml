@@ -30,15 +30,6 @@ jobs:
         with:
           poetry-version: 1.2.2
 
-<<<<<<< HEAD
-=======
-      - name: Install libegl1
-      - run: sudo apt-get install libegl1
-
-      - name: Install libopengl0 -y
-      - run: sudo apt-get install libopengl0
-
->>>>>>> refs/remotes/origin/GUI_design
       - name: Install dependencies
         run: poetry install
 
