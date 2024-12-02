@@ -1491,7 +1491,7 @@ class MainWindow(QMainWindow):
                 lines2, labels2 = (
                     self.histogram_canvas.axes2.get_legend_handles_labels()
                 )
-                legend = self.histogram_canvas.axes.legend(
+                self.histogram_canvas.axes.legend(
                     lines1 + lines2,
                     labels1 + labels2,
                     loc=legend_location_map.get(legend_position, "upper right"),
