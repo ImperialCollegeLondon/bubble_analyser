@@ -1121,7 +1121,8 @@ class MainWindow(QMainWindow):
         # Histogram type
         histogram_by_label = QLabel("Histogram by:")
         self.histogram_by = QComboBox()
-        self.histogram_by.addItems(["Number", "Volume"])
+        # self.histogram_by.addItems(["Number", "Volume"])
+        self.histogram_by.addItems(["Number"])
         self.histogram_by.currentIndexChanged.connect(
             self.generate_histogram
         )  # Connect to auto-update
@@ -1170,7 +1171,8 @@ class MainWindow(QMainWindow):
             self.generate_histogram
         )  # Connect to auto-update
         legend_layout.addWidget(self.legend_position_combobox, 0, 1)
-
+        
+        '''
         # Legend orientation dropdown
         legend_layout.addWidget(QLabel("Orientation:"), 1, 0)
         self.legend_orientation_combobox = QComboBox()
@@ -1179,7 +1181,8 @@ class MainWindow(QMainWindow):
             self.generate_histogram
         )  # Connect to auto-update
         legend_layout.addWidget(self.legend_orientation_combobox, 1, 1)
-
+        '''
+        
         # Descriptive size options
         # Descriptive Size Checkboxes Section
         descriptive_frame = QFrame()
@@ -1469,7 +1472,7 @@ class MainWindow(QMainWindow):
 
         # Apply Legend Options
         legend_position = self.legend_position_combobox.currentText()
-        legend_orientation = self.legend_orientation_combobox.currentText()
+        # legend_orientation = self.legend_orientation_combobox.currentText()
 
         legend_location_map = {
             "North East": "upper right",
@@ -1500,10 +1503,10 @@ class MainWindow(QMainWindow):
                     loc=legend_location_map.get(legend_position, "upper right"),
                 )
 
-            if legend_orientation == "Horizontal":
-                legend.set_bbox_to_anchor(
-                    (1, 1)
-                )  # Set orientation of the legend to horizontal if selected
+            # if legend_orientation == "Horizontal":
+            #     legend.set_bbox_to_anchor(
+            #         (1, 1)
+            #     )  # Set orientation of the legend to horizontal if selected
 
         # Redraw the canvas
         self.histogram_canvas.draw()
