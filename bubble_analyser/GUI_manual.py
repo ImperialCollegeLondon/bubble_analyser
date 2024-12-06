@@ -13,7 +13,7 @@ Classes:
 
 """
 
-import csv
+import csv  # noqa: I001
 import os
 import sys
 import time
@@ -22,7 +22,6 @@ from pathlib import Path
 
 import numpy as np
 import toml as tomllib
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from numpy import typing as npt
 from PySide6.QtCore import Qt, QThread, Signal
@@ -51,6 +50,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 from skimage import morphology
+
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+
 
 from .calculate_px2mm import calculate_px2mm
 from .config import Config
