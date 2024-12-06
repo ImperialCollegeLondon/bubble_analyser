@@ -29,6 +29,15 @@ jobs:
       - name: Show Python Version
         run: python --version
 
+      - name: Install system dependencies in Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt update
+
+          # Without this, PySide6 gives an ImportError
+          sudo apt install libegl1
+
       - name: Install dependencies
         run: poetry install
 
