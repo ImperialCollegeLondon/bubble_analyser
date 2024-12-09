@@ -32,6 +32,7 @@ image processing where preprocessing steps are crucial for subsequent analysis, 
 object detection, pattern recognition, and more.
 """
 
+import time
 from pathlib import Path
 from typing import cast
 
@@ -41,7 +42,6 @@ from numpy import typing as npt
 from skimage import (
     color,
     io,
-    transform,
 )
 
 
@@ -123,15 +123,24 @@ def resize_for_original_image(
     Returns:
         npt.NDArray: The resized image.
     """
-    image = transform.resize(
+    # image = transform.resize(
+    #     image,
+    #     (
+    #         int(image.shape[0] * img_resample_factor),
+    #         int(image.shape[1] * img_resample_factor),
+    #     ),
+    #     anti_aliasing=True,
+    # )
+    # return image
+
+    resize_image: npt.NDArray[np.int_] = cv2.resize(
         image,
-        (
-            int(image.shape[0] * img_resample_factor),
-            int(image.shape[1] * img_resample_factor),
-        ),
-        anti_aliasing=True,
-    )
-    return image
+        (0, 0),
+        fx=img_resample_factor,
+        fy=img_resample_factor,
+        interpolation=cv2.INTER_AREA,
+    )  # type: ignore
+    return resize_image
 
 
 def image_preprocess(
@@ -152,12 +161,24 @@ def image_preprocess(
         tuple[npt.NDArray, npt.NDArray]: A tuple containing the resized grayscale image
         and the resized RGB image.
     """
+    start_time = time.perf_counter()
     image = load_image(img_path)
+    print("Time used for load_image: ", time.perf_counter() - start_time)
+
+    start_time = time.perf_counter()
     image_RGB = get_RGB(image)
+    print("Time used for get_RGB: ", time.perf_counter() - start_time)
 
+    start_time = time.perf_counter()
     image = resize_for_original_image(image, img_resample)
-    image = get_greyscale(image)
+    print("Time used for resize_for_original_image: ", time.perf_counter() - start_time)
 
+    start_time = time.perf_counter()
+    image = get_greyscale(image)
+    print("Time used for get_greyscale: ", time.perf_counter() - start_time)
+
+    start_time = time.perf_counter()
     image_RGB = resize_for_RGB(image_RGB, img_resample)
+    print("Time used for resize_for_RGB: ", time.perf_counter() - start_time)
 
     return image, image_RGB
