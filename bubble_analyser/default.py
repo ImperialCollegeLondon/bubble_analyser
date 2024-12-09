@@ -28,10 +28,10 @@ entire process from loading configurations and images to running the analysis an
 displaying results.
 """
 
+import timeit
 from pprint import pprint
 
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
 import toml as tomllib
 from numpy import typing as npt
@@ -42,9 +42,13 @@ from skimage import (
     transform,
 )
 
-from .calculate_circle_properties import calculate_circle_properties
-from .calculate_px2cm import calculate_px2cm
+from .calculate_circle_properties import (
+    calculate_circle_properties,
+    filter_circle_properties,
+)
+from .calculate_px2mm import calculate_px2mm
 from .config import Config
+from .image_postprocess import overlay_labels_on_rgb
 from .image_preprocess import image_preprocess
 from .morphological_process import morphological_process
 from .threshold import threshold
@@ -109,97 +113,142 @@ def load_toml(file_path: str) -> Config:
     return Config(**toml_data)
 
 
-def run_algorithm(
+def run_watershed_segmentation(
     target_img: npt.NDArray[np.int_],
-    bknd_img: npt.NDArray[np.int_],
     imgRGB: npt.NDArray[np.int_],
-    params: Config,
-    px2cm: float,
-    threshold_value: float,
-) -> None:
-    """Execute the image processing algorithm on the target image.
+    threshold_value: float = 0.3,
+    element_size: int = 5,
+    connectivity: int = 4,
+) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]:
+    """Run the image processing algorithm on the preprocessed image.
 
-    This function performs a series of image processing steps on the target image,
-    including thresholding, morphological processing, and watershed segmentation.
-    It then calculates properties of the detected circular features, such as equivalent
-    diameter and area, in centimeters using the provided pixel-to-centimeter ratio.
+    This function takes the preprocessed image, the original RGB image, the conversion
+    factor from millimeters to pixels, and several threshold values as input. It then
+    applies watershed segmentation to detect circular features in the image. The
+    detected features are then filtered based on their properties, such as eccentricity,
+    solidity, circularity, and size.
 
-    Args:
-        target_img: The preprocessed target image.
-        bknd_img: The background image used for thresholding.
-        imgRGB: The resized target image in RGB format.
-        params: A dictionary of parameters loaded from the TOML file.
-        px2cm: The conversion factor between pixels and centimeters.
-        threshold_value: Threshold value for background subtraction
+    The function returns the processed image, the labeled image before filtering, the
+    properties of the detected circular features, and the labeled image after filtering.
+
+    Parameters:
+        target_img (npt.NDArray[np.int_]): The preprocessed image after thresholding.
+        imgRGB (npt.NDArray[np.int_]): The original image in RGB format.
+        mm2px (float): The conversion factor from millimeters to pixels.
+        threshold_value (float, optional): The threshold value for background subtract.
+            Defaults to 0.3.
+        element_size (int, optional): The size of the morphological element for binary
+            operations. Defaults to 5.
+        connectivity (int, optional): The connectivity of the morphological operations.
+            Defaults to 4.
+        max_eccentricity (float, optional): The maximum eccentricity threshold for
+            filtering. Defaults to 1.0.
+        min_solidity (float, optional): The minimum solidity threshold for filtering.
+            Defaults to 0.9.
+        min_circularity (float, optional): The minimum circularity threshold for
+            filtering. Defaults to 0.1.
+        min_size (float, optional): The minimum size threshold for filtering in pixels.
+            Defaults to 0.1.
 
     Returns:
-        None. The function displays and saves various intermediary and final images, and
-        prints the properties of the detected circular features.
+        tuple[npt.NDArray[np.int_], npt.NDArray[np.int_], list[dict[str, float]],
+            npt.NDArray[np.int_]]: A tuple of four arrays, the first being the processed
+            image, the second being the labeled image before filtering, the third being
+            the properties of the detected circular features, and the fourth being the
+            labeled image after filtering.
     """
-    # Extract parameters from the dictionary
-    element_size = morphology.disk(
-        params.Morphological_element_size
-    )  # Structuring element for morphological operations
+    start_time = timeit.default_timer()
+    distTrans = cv2.distanceTransform(target_img, cv2.DIST_L2, element_size)
+    print(f"Distance transform time: {timeit.default_timer() - start_time:.4f} sec")
 
-    # Below are variables that might be used in the future coding
-    # connectivity = params.Connectivity  # Neighborhood connectivity (4 or 8)
-    # marker_size = params.Marker_size  # Marker size for watershed segmentation
-    # max_eccentricity = params.Max_Eccentricity  # Maximum eccentricity threshold
-    # min_solidity = params.Min_Solidity  # Minimum solidity threshold
-    # min_bubble_size = params.min_size  # Minimum bubble size (in mm)
-    # do_batch = params.do_batch  # Flag for batch processing
-
-    # Display the original image
-    plt.figure()
-    plt.subplot(231)
-    plt.title("1. Original image")
-    plt.imshow(target_img, cmap="gray")
-
-    # Apply thresholding and morphological processing
-    plt.subplot(232)
-    imgThreshold_ = threshold(target_img, bknd_img, threshold_value)
-    imgThreshold = morphological_process(imgThreshold_, element_size)
-    plt.title("2. Thresh&morph process")
-    plt.imshow(imgThreshold * 255, cmap="gray")
-
-    # Apply distance transform
-    plt.subplot(233)
-    distTrans = cv2.distanceTransform(imgThreshold, cv2.DIST_L2, 5)
-    plt.title("3. Distance Transform")
-    plt.imshow(distTrans)
-
-    # Apply thresholding to the distance transform
-    plt.subplot(234)
+    start_time = timeit.default_timer()
+    # Apply thresholding to the distance transform - sure foreground area
     _, distThresh = cv2.threshold(
-        distTrans, 0.3 * distTrans.max(), 255, cv2.THRESH_BINARY
+        distTrans, threshold_value * distTrans.max(), 255, cv2.THRESH_BINARY
     )
-    plt.title("4. Threshold of distTrans")
-    plt.imshow(distThresh)
+    print(f"Thresholding time: {timeit.default_timer() - start_time:.4f} sec")
 
-    # Apply connected component labeling
-    plt.subplot(235)
+    start_time = timeit.default_timer()
+    sure_fg_initial = distThresh.copy()
+
+    sure_bg = np.array(
+        cv2.dilate(target_img, np.ones((3, 3), np.uint8), iterations=3), dtype=np.uint8
+    )
+    sure_fg = np.array(sure_fg_initial, dtype=np.uint8)
+
+    unknown = cv2.subtract(sure_bg, sure_fg)
+
+    print(
+        f"Morphological operations time: {timeit.default_timer() - start_time:.4f} sec"
+    )
+
+    start_time = timeit.default_timer()
     distThresh = distThresh.astype(np.uint8)
-    _, labels = cv2.connectedComponents(distThresh)
-    plt.title("5. Labels")
-    plt.imshow(labels)
 
-    # Apply watershed segmentation
-    plt.figure()
-    plt.subplot(121)
+    _, labels = cv2.connectedComponents(sure_fg, connectivity)  # type: ignore
     labels = labels.astype(np.int32)
-    labels = cv2.watershed(imgRGB, labels).astype(np.int_)
-    plt.title("6. Final graph after watershed")
-    plt.imshow(labels)
+    labels = labels + 1
+    labels[unknown != 0] = 0
+    print(f"Connected components time: {timeit.default_timer() - start_time:.4f} sec")
 
-    # Display the images
-    plt.show()
+    start_time = timeit.default_timer()
+    labels_watershed = cv2.watershed(imgRGB, labels).astype(np.int_)
+    print(f"Watershed time: {timeit.default_timer() - start_time:.4f} sec")
 
-    # Calculate and print the circle properties
-    circle_properties = calculate_circle_properties(labels, px2cm)
+    start_time = timeit.default_timer()
+    imgRGB_before_filtering = imgRGB.copy()
+    imgRGB_before_filtering = overlay_labels_on_rgb(
+        imgRGB_before_filtering, labels_watershed
+    )
+    print(
+        f"Overlay labels before filtering time: \
+            {timeit.default_timer() - start_time:.4f} sec"
+    )
+    return imgRGB_before_filtering, labels_watershed
+
+
+def final_circles_filtering(
+    imgRGB: npt.NDArray[np.int_],
+    labels: npt.NDArray[np.int_],
+    mm2px: float,
+    max_eccentricity: float,
+    min_solidity: float,
+    min_circularity: float,
+) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_], list[dict[str, float]]]:
+    """Filter the circles in the image based on their properties.
+
+    Args:
+        imgRGB (npt.NDArray[np.int_]): The image in RGB format.
+        labels (npt.NDArray[np.int_]): The labels of the circles in the image.
+        mm2px (float): The conversion factor from millimeters to pixels.
+        max_eccentricity (float): The maximum eccentricity threshold for filtering.
+        min_solidity (float): The minimum solidity threshold for filtering.
+        min_circularity (float): The minimum circularity threshold for filtering.
+
+    Returns:
+        npt.NDArray[np.int_]: The filtered labels of the circles in the image.
+    """
+    start_time = timeit.default_timer()
+    labels = filter_circle_properties(
+        labels, mm2px, max_eccentricity, min_solidity, min_circularity
+    )
+    print(f"Filter properties time: {timeit.default_timer() - start_time:.4f} sec")
+
+    start_time = timeit.default_timer()
+    circle_properties = calculate_circle_properties(labels, mm2px)
+    print(f"Calculate properties time: {timeit.default_timer() - start_time:.4f} sec")
     pprint(circle_properties)
 
+    start_time = timeit.default_timer()
+    imgRGB_overlay = overlay_labels_on_rgb(imgRGB, labels)
+    print(f"Overlay labels time: {timeit.default_timer() - start_time:.4f} sec")
 
-def default() -> None:
+    return imgRGB_overlay, labels, circle_properties
+
+
+def pre_processing() -> (
+    tuple[npt.NDArray[np.int_], npt.NDArray[np.int_], Config, float, float]
+):
     """Run the default image processing routine.
 
     This function loads the configuration parameters from the TOML file, calculates the
@@ -223,24 +272,67 @@ def default() -> None:
     img_resample_factor = params.resample
     threshold_value = params.threshold_value
 
-    # Calculate the pixel to cm ratio
-    px2cm = calculate_px2cm(ruler_img_path, img_resample_factor)
-    print(f"Pixel to cm ratio: {px2cm} cm/pixel")
+    # Calculate the pixel to mm ratio
+    mm2px, _ = calculate_px2mm(ruler_img_path, img_resample_factor)
+    print(f"Pixel to mm ratio: {mm2px} mm/pixel")
 
     # Read the background and target image, resize and process into gray scale
     bknd_img, _ = image_preprocess(bknd_img_path, img_resample_factor)
     target_img, imgRGB = image_preprocess(target_img_path, img_resample_factor)
 
+    # Apply thresholding and morphological processing
+    imgThreshold = threshold(target_img, bknd_img, threshold_value)
+    element_size = morphology.disk(params.Morphological_element_size)
+    imgThreshold_new = morphological_process(imgThreshold, element_size)
+
+    # plt.figure()
+    # plt.subplot(231)
+    # plt.title("1. Original image")
+    # plt.imshow(target_img, cmap="gray")
+    # plt.subplot(232)
+    # plt.title("2. Thresh process")
+    # plt.imshow(imgThreshold * 255, cmap="gray")
+    # plt.subplot(233)
+    # plt.title("3. morphological process")
+    # plt.imshow(imgThreshold * 255, cmap="gray")
+    # plt.show()
+
     # Run the default image processing algorithm
-    run_algorithm(target_img, bknd_img, imgRGB, params, px2cm, threshold_value)
+    return imgThreshold_new, imgRGB, params, mm2px, threshold_value
+
+
+def main() -> None:
+    """Run the default image processing routine.
+
+    This function loads the configuration parameters from the TOML file, calculates the
+    pixel-to-centimeter ratio using a reference ruler image, and then runs the image
+    processing algorithm on the target image to detect and analyze circular features.
+
+    Args:
+        None.
+
+    Returns:
+        None. The function orchestrates the loading of images, execution of the
+        algorithm, and display of results.
+    """
+    imgThreshold, imgRGB, params, px2mm, threshold_value = pre_processing()
+    # Run the default image processing algorithm
+    img_overlay, labels_watershed = run_watershed_segmentation(
+        imgThreshold,
+        imgRGB,
+        threshold_value,
+        element_size=params.Morphological_element_size,
+        connectivity=4,
+    )
+    imgRGB_overlay, labels, circle_properties = final_circles_filtering(
+        imgRGB,
+        labels_watershed,
+        px2mm,
+        max_eccentricity=params.Max_Eccentricity,
+        min_solidity=params.Min_Solidity,
+        min_circularity=params.Min_Circularity,
+    )
 
 
 if __name__ == "__main__":
-    default()
-
-# First background subtraction (optional) then otsu thresholding
-# Let user define limitations based on the properties of the bubbles for filtering them
-# Output the image that eliminate the bubbles being filtered out
-# Table and Histogram
-# Let user modify the parameters in UI
-# Merge default branch
+    main()

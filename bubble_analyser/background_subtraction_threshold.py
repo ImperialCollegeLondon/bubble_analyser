@@ -82,8 +82,7 @@ def threshold(
 def background_subtraction_threshold(
     target_img: npt.NDArray[np.int_],
     background_img: npt.NDArray[np.int_],
-    threshold_value: float,
-) -> npt.NDArray[np.bool_]:
+) -> npt.NDArray[np.int_]:
     """Perform background subtraction and apply thresholding.
 
     Args:
@@ -102,6 +101,6 @@ def background_subtraction_threshold(
     difference_img = background_subtraction(target_img, background_img)
 
     # Apply a threshold to the difference image
-    thresholded_img = threshold(difference_img, threshold_value)
+    # thresholded_img = threshold(difference_img, threshold_value)
 
-    return thresholded_img
+    return difference_img
