@@ -18,9 +18,9 @@ pydantic = "^2.8.2"
 pathlib = "^1.0.1"
 typing-extensions = "^4.12.2"
 pyside6 = "^6.7.2"
-opencv-python = "^4.10.0.84"
 datetime = "^5.5"
 numba = "^0.60.0"
+opencv-python = "^4.11.0.86"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.6.0"
