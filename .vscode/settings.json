@@ -1,0 +1,5 @@
+{
+    "python.analysis.extraPaths": [
+        "./bubble_analyser/processing"
+    ]
+}
