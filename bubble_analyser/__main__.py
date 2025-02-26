@@ -2,4 +2,5 @@
 
 if __name__ == "__main__":
     from bubble_analyser.gui.event_handlers import MainHandler
+
     MainHandler()

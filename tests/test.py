@@ -7,16 +7,19 @@ def test_version():
     """Check that the version is acceptable."""
     assert __version__ == "0.1.0"
 
+
 ### Complete this test file
 
 import unittest
-import numpy as np
 from pathlib import Path
+
+import numpy as np
+
 from bubble_analyser.processing.image_preprocess import image_preprocess
 from bubble_analyser.processing.morphological_process import morphological_process
 
-class TestImagePreprocess(unittest.TestCase):
 
+class TestImagePreprocess(unittest.TestCase):
     def test_image_preprocess(self):
         # Define a test image path
         img_path = Path("test_image.JPG")
@@ -32,17 +35,18 @@ class TestImagePreprocess(unittest.TestCase):
         self.assertIsNotNone(img_rgb)
 
         # Check if the output images have the correct shape
-        self.assertEqual(len(img_grey.shape), 2)  # Grayscale image should have 2 dimensions
+        self.assertEqual(
+            len(img_grey.shape), 2
+        )  # Grayscale image should have 2 dimensions
         self.assertEqual(len(img_rgb.shape), 3)  # RGB image should have 3 dimensions
 
 
 class TestMorphologicalProcess(unittest.TestCase):
-
     def test_morphological_process(self):
         # Define a test binary image
         img_path = Path("test_image.JPG")
         img = io.imread(image_path)
-        
+
         img_binary = np.random.randint(0, 2, size=(512, 512), dtype=np.bool_)
 
         # Define a test element size
@@ -59,6 +63,7 @@ class TestMorphologicalProcess(unittest.TestCase):
 
         # Check if the output image is of type uint8
         self.assertEqual(img_processed.dtype, np.uint8)
-        
+
+
 if __name__ == "__main__":
     unittest.main()

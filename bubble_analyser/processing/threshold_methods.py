@@ -27,19 +27,19 @@ design ensures that users can select the most suitable thresholding technique
 based on the specific characteristics of the images they are working with.
 """
 
+from pathlib import Path
 from typing import cast
-import numpy as np
+
 import cv2
+import numpy as np
 from numpy import typing as npt
 from skimage import (
     filters,
 )
-from pathlib import Path
+
 
 class ThresholdMethods:
-    
-    def otsu_threshold(self,
-                       target_img: npt.NDArray[np.int_]) -> npt.NDArray[np.bool_]:
+    def otsu_threshold(self, target_img: npt.NDArray[np.int_]) -> npt.NDArray[np.bool_]:
         """Apply Otsu's thresholding to the target image and return an inverted binary mask.
 
         This function takes a target image and a background image. It applies Otsu's
@@ -62,8 +62,7 @@ class ThresholdMethods:
 
         return binary_image
 
-    def convert_grayscale(self,
-                          image: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
+    def convert_grayscale(self, image: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
         """Converts an image to grayscale.
 
         Args:
@@ -75,9 +74,9 @@ class ThresholdMethods:
         if len(image.shape) == 3:
             image = cast(npt.NDArray[np.int_], cv2.cvtColor(image, cv2.COLOR_BGR2GRAY))
         return image
-        
-    def background_subtraction(self,
-        target_img: npt.NDArray[np.int_], background_img: npt.NDArray[np.int_]
+
+    def background_subtraction(
+        self, target_img: npt.NDArray[np.int_], background_img: npt.NDArray[np.int_]
     ) -> npt.NDArray[np.int_]:
         """Performs background subtraction on two images.
 
@@ -93,9 +92,7 @@ class ThresholdMethods:
         return cast(npt.NDArray[np.int_], difference_img)
 
     def threshold_with_background(
-        self,
-        target_img: npt.NDArray[np.int_],
-        bknd_img: npt.NDArray[np.int_]
+        self, target_img: npt.NDArray[np.int_], bknd_img: npt.NDArray[np.int_]
     ) -> npt.NDArray[np.bool]:
         """Applies a threshold to the target image based on the selected method.
 
@@ -113,11 +110,11 @@ class ThresholdMethods:
 
         # Subtract the background image from the target image
         difference_img = self.background_subtraction(target_img, background_img)
-    
+
         return self.otsu_threshold(difference_img)
 
-    def threshold_without_background(self,
-        target_img: npt.NDArray[np.int_]
+    def threshold_without_background(
+        self, target_img: npt.NDArray[np.int_]
     ) -> npt.NDArray[np.bool_]:
         """Applies a threshold to the target image without background subtraction.
 
@@ -129,30 +126,40 @@ class ThresholdMethods:
             npt.NDArray: The thresholded image.
         """
         return ~self.otsu_threshold(target_img)
-    
+
+
 if __name__ == "__main__":
     # Define the image path
     img_path = Path("../../tests/test_image_grey.JPG")
     bknd_path = Path("../../tests/background_image_grey.JPG")
     img_thresholded_path_otsu = Path("../../tests/test_image_thresholded_otsu.JPG")
-    img_thresholded_path_with_bknd = Path("../../tests/test_image_thresholded_with_bknd.JPG")
-    
+    img_thresholded_path_with_bknd = Path(
+        "../../tests/test_image_thresholded_with_bknd.JPG"
+    )
+
     # Create an instance of the ThresholdMethods class
     threshold_methods = ThresholdMethods()
-    
+
     # Load the image
-    img = cv2.imread(str(img_path))
-    bknd = cv2.imread(str(bknd_path))
-    
+    img: npt.NDArray[np.int_] = cast(npt.NDArray[np.int_], cv2.imread(str(img_path)))
+    bknd: npt.NDArray[np.int_] = cast(npt.NDArray[np.int_], cv2.imread(str(bknd_path)))
+
     # Convert the image to grayscale
-    img_grey = threshold_methods.convert_grayscale(img)
-    bknd_grey = threshold_methods.convert_grayscale(bknd)
-    
+    img_grey: npt.NDArray[np.int_] = threshold_methods.convert_grayscale(img)
+    bknd_grey: npt.NDArray[np.int_] = threshold_methods.convert_grayscale(bknd)
+
     # Apply Otsu's thresholding to the grayscale image
     img_thresholded_otsu = threshold_methods.threshold_without_background(img_grey)
-    img_thresholded_with_bknd = threshold_methods.threshold_with_background(img_grey, bknd_grey)
-    
+    img_thresholded_with_bknd = threshold_methods.threshold_with_background(
+        img_grey, bknd_grey
+    )
+
     # Save the thresholded image
-    cv2.imwrite(str(img_thresholded_path_otsu), img_thresholded_otsu.astype(np.uint8) * 255)
-    cv2.imwrite(str(img_thresholded_path_with_bknd), img_thresholded_with_bknd.astype(np.uint8) * 255)
+    cv2.imwrite(
+        str(img_thresholded_path_otsu), img_thresholded_otsu.astype(np.uint8) * 255
+    )
+    cv2.imwrite(
+        str(img_thresholded_path_with_bknd),
+        img_thresholded_with_bknd.astype(np.uint8) * 255,
+    )
     print(f"Thresholded image saved to: {img_thresholded_path_otsu}")
