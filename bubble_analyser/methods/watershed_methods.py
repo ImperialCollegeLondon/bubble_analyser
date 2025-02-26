@@ -30,7 +30,7 @@ class NormalWatershed(WatershedSegmentation):
 
     def initialize_processing(
         self,
-        params: dict,
+        params: dict[str, float | int],
         img_grey: npt.NDArray[np.int_],
         img_rgb: npt.NDArray[np.int_],
         if_bknd_img: bool, 
@@ -52,17 +52,17 @@ class NormalWatershed(WatershedSegmentation):
 
     def update_params(self, params: dict[str, float | int]) -> None:
         self.resample = params["resample"]
-        self.element_size = params["element_size"]
-        self.connectivity = params["connectivity"]
+        self.element_size = params["element_size"] # type: ignore
+        self.connectivity = params["connectivity"] # type: ignore
         self.threshold_value = params["threshold_value"]
 
     def __threshold_dt_image(self) -> None:
-        _, self.img_grey_dt_thresh = cv2.threshold(
+        _, self.img_grey_dt_thresh = cv2.threshold( # type: ignore
             self.img_grey_dt,
             self.threshold_value * self.img_grey_dt.max(),
             255,
             cv2.THRESH_BINARY,
-        )
+        ) 
 
     def __get_sure_fg_bg(self) -> None:
         sure_fg_initial = self.img_grey_dt_thresh.copy()
@@ -72,7 +72,7 @@ class NormalWatershed(WatershedSegmentation):
             dtype=np.uint8,
         )
         self.sure_fg = np.array(sure_fg_initial, dtype=np.uint8)
-        self.unknown = cv2.subtract(self.sure_bg, self.sure_fg)
+        self.unknown = cv2.subtract(self.sure_bg, self.sure_fg) # type: ignore
 
     def get_results_img(self) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]:
         self._threshold()
@@ -88,7 +88,7 @@ class NormalWatershed(WatershedSegmentation):
 
 
 class IterativeWatershed(WatershedSegmentation):
-    def __init__(self, params: dict) -> None:
+    def __init__(self, params: dict[str, float | int]) -> None:
         self.name = "Iterative Watershed"
         self.max_thresh: float
         self.min_thresh: float
@@ -98,7 +98,7 @@ class IterativeWatershed(WatershedSegmentation):
         self.no_overlap_count: int = 0  # Track number of "no overlap" occurrences
         self.final_label_count: int = 0  # Track final number of labels
 
-    def get_needed_params(self) -> None:
+    def get_needed_params(self) -> dict[str, float | int]:
         return {
             "resample": self.resample,
             "element_size": self.element_size,
@@ -130,10 +130,10 @@ class IterativeWatershed(WatershedSegmentation):
             connectivity=self.connectivity,
         )
 
-    def update_params(self, params: dict) -> None:
+    def update_params(self, params: dict[str, float | int]) -> None:
         self.resample = params["resample"]
-        self.element_size = params["element_size"]
-        self.connectivity = params["connectivity"]
+        self.element_size = params["element_size"] # type: ignore
+        self.connectivity = params["connectivity"] # type: ignore
         self.max_thresh = params["max_thresh"]
         self.min_thresh = params["min_thresh"]
         self.step_size = params["step_size"]
@@ -176,11 +176,11 @@ class IterativeWatershed(WatershedSegmentation):
 
                 if not np.any(overlap):  # If no overlap, it's a new object
                     self.no_overlap_count += 1
-                    output_mask = cv2.bitwise_or(output_mask, component_mask * 255)
+                    output_mask = cv2.bitwise_or(output_mask, component_mask * 255) # type: ignore
 
             # Decrease the threshold for the next iteration
             current_thresh -= self.step_size
-        self.output_mask_for_labels = output_mask
+        self.output_mask_for_labels = output_mask # type: ignore
 
         self.final_label_count, _ = cv2.connectedComponents(self.output_mask_for_labels)
         logging.info(
