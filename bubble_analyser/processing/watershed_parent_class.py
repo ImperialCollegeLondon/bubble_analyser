@@ -33,6 +33,7 @@ class WatershedSegmentation:
         self.bknd_img: npt.NDArray[np.int_] = bknd_img
 
     def _threshold(self) -> None:
+        print("if_bknd in watershed_parent: ", self.if_bknd_img)
         threshold_methods = ThresholdMethods()
         if self.if_bknd_img is True:
             self.img_grey_thresholded = threshold_methods.threshold_with_background(

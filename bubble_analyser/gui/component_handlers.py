@@ -4,6 +4,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 from numpy import typing as npt
+from typing import cast
 from PySide6.QtCore import QEventLoop, QThread, Signal
 
 from bubble_analyser.processing import (
@@ -14,19 +15,17 @@ from bubble_analyser.processing import (
     calculate_px2mm,
 )
 
-
 class WorkerThread(QThread):
     update_progress = Signal(int)
     processing_done = Signal()
-
+    
     def __init__(
         self,
         model,
         if_save_processed_image: bool = False,
-        save_path: Path = None,  # type: ignore
-        parent=None,
+        save_path: Path = cast(Path, None)
     ) -> None:
-        super().__init__(parent)
+
         self.if_save = if_save_processed_image
         self.save_path = save_path
         self.model: ImageProcessingModel = model
@@ -39,12 +38,11 @@ class WorkerThread(QThread):
 
     def on_processing_done(self) -> None:
         self.processing_done.emit()
-
-
+        
 class InputFilesModel:
     def __init__(self) -> None:
         self.sample_images_confirmed: bool = False
-        self.folder_path: Path = None
+        self.folder_path: Path = cast(Path, None)
 
         self.image_list: list[str] = []
 
@@ -64,7 +62,7 @@ class InputFilesModel:
 
         self.sample_images_confirmed = True
 
-    def get_image_list(self, folder_path: str) -> list[str]:
+    def get_image_list(self, folder_path: str) -> tuple[list[str], list[str]]:
         if folder_path is None:
             folder_path = self.folder_path
 
@@ -77,13 +75,12 @@ class InputFilesModel:
                 self.image_list_full_path.append(os.path.join(folder_path, file_name))
         return self.image_list, self.image_list_full_path
 
-
 class CalibrationModel:
     def __init__(self) -> None:
         self.pixel_img_confirmed: bool = False
         self.bknd_img_confirmed: bool = False
 
-        self.bknd_img_path: Path = None
+        self.bknd_img_path: Path = cast(Path, None)
         self.bknd_img: npt.NDArray[np.int_]
         self.if_bknd: bool = False
 
@@ -94,17 +91,14 @@ class CalibrationModel:
         self.calibration_confirmed: bool = False
 
     def get_px2mm_ratio(
-        self, pixel_img_path: str = None, img_resample: float = 0.5, gui=None
+        self, pixel_img_path: Path, img_resample: float = 0.5, gui = None
     ) -> float:  # type: ignore
-        if pixel_img_path is None:
-            pixel_img_path = self.pixel_img_path
         __, self.px2mm = calculate_px2mm(pixel_img_path, img_resample, gui)
 
         return self.px2mm
 
     def confirm_calibration(self) -> None:
         self.calibration_confirmed = True
-
 
 class ImageProcessingModel:
     def __init__(self, params: Config) -> None:
@@ -274,3 +268,5 @@ class ImageProcessingModel:
             print("saved")
         except Exception as e:
             print(e)
+
+

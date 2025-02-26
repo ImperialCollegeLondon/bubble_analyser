@@ -37,7 +37,7 @@ px2mm = 1.0
 raw_img_path = "."
 
 # Background image
-bknd_img_path = "."
+bknd_img_path = "None"
 
 # Ruler image
 ruler_img_path = "."

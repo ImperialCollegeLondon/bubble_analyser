@@ -115,7 +115,7 @@ class CircleHandler:
         ellipse_image = self.img_rgb
 
         for ellipse in self.ellipses:
-            cv2.ellipse(ellipse_image, ellipse, (0, 0, 255), thickness)
+            cv2.ellipse(ellipse_image, ellipse, (0, 0, 255), thickness = -1)
         self.ellipses_on_image = ellipse_image
 
         return ellipse_image
