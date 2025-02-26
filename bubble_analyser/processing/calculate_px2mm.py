@@ -31,11 +31,9 @@ class ImageLabel(QLabel):
         self.img_copy = img.copy()
         height, width, channel = img.shape
         bytes_per_line = 3 * width
-        q_img = QImage(
-            img.data, width, height, bytes_per_line, format=QImage.Format.Format_RGB888
-        ) # type: ignore
+        q_img = QImage(memoryview(img), width, height, bytes_per_line, QImage.Format.Format_RGB888)  # type: ignore
         self.setPixmap(QPixmap.fromImage(q_img))
-
+        
     def mousePressEvent(self, event: QMouseEvent) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
             self.refPt.append((event.x(), event.y()))
@@ -59,10 +57,9 @@ class ImageLabel(QLabel):
     def update_image(self) -> None:
         height, width, channel = self.img_copy.shape
         bytes_per_line = 3 * width
-        q_img = QImage(
-            self.img_copy.data, width, height, bytes_per_line, QImage.Format.Format_RGB888
-        ) # type: ignore
+        q_img = QImage(memoryview(self.img_copy), width, height, bytes_per_line, QImage.Format.Format_RGB888)  # type: ignore
         self.setPixmap(QPixmap.fromImage(q_img))
+        
 
 
 def resize_to_target_width(
