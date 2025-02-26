@@ -189,11 +189,11 @@ if __name__ == "__main__":
     # img_path = Path("../../datafile/calibration_files/Background.png")
     # output_path_grey = Path("../../tests/background_image_grey.JPG")
     # output_path_rgb = Path("../../tests/background_image_rgb.JPG")
-    
+
     img_path = Path("../../tests/test_image_raw.JPG")
     output_path_grey = Path("../../tests/test_image_grey.JPG")
     output_path_rgb = Path("../../tests/test_image_rgb.JPG")
-    
+
     img_resample = 0.5
 
     img, img_rgb = image_preprocess(img_path, img_resample)
@@ -201,7 +201,7 @@ if __name__ == "__main__":
     # Save the output images
     img_grey_path = Path(output_path_grey)
     img_rgb_path = Path(output_path_rgb)
-    cv2.imwrite(str(img_grey_path), img_grey*255)
+    cv2.imwrite(str(img_grey_path), img_grey * 255)
     cv2.imwrite(str(img_rgb_path), img_rgb)
 
     print(f"Grayscale image saved to: {img_grey_path}")

@@ -19,9 +19,9 @@ class <method_name>():
         self.param3 = params["param3"]
         ......
 
-    def initialize_processing(self, 
+    def initialize_processing(self,
                               params: dict,
-                              img_grey: npt.NDArray[np.int_], 
+                              img_grey: npt.NDArray[np.int_],
                               img_rgb: npt.NDArray[np.int_],
                               bknd_img: npt.NDArray[np.int_] = None):
         self.img_grey = img_grey  # the target image in grey channel
@@ -29,10 +29,9 @@ class <method_name>():
         self.bknd_img = bknd_img
         self.update_params(params)
         # the bknd_img is optional, if not provided, it will be None
-    
+
     .......
 
     def get_results_img(self):
         ......
         return self.labels_on_img, self.labels (labels_on_img is the overlayed image with the masks of the bubbles, labels_watershed is just the masks of the bubbles)
-

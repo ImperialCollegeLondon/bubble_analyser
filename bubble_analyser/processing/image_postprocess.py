@@ -67,4 +67,3 @@ def overlay_labels_on_rgb(
     label_overlay = cv2.addWeighted(imgRGB, 1 - alpha, colored_labels, alpha, 0)
 
     return label_overlay  # type: ignore
-

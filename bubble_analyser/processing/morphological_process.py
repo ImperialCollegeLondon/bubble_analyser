@@ -18,19 +18,21 @@ analysis.
 """
 
 import time
-import matplotlib.pyplot as plt
-# import matplotlib
-# matplotlib.use('TkAgg') 
-
-import cv2
-import numpy as np
 from pathlib import Path
+
+# import matplotlib
+# matplotlib.use('TkAgg')
+import cv2
+import matplotlib.pyplot as plt
+import numpy as np
 from numpy import typing as npt
 from scipy import ndimage
 from skimage import (
-    segmentation,
     morphology,
+    segmentation,
 )
+
+
 def morphological_process(
     target_img: npt.NDArray[np.bool_], element_size: int = 8
 ) -> npt.NDArray[np.int_]:
@@ -53,7 +55,7 @@ def morphological_process(
     """
     start_time = time.perf_counter()
     # element_size = morphology.disk(element_size)
-    
+
     kernel = morphology.disk(element_size).astype(np.uint8)
     dilated = cv2.dilate(target_img.astype(np.uint8), kernel, iterations=1)
     image_processed_closed = cv2.morphologyEx(dilated, cv2.MORPH_CLOSE, kernel)
@@ -61,7 +63,7 @@ def morphological_process(
     # image_processed_closed = cv2.morphologyEx(
     #     target_img.astype(np.uint8), cv2.MORPH_CLOSE, element_size
     # )  # type: ignore
-    
+
     print("Time consumed for closing: ", time.perf_counter() - start_time)
     start_time = time.perf_counter()
     image_processed_filled = ndimage.binary_fill_holes(image_processed_closed)
@@ -72,7 +74,7 @@ def morphological_process(
 
     image_processed_cleared = image_processed_cleared.astype(np.uint8)
     # opening = cv2.morphologyEx(B,cv2.MORPH_OPEN,kernel, iterations = 2)
-    
+
     plt.figure()
     plt.subplot(231)
     plt.title("1. Original image")
@@ -87,26 +89,25 @@ def morphological_process(
     plt.title("4. clear border")
     plt.imshow(image_processed_cleared, cmap="gray")
     plt.show()
-    
+
     return image_processed_cleared
 
-        
+
 if __name__ == "__main__":
-    
     # Define the image path
     img_path = Path("../../tests/test_image_thresholded_otsu.JPG")
     output_path = Path("../../tests/test_image_mt.JPG")
-    
+
     # Load the image
     img = cv2.imread(str(img_path))
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     _, img_binary = cv2.threshold(img_gray, 127, 255, cv2.THRESH_BINARY)
-    
+
+    img_processed: npt.NDArray[np.int_]
     # Apply morphological process to the grayscale image
-    img_processed = morphological_process(img_binary, 8)
+    img_processed = morphological_process(img_binary, 8) # type: ignore
 
     # Save the processed image
-    cv2.imwrite(str(output_path), img_processed.astype(np.uint8)*255)
+    cv2.imwrite(str(output_path), img_processed.astype(np.uint8) * 255)
 
     print(f"Morphological processed image saved to: {output_path}")
-

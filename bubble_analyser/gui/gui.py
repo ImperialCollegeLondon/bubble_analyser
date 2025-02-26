@@ -1,18 +1,16 @@
-from bubble_analyser.gui import (
-    MainHandler)
-import sys
 from datetime import datetime
 
 import matplotlib
+
+from bubble_analyser.gui import MainHandler
+
 matplotlib.use("Agg")  # Force backend to Agg for CI
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-from numpy import typing as npt
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
-    QApplication,
     QCheckBox,
     QComboBox,
     QFrame,
@@ -22,23 +20,15 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QListWidget,
     QMainWindow,
+    QMenu,
+    QMenuBar,
     QPushButton,
     QSpinBox,
     QTableWidget,
-    QMenuBar,
     QTabWidget,
     QVBoxLayout,
     QWidget,
-    QMenu
 )
-
-
-
-from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QPushButton, QLineEdit, QWidget
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
-
-
 
 
 class MplCanvas(FigureCanvas):
@@ -65,21 +55,19 @@ class MplCanvas(FigureCanvas):
         super().__init__(self.fig)
 
 
-            
 class MainWindow(QMainWindow):
-
-    def __init__(self,
-                 main_handler=None) -> None:
-        
+    def __init__(self, main_handler=None) -> None:
         super().__init__()
-        
+
         self.main_handler: MainHandler = main_handler
-        
+
         self.folder_tab_handler = self.main_handler.folder_tab_handler
 
         self.calibration_tab_handler = self.main_handler.calibration_tab_handler
-        
-        self.image_processing_tab_handler = self.main_handler.image_processing_tab_handler
+
+        self.image_processing_tab_handler = (
+            self.main_handler.image_processing_tab_handler
+        )
 
         self.results_tab_handler = self.main_handler.results_tab_handler
 
@@ -115,30 +103,31 @@ class MainWindow(QMainWindow):
         self.menu_bar = QMenuBar(self)
         self.setMenuBar(self.menu_bar)
         self.setup_menu_bar()
-        
+
         self.results_tab = QWidget()
         self.tabs.addTab(self.results_tab, "Results")
         # self.setup_results_tab()
-        
-    def load_full_gui(self):
-        
+
+    def load_full_gui(self) -> None:
         self.setup_folder_tab()
         self.setup_calibration_tab()
         self.setup_image_processing_tab()
         self.setup_results_tab()
 
-    def setup_menu_bar(self):
+    def setup_menu_bar(self) -> None:
         setting_menu = QMenu("Settings")
-        export_setting_action = QAction("Export settings",self)
-        export_setting_action.triggered.connect(self.main_handler.open_export_settings_dialog)
+        export_setting_action = QAction("Export settings", self)
+        export_setting_action.triggered.connect(
+            self.main_handler.menubar_open_export_settings_dialog
+        )
         setting_menu.addAction(export_setting_action)
-        
-        restart_action = QAction("Restart a new session",self)
-        restart_action.triggered.connect(self.main_handler.ask_if_restart)
+
+        restart_action = QAction("Restart a new session", self)
+        restart_action.triggered.connect(self.main_handler.menubar_ask_if_restart)
         setting_menu.addAction(restart_action)
 
         setting_menu = self.menu_bar.addMenu(setting_menu)
-        
+
     def setup_folder_tab(self) -> None:
         """Set up the folder tab.
 
@@ -161,9 +150,10 @@ class MainWindow(QMainWindow):
         self.folder_path_edit.setText(str(self.folder_tab_handler.image_path))
         select_folder_button = QPushButton("Select Folder")
         confirm_folder_button = QPushButton("Confirm Folder")
-        select_folder_button.clicked.connect(self.folder_tab_handler.select_folder)
-        confirm_folder_button.clicked.connect(lambda: self.main_handler.\
-            confirm_folder_selection())
+        select_folder_button.clicked.connect(self.main_handler.tab1_select_folder)
+        confirm_folder_button.clicked.connect(
+            self.main_handler.tab1_confirm_folder_selection
+        )
         top_layout.addWidget(select_folder_button)
         top_layout.addWidget(self.folder_path_edit)
         top_layout.addWidget(confirm_folder_button)
@@ -172,7 +162,9 @@ class MainWindow(QMainWindow):
         bottom_left_frame = QFrame()
         bottom_left_layout = QVBoxLayout(bottom_left_frame)
         self.image_list = QListWidget()
-        self.image_list.clicked.connect(self.folder_tab_handler.preview_image_folder_tab)
+        self.image_list.clicked.connect(
+            self.folder_tab_handler.preview_image_folder_tab
+        )
         bottom_left_layout.addWidget(self.image_list)
 
         # Bottom Right: Image Preview
@@ -230,11 +222,13 @@ class MainWindow(QMainWindow):
         self.pixel_img_name = QLineEdit()
         self.pixel_img_name.setText(str(self.calibration_tab_handler.px_img_path))
         pixel_img_confirm_button = QPushButton("Confirm")
-        pixel_img_confirm_button.clicked.connect(self.calibration_tab_handler.get_px2mm_ratio)
+        pixel_img_confirm_button.clicked.connect(self.main_handler.tab2_get_px2mm_ratio)
         pixel_img_select_button = QPushButton(
             "Select other image for resolution calibration"
         )
-        pixel_img_select_button.clicked.connect(self.calibration_tab_handler.select_px_mm_image)
+        pixel_img_select_button.clicked.connect(
+            self.main_handler.tab2_select_px_mm_image
+        )
         self.pixel_img_preview = QLabel()
         self.pixel_img_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.pixel_img_preview.setFixedSize(400, 300)
@@ -257,7 +251,9 @@ class MainWindow(QMainWindow):
         bg_corr_select_button = QPushButton(
             "Select other image for background correction"
         )
-        bg_corr_select_button.clicked.connect(self.calibration_tab_handler.select_bg_corr_image)
+        bg_corr_select_button.clicked.connect(
+            self.main_handler.tab2_select_bg_corr_image
+        )
         self.bg_corr_image_preview = QLabel()
         self.bg_corr_image_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.bg_corr_image_preview.setFixedSize(400, 300)
@@ -289,7 +285,7 @@ class MainWindow(QMainWindow):
 
         confirm_px_mm_button = QPushButton("Confirm calibration and background image")
         confirm_px_mm_button.clicked.connect(
-            lambda: self.main_handler.confirm_calibration()
+            self.main_handler.tab2_confirm_calibration
         )  # Connect confirm button to the handler
 
         bottom_frame_layout.addWidget(manualcalibration_frame)
@@ -333,10 +329,16 @@ class MainWindow(QMainWindow):
 
         prev_button = QPushButton("< Prev. Img")
         next_button = QPushButton("Next Img >")
-        prev_button.clicked.connect(lambda: self.image_processing_tab_handler.update_sample_image("prev"))
-        next_button.clicked.connect(lambda: self.image_processing_tab_handler.update_sample_image("next"))
+        prev_button.clicked.connect(
+            lambda: self.main_handler.tab3_update_sample_image("prev")
+        )
+        next_button.clicked.connect(
+            lambda: self.main_handler.tab3_update_sample_image("next")
+        )
         preview_processed_images_button = QPushButton("Preview Processed Images")
-        preview_processed_images_button.clicked.connect(lambda: self.image_processing_tab_handler.preview_processed_images())
+        preview_processed_images_button.clicked.connect(
+            self.main_handler.tab3_preview_processed_images
+        )
 
         first_column_layout.addWidget(QLabel("Select image and preview"))
         first_column_layout.addWidget(self.sample_image_preview)
@@ -356,35 +358,42 @@ class MainWindow(QMainWindow):
 
         # Processed Image Before Filtering Canvas
         self.label_before_filtering = MplCanvas(self, width=5, height=4, dpi=100)
-        second_column_layout.addWidget(QLabel("Step 1:Processed Image_Before Filtering"))
+        second_column_layout.addWidget(
+            QLabel("Step 1:Processed Image_Before Filtering")
+        )
         second_column_layout.addWidget(self.label_before_filtering)
-        
+
         algorithm_label = QLabel("Select Algorithm:")
         self.algorithm_combo = QComboBox()
         self.image_processing_tab_handler.initialize_algorithm_combo()
-        self.algorithm_combo.currentTextChanged.connect(lambda: self.image_processing_tab_handler\
-            .handle_algorithm_change(self.algorithm_combo.currentText()))
-        
+        self.algorithm_combo.currentTextChanged.connect(
+            lambda: self.main_handler.tab3_handle_algorithm_change(
+                self.algorithm_combo.currentText()
+            )
+        )
+
         # Parameter sandbox for img_resample_factor, threshold_value, element_size
         sandbox1_label = QLabel("Adjust parameters before filtering")
-        
+
         second_column_layout.addWidget(algorithm_label)
         second_column_layout.addWidget(self.algorithm_combo)
         second_column_layout.addWidget(sandbox1_label)
-        
+
         self.param_sandbox1 = QTableWidget(0, 2)
         self.param_sandbox1.setHorizontalHeaderLabels(["Parameter", "Value"])
-        self.image_processing_tab_handler.load_parameter_table_1(self.algorithm_combo.currentText())  # New helper method
+        self.main_handler.tab3_load_parameter_table_1(
+            self.algorithm_combo.currentText()
+        )  # New helper method
 
         # Confirm button for this sandbox
         preview_button1 = QPushButton("Confirm parameter and preview")
-        preview_button1.clicked.connect(lambda: self.image_processing_tab_handler.\
-            confirm_parameter_before_filtering(self.algorithm_combo.currentText() ))
-        
+        preview_button1.clicked.connect(
+            self.main_handler.tab3_confirm_parameter_before_filtering
+        )
+
         second_column_layout.addWidget(sandbox1_label)
         second_column_layout.addWidget(self.param_sandbox1)
         second_column_layout.addWidget(preview_button1)
-
 
         # ----------- Third Column: Processed Image After Filtering and Sandbox ------
 
@@ -400,16 +409,19 @@ class MainWindow(QMainWindow):
         sandbox2_label = QLabel("Adjust parameters for filtering circles")
         self.param_sandbox2 = QTableWidget(0, 2)
         self.param_sandbox2.setHorizontalHeaderLabels(["Parameter", "Value"])
-        self.image_processing_tab_handler.initialize_parameter_table_2()  # New helper method
-
+        self.main_handler.tab3_initialize_parameter_table_2()  # New helper method
 
         # Confirm and Batch Process buttons for this sandbox
         preview_button2 = QPushButton("Confirm parameter and preview")
         manual_adjustment_button = QPushButton("Manual adjustment")
-        manual_adjustment_button.clicked.connect(self.image_processing_tab_handler.ellipse_manual_adjustment)
+        manual_adjustment_button.clicked.connect(
+            self.main_handler.tab3_ellipse_manual_adjustment
+        )
         batch_process_button = QPushButton("Batch process images")
-        preview_button2.clicked.connect(self.image_processing_tab_handler.confirm_parameter_for_filtering)
-        batch_process_button.clicked.connect(self.image_processing_tab_handler.ask_if_batch)
+        preview_button2.clicked.connect(
+            self.main_handler.tab3_confirm_parameter_for_filtering
+        )
+        batch_process_button.clicked.connect(self.main_handler.tab3_ask_if_batch)
 
         third_column_layout.addWidget(sandbox2_label)
         third_column_layout.addWidget(self.param_sandbox2)
@@ -421,7 +433,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(first_column_frame, 0, 0)
         layout.addWidget(second_column_frame, 0, 1)
         layout.addWidget(third_column_frame, 0, 2)
-      
+
     def setup_results_tab(self) -> None:
         """Set up the results tab.
 
@@ -430,7 +442,7 @@ class MainWindow(QMainWindow):
         2. Controls for histogram options, including the type of histogram to
         generate (by number or volume), checkboxes for PDF and CDF, the number
         of bins, and the x-axis limits.
-        3. A legend position and orientation dropdown.
+        3. A legend position.
         4. A descriptive size options section, which includes checkboxes for
         displaying d32, dmean, and dxy, as well as input boxes for x and y
         values for dxy.
