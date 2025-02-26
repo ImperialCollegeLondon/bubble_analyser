@@ -4,6 +4,7 @@ from pathlib import Path
 
 import numpy as np
 from cv2 import RotatedRect
+from typing import cast
 from numpy import typing as npt
 from typing import Any, Sequence
 from ..methods.watershed_methods import IterativeWatershed, NormalWatershed
@@ -161,7 +162,7 @@ class Image:
         raw_img_path: Path,
         all_methods_n_params: dict[str, dict[str, float | int]],
         methods_handler: MethodsHandler,
-        bknd_img_path: Path = Path("None"),
+        bknd_img_path: Path = cast(Path, None),
     ) -> None:  # type: ignore
         """Initialize an Image instance with the specified parameters and processing handler.
 
@@ -186,9 +187,10 @@ class Image:
         self.raw_img_path = raw_img_path
         self.if_bknd_img: bool = False
         self.bknd_img_path: Path = bknd_img_path
-        self.bknd_img: npt.NDArray[np.int_]
+        self.bknd_img: npt.NDArray[np.int_] = cast(npt.NDArray[np.int_], None)
 
-        if bknd_img_path is not Path("None"):
+        if bknd_img_path is not None:
+            print("bknd_img_path:", bknd_img_path)
             self.if_bknd_img = True
             # self.bknd_img_path = bknd_img_path
         

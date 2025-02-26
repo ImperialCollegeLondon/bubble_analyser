@@ -2,8 +2,8 @@ from datetime import datetime
 
 import matplotlib
 
-from bubble_analyser.gui import MainHandler
-
+# from bubble_analyser.gui import MainHandler
+import bubble_analyser.gui.event_handlers as hd
 matplotlib.use("Agg")  # Force backend to Agg for CI
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
@@ -59,7 +59,7 @@ class MainWindow(QMainWindow):
     def __init__(self, main_handler=None) -> None:
         super().__init__()
 
-        self.main_handler: MainHandler = main_handler
+        self.main_handler: hd.MainHandler = main_handler
 
         self.folder_tab_handler = self.main_handler.folder_tab_handler
 

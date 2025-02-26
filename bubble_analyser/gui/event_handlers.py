@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import toml as tomllib
 from numpy import typing as npt
+from typing import cast
 from pydantic import ValidationError
 from PySide6.QtCore import QProcess, Qt, QThread, QTimer, Signal
 from PySide6.QtGui import QPixmap
@@ -29,6 +30,9 @@ from bubble_analyser.gui import (
     InputFilesModel,
     WorkerThread,
 )
+
+# from . import component_handlers as ch
+from bubble_analyser.gui.component_handlers import * 
 from bubble_analyser.processing import Config
 
 
@@ -219,11 +223,11 @@ class CalibrationTabHandler:
             )
             return
 
-        img_path: Path = Path(self.gui.pixel_img_name.text())
+        img_path: Path = cast(Path, self.gui.pixel_img_name.text())
         if os.path.exists(img_path):
-            self.calibration_model.pixel_img_path = img_path
+            # self.calibration_model.pixel_img_path = img_path
             px2mm = self.calibration_model.get_px2mm_ratio(
-                img_resample=self.img_resample, gui=self.gui
+                pixel_img_path=img_path, img_resample=self.img_resample, gui=self.gui
             )
             self.gui.manual_px_mm_input.setText(f"{px2mm:.3f}")
         else:
