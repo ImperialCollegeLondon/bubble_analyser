@@ -1,7 +1,8 @@
-from bubble_analyser.processing.config import Config
 from pathlib import Path
+
 import toml as tomllib
-import pydantic
+
+from bubble_analyser.processing.config import Config
 
 file_path = Path("config.toml")
 

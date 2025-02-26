@@ -22,6 +22,7 @@ Methods:
 """
 
 from pathlib import Path
+
 import typing_extensions
 from pydantic import (
     BaseModel,
@@ -29,12 +30,11 @@ from pydantic import (
     PositiveInt,
     StrictBool,
     StrictFloat,
-    model_validator
+    model_validator,
 )
 
 
 class Config(BaseModel):  # type: ignore
-
     # Default PARAMETERS
 
     # Morphological element used for binary operations, e.g. opening, closing, etc.
@@ -55,16 +55,12 @@ class Config(BaseModel):  # type: ignore
     min_solidity: PositiveFloat
     min_solidity_range: tuple[PositiveFloat, PositiveFloat]
 
-
     # Also ignore too small bubbles (equivalent diameter in mm)
     min_size: StrictFloat
     min_size_range: tuple[StrictFloat, StrictFloat]
 
     # User input Image resolution
     px2mm: PositiveFloat
-
-    # Path for Target images
-    raw_img_path: Path
 
     # Path for Background image
     bknd_img_path: Path
@@ -77,27 +73,27 @@ class Config(BaseModel):  # type: ignore
 
     # Path for saving data results and graphs
     save_path: Path
-    
+
     # Path for saving images
     save_path_for_images: Path
-    
+
     # Batch processing flag
     do_batch: StrictBool
-    
+
     # Resample factor
     img_resample: StrictFloat
-    
+
     # Path for raw image
     raw_img_path: Path
-    
+
     max_thresh: PositiveFloat
     min_thresh: PositiveFloat
     step_size: PositiveFloat
-    
+
     class Config:
         validate_assignment = True
-        
-    @model_validator(mode='after') 
+
+    @model_validator(mode="after")
     def check_morphological_element_size_range(self) -> typing_extensions.Self:
         """Validates the morphological element size range.
 
@@ -115,20 +111,15 @@ class Config(BaseModel):  # type: ignore
                 "Limits for the Morphological_element_size_range are in the wrong order"
             )
         return self
-    
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def check_morphological_element_size(self) -> typing_extensions.Self:
         if not (
-            self.element_size == 3 or
-            self.element_size == 5 or
-            self.element_size == 0
+            self.element_size == 3 or self.element_size == 5 or self.element_size == 0
         ):
-            raise ValueError(
-                "Morphological_element_size must be 3, 5 or 0"
-            )
+            raise ValueError("Morphological_element_size must be 3, 5 or 0")
         return self
-    
+
     @model_validator(mode="after")
     def check_connectivity_range(self) -> typing_extensions.Self:
         """Validates the connectivity range.
@@ -221,7 +212,6 @@ class Config(BaseModel):  # type: ignore
             raise ValueError("Limits for the Min_Solidity_range are in the wrong order")
 
         return self
-
 
     @model_validator(mode="after")
     def check_min_size_range(self) -> typing_extensions.Self:
