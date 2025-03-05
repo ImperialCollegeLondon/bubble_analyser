@@ -3,7 +3,6 @@ from typing import Any
 
 import cv2
 import numpy as np
-from cv2 import RotatedRect
 from numpy import typing as npt
 from skimage import measure
 
@@ -28,7 +27,7 @@ class CircleHandler:
 
         self.px2mm: float = px2mm
 
-        self.ellipses: list[tuple[Sequence[float], Sequence[float], float]]
+        self.ellipses: list[tuple[tuple[float, float], tuple[int, int], int]]
         self.ellipses_on_image: npt.NDArray[np.int_]
         self.ellipses_properties: list[dict[str, float]]
 
@@ -83,7 +82,7 @@ class CircleHandler:
 
     def fill_ellipse_labels(
         self,
-    ) -> list[tuple[Sequence[float], Sequence[float], float]]:
+    ) -> list[tuple[tuple[float, float], tuple[int, int], int]]:
         """Fill each ellipse label in labels_before_filtering and return a new label object.
 
         Returns:
@@ -115,11 +114,41 @@ class CircleHandler:
         ellipse_image = self.img_rgb
 
         for ellipse in self.ellipses:
-            cv2.ellipse(ellipse_image, ellipse, (0, 0, 255), thickness = -1)
+            cv2.ellipse(ellipse_image, ellipse, (0, 0, 255), thickness)
         self.ellipses_on_image = ellipse_image
 
+        self.create_labelled_image_from_ellipses()
+        
         return ellipse_image
 
+    def create_labelled_image_from_ellipses(self) -> npt.NDArray[np.int_]:
+        """
+        Creates a labelled image based on the ellipses fitted.
+        The resulting image is a 2D array with the same height and width as self.img_rgb where:
+          - Background pixels have a value of 1.
+          - Each ellipse is filled with a unique label (starting from 2).
+    
+        Returns:
+            A labelled image as a numpy array of type np.int_.
+        """
+        height, width = self.img_rgb.shape[:2]
+        
+        # Initialize the labelled image with background label (1)
+        labelled_img = np.ones((height, width), dtype=np.int_)
+    
+        current_label = 2  # Start labelling from 2
+        for ellipse in self.ellipses:
+            # Create a mask for the current ellipse.
+            mask = np.zeros((height, width), dtype=np.uint8)
+            cv2.ellipse(mask, ellipse, color=255, thickness=-1)
+            # Assign the current label to all pixels inside the ellipse.
+            labelled_img[mask == 255] = current_label
+            current_label += 1
+            
+        cv2.imwrite("outputlabelled_img.png", labelled_img.astype(np.uint8)*255)
+        print("labelled image created")
+        return labelled_img
+    
     def calculate_circle_properties(self) -> list[dict[str, float | Sequence[float]]]:
         px2mm = self.px2mm
 
