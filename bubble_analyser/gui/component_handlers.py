@@ -1,8 +1,7 @@
 import os
-from pathlib import Path
-
 import cv2
 import numpy as np
+from pathlib import Path
 from numpy import typing as npt
 from typing import cast
 from PySide6.QtCore import QEventLoop, QThread, Signal
@@ -19,13 +18,13 @@ class WorkerThread(QThread):
     update_progress = Signal(int)
     processing_done = Signal()
     
-    def __init__(
+    def __init__( # type: ignore
         self,
-        model,
+        model, 
         if_save_processed_image: bool = False,
         save_path: Path = cast(Path, None)
     ) -> None:
-
+        super().__init__()
         self.if_save = if_save_processed_image
         self.save_path = save_path
         self.model: ImageProcessingModel = model
@@ -62,9 +61,9 @@ class InputFilesModel:
 
         self.sample_images_confirmed = True
 
-    def get_image_list(self, folder_path: str) -> tuple[list[str], list[str]]:
-        if folder_path is None:
-            folder_path = self.folder_path
+    def get_image_list(self, folder_path: str = cast(str, None)) -> tuple[list[str], list[str]]:
+        # if folder_path is None:
+        #     folder_path = self.folder_path
 
         self.image_list = []
         self.image_list_full_path = []
@@ -90,9 +89,9 @@ class CalibrationModel:
         self.px2mm: float
         self.calibration_confirmed: bool = False
 
-    def get_px2mm_ratio(
-        self, pixel_img_path: Path, img_resample: float = 0.5, gui = None
-    ) -> float:  # type: ignore
+    def get_px2mm_ratio( # type: ignore
+        self, pixel_img_path: Path, img_resample: float = 0.5, gui = None, # type: ignore
+    ) -> float:  
         __, self.px2mm = calculate_px2mm(pixel_img_path, img_resample, gui)
 
         return self.px2mm
@@ -107,7 +106,7 @@ class ImageProcessingModel:
         self.algorithm: str = ""
         self.params: Config = params
 
-        self.filter_param_dict = {
+        self.filter_param_dict: dict[str, float] = {
             "max_eccentricity": 0.0,
             "min_solidity": 0.0,
             "min_size": 0.0,
@@ -115,10 +114,10 @@ class ImageProcessingModel:
 
         self.px2mm: float
         self.if_bknd: bool
-        self.bknd_img_path: Path = None
+        self.bknd_img_path: Path = cast(Path, None)
 
-        self.img_path_list: list[str] = []
-        self.img_dict: dict[str, Image] = {}
+        self.img_path_list: list[Path] = []
+        self.img_dict: dict[Path, Image] = {}
 
         self.adjuster: EllipseAdjuster
         self.ellipses_properties: list[list[dict[str, float]]] = []
@@ -131,20 +130,20 @@ class ImageProcessingModel:
         self.all_methods_n_params = self.methods_handler.full_dict
         print("all_methods_n_params", self.all_methods_n_params)
 
-    def confirm_folder_selection(self, folder_path_list: list[str]) -> None:
+    def confirm_folder_selection(self, folder_path_list: list[Path]) -> None:
         self.img_path_list = folder_path_list
 
-    def get_bknd_img_path(self, bknd_img_path: str) -> Path:
+    def get_bknd_img_path(self, bknd_img_path: Path) -> None:
         self.bknd_img_path = Path(bknd_img_path)
 
     def update_px2mm(self, px2mm: float) -> None:
         self.px2mm = px2mm
 
-    def preview_processed_image(self, index) -> None:
+    def preview_processed_image(self, index: int) -> tuple[bool, npt.NDArray[np.int_], npt.NDArray[np.int_]]:
         name = self.img_path_list[index]
         if_img = False
-        img_before_filter = None
-        img_after_filter = None
+        img_before_filter = cast(npt.NDArray[np.int_], None)
+        img_after_filter = cast(npt.NDArray[np.int_], None)
         if name in self.img_dict:
             img_before_filter = self.img_dict[name].labels_on_img_before_filter
 
@@ -152,43 +151,43 @@ class ImageProcessingModel:
                 img_after_filter = self.img_dict[name].ellipses_on_images
             except AttributeError as e:
                 print(e)
-                img_after_filter = None
-                return False, None, None
+                img_after_filter = cast(npt.NDArray[np.int_], None)
+                return False, cast(npt.NDArray[np.int_], None), cast(npt.NDArray[np.int_], None)
             if_img = True
 
         return if_img, img_before_filter, img_after_filter
 
-    def load_filter_params(self, dict_params: dict):
+    def load_filter_params(self, dict_params: dict[str, float]) -> None:
         self.filter_param_dict = dict_params
 
-    def processing_image_before_filtering(self) -> None:
-        if self.algorithm == "normal_watershed":
-            self.img_resample_factor = self.img_resample_factor
-            self.threshold_value = self.threshold_value
-            self.element_size = self.element_size
-            self.connectivity = self.connectivity
-        else:
-            self.img_resample_factor = self.img_resample_factor
-            self.element_size = self.element_size
+    # def processing_image_before_filtering(self) -> None:
+    #     if self.algorithm == "normal_watershed":
+    #         self.img_resample_factor = self.img_resample_factor
+    #         self.threshold_value = self.threshold_value
+    #         self.element_size = self.element_size
+    #         self.connectivity = self.connectivity
+    #     else:
+    #         self.img_resample_factor = self.img_resample_factor
+    #         self.element_size = self.element_size
 
-    def initialize_image(self, name: str) -> None:
+    def initialize_image(self, name: Path) -> None:
         if name not in self.img_dict:
-            self.img_dict[name] = Image(
+            self.img_dict[name] = Image( 
                 self.px2mm,
-                raw_img_path=name,
+                raw_img_path = cast(Path, name),
                 all_methods_n_params=self.all_methods_n_params,
                 methods_handler=self.methods_handler,
                 bknd_img_path=self.bknd_img_path,
             )
 
-    def step_1_main(self, index) -> None:
+    def step_1_main(self, index: int) -> npt.NDArray[np.int_]:
         name = self.img_path_list[index]
         self.initialize_image(name)
 
         self.img_dict[name].processing_image_before_filtering(self.algorithm)
         return self.img_dict[name].labels_on_img_before_filter
 
-    def step_2_main(self, index) -> None:
+    def step_2_main(self, index: int) -> npt.NDArray[np.int_]:
         name = self.img_path_list[index]
         self.img_dict[name].load_filter_params(self.filter_param_dict)
         self.img_dict[name].initialize_circle_handler()
@@ -198,14 +197,14 @@ class ImageProcessingModel:
 
         return self.img_dict[name].ellipses_on_images
 
-    def ellipse_manual_adjustment(self, index) -> None:
+    def ellipse_manual_adjustment(self, index: int) -> npt.NDArray[np.int_]:
         name = self.img_path_list[index]
         image = self.img_dict[name]
         self.adjuster = EllipseAdjuster(image.ellipses, image.img_rgb)
 
         loop = QEventLoop()
 
-        def on_finished():
+        def on_finished() -> None:
             self.handle_ellipse_adjustment_finished(image)
             loop.quit()
 
@@ -223,7 +222,7 @@ class ImageProcessingModel:
         print("ellipse handler finished ")
 
     def batch_process_images(
-        self, worker_thread: WorkerThread, if_save: bool, save_path: Path = None
+        self, worker_thread: WorkerThread, if_save: bool, save_path: Path = cast(Path, None)
     ) -> None:
         # Process every image in the list
         for index, name in enumerate(self.img_path_list):
@@ -244,6 +243,9 @@ class ImageProcessingModel:
                     self.save_processed_images(
                         self.img_dict[name].ellipses_on_images, name, save_path
                     )
+                    self.save_labelled_masks(
+                        self.img_dict[name].labelled_ellipses_mask, name, save_path
+                    )
                     continue
 
             self.img_dict[name].processing_image_before_filtering(self.algorithm)
@@ -255,11 +257,14 @@ class ImageProcessingModel:
                 self.save_processed_images(
                     self.img_dict[name].ellipses_on_images, name, save_path
                 )
+                self.save_labelled_masks(
+                    self.img_dict[name].labelled_ellipses_mask, name, save_path
+                )
 
             worker_thread.update_progress_bar(index + 1)
         worker_thread.on_processing_done()
 
-    def save_processed_images(self, img, img_name, save_path) -> None:
+    def save_processed_images(self, img: npt.NDArray[np.int_], img_name: Path, save_path: Path) -> None:
         file_name = os.path.basename(img_name)
         new_name = os.path.join(save_path, file_name)
         print("new_saving_img_name:", new_name)
@@ -269,4 +274,12 @@ class ImageProcessingModel:
         except Exception as e:
             print(e)
 
+    def save_labelled_masks(self, img: npt.NDArray[np.int_], img_name: Path, save_path: Path) -> None:
+        file_name = os.path.basename(img_name)
+        new_name = os.path.join(save_path, f"{file_name}_mask.png")
+        try:
+            cv2.imwrite(new_name, img)
+            print("saved")
+        except Exception as e:
+            print(e)
 

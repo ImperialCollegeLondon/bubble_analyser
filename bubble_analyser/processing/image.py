@@ -201,7 +201,8 @@ class Image:
         self.labels_on_img_before_filter: npt.NDArray[np.int_]
         self.labels_before_filter: npt.NDArray[np.int_]
         self.labels_after_filter: npt.NDArray[np.int_]
-        self.ellipses: list[tuple[Sequence[float], Sequence[float], float]] = []
+        self.labelled_ellipses_mask: npt.NDArray[np.int_]
+        self.ellipses: list[tuple[tuple[float, float], tuple[int, int], int]] = []
         self.ellipses_properties: list[dict[str, float]]
         self.ellipses_on_images: npt.NDArray[np.int_]
 
@@ -324,7 +325,7 @@ class Image:
         """
         self.ellipses = self.new_circle_handler.fill_ellipse_labels()
 
-    def update_ellipses(self, ellipses: list[tuple[Sequence[float], Sequence[float], float]]) -> None:
+    def update_ellipses(self, ellipses: list[tuple[tuple[float, float], tuple[int, int], int]]) -> None:
         """Update the detected ellipses with a manually provided list of ellipses.
 
         This allows for manual fine-tuning of ellipse detection. The method updates both the instance's
@@ -362,6 +363,9 @@ class Image:
         """
         self.ellipses_on_images = self.new_circle_handler.overlay_ellipses_on_image()
 
+    def get_labelled_mask(self) -> None:
+        self.labelled_ellipses_mask = self.new_circle_handler.create_labelled_image_from_ellipses()
+        
     def filtering_processing(self) -> None:
         """Execute the complete filtering process on the image.
 
@@ -380,3 +384,4 @@ class Image:
         self.fill_ellipses()
         self.overlay_ellipses_on_images()
         self.get_ellipse_properties()
+        self.get_labelled_mask()
