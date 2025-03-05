@@ -5,7 +5,7 @@ import matplotlib
 # from bubble_analyser.gui import MainHandler
 import bubble_analyser.gui.event_handlers as hd
 matplotlib.use("Agg")  # Force backend to Agg for CI
-
+from typing import cast
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PySide6.QtCore import Qt
@@ -56,7 +56,7 @@ class MplCanvas(FigureCanvas):
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, main_handler=None) -> None:
+    def __init__(self, main_handler: hd.MainHandler) -> None:
         super().__init__()
 
         self.main_handler: hd.MainHandler = main_handler
@@ -95,7 +95,7 @@ class MainWindow(QMainWindow):
         # self.setup_calibration_tab()
 
         # Add Image Processing Tab
-        self.current_algorithm: str = None
+        self.current_algorithm: str = cast(str, None)
         self.image_processing_tab = QWidget()
         self.tabs.addTab(self.image_processing_tab, "Bubble detection and filtering")
         # self.setup_image_processing_tab()

@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
-import toml as tomllib
+import toml as tomllib # type: ignore
 from numpy import typing as npt
 from typing import cast
 from pydantic import ValidationError
@@ -28,7 +28,7 @@ from bubble_analyser.gui import (
     CalibrationModel,
     ImageProcessingModel,
     InputFilesModel,
-    WorkerThread,
+    WorkerThread
 )
 
 # from . import component_handlers as ch
@@ -37,7 +37,7 @@ from bubble_analyser.processing import Config
 
 
 class ExportSettingsHandler(QDialog):
-    def __init__(self, parent=None, params: Config = None) -> None:
+    def __init__(self, parent = None, params: Config = None) -> None: # type: ignore
         super().__init__(parent)
 
         self.setWindowTitle("Export Settings")
@@ -45,11 +45,11 @@ class ExportSettingsHandler(QDialog):
 
         layout = QVBoxLayout(self)
 
-        self.save_path = str(params.save_path)
+        self.save_path: Path = params.save_path
 
         # Default path for results saving
         self.default_path_edit = QLineEdit()
-        self.default_path_edit.setPlaceholderText(self.save_path)
+        self.default_path_edit.setPlaceholderText(str(self.save_path)) # type: ignore
         select_folder_button = QPushButton("Select Folder")
         select_folder_button.clicked.connect(self.select_folder)
 
@@ -70,8 +70,8 @@ class ExportSettingsHandler(QDialog):
         layout.addLayout(path_layout)
 
     def accept(self) -> None:
-        if self.check_if_path_valid() is False:
-            return
+        if self.check_if_path_valid() is False: 
+            return None
         super().accept()
         self.save_path = self.default_path_edit.text()
 
@@ -80,7 +80,7 @@ class ExportSettingsHandler(QDialog):
         if folder_path:
             self.default_path_edit.setText(folder_path)
 
-    def check_if_path_valid(self) -> None:
+    def check_if_path_valid(self) -> bool:
         try:
             Path(self.save_path).resolve()
             return True
@@ -93,9 +93,11 @@ class ExportSettingsHandler(QDialog):
 class TomlFileHandler:
     def __init__(self, file_path: Path) -> None:
         self.file_path: Path = file_path
-
         self.params: Config
         self.load_toml()
+
+    def load_gui(self) -> None:
+        self.gui = gui # type: ignore
 
     def load_toml(self) -> None:
         try:
@@ -105,24 +107,24 @@ class TomlFileHandler:
             print(error_str)
             self._show_warning("Error in Config File Setting", error_str)
 
-    def check_params(self, dict_params: dict) -> bool:
-        try:
-            Config(**dict_params)
-        except ValidationError as e:
-            error_str = str(e)
-            self._show_warning("Error in Config File Setting", error_str)
-        return True
+    # def check_params(self, dict_params: dict) -> bool:
+    #     try:
+    #         Config(**dict_params)
+    #     except ValidationError as e:
+    #         error_str = str(e)
+    #         self._show_warning("Error in Config File Setting", error_str)
+    #     return True
 
     def _show_warning(self, title: str, message: str) -> None:
-        QMessageBox.warning(self.gui, title, message)
+        QMessageBox.warning(self.gui, title, message) 
 
 
 class FolderTabHandler:
     def __init__(self, model: InputFilesModel, params: Config) -> None:
         self.model: InputFilesModel = model
-        self.image_path: str = params.raw_img_path
+        self.image_path: Path = params.raw_img_path
 
-    def load_gui(self, gui) -> None:
+    def load_gui(self, gui) -> None: # type: ignore
         self.gui = gui
 
     def select_folder(self) -> None:
@@ -139,7 +141,7 @@ class FolderTabHandler:
 
     def _update_folder_path(self, folder_path: str) -> None:
         """Update the model and GUI with the selected folder path."""
-        self.model.folder_path = folder_path
+        self.model.folder_path = cast(Path, folder_path)
         self.gui.folder_path_edit.setText(folder_path)
 
     def _populate_image_list(self, folder_path: str) -> None:
@@ -190,7 +192,7 @@ class CalibrationTabHandler:
         self.img_resample: float = params.resample
         self.px_img_path: Path = params.ruler_img_path
 
-    def load_gui(self, gui) -> None:
+    def load_gui(self, gui) -> None: # type: ignore
         self.gui = gui
 
     def select_px_mm_image(self) -> None:
@@ -303,10 +305,12 @@ class ImageProcessingTabHandler(QThread):
             "min_size": params.min_size,
         }
 
-    def load_gui(self, gui) -> None:
+        self.save_path: Path = cast(Path, None)
+
+    def load_gui(self, gui) -> None: # type: ignore
         self.gui = gui
 
-    def pass_filter_params(self, filter_param_dict: dict) -> None:
+    def pass_filter_params(self, filter_param_dict: dict[str, int | float]) -> None:
         self.model.load_filter_params(filter_param_dict)
 
     def preview_image(self) -> None:
@@ -322,7 +326,7 @@ class ImageProcessingTabHandler(QThread):
             )
         )
 
-    def check_params(self, name: str, value) -> bool:
+    def check_params(self, name: str, value: int | float) -> bool:
         if name == "element_size":
             try:
                 self.params.element_size = value
@@ -505,7 +509,7 @@ class ImageProcessingTabHandler(QThread):
             print(s, "is not float")
             return False
 
-    def convert_value(self, text: str) -> None:
+    def convert_value(self, text: str) -> int | float | str:
         try:
             value = float(text)
             # Return an int if the number is integer
@@ -514,7 +518,7 @@ class ImageProcessingTabHandler(QThread):
             # Fallback if not a number
             return text
 
-    def extract_parameters_from_table(self, table_widget) -> dict:
+    def extract_parameters_from_table(self, table_widget) -> dict[str, int|float]: # type: ignore
         params = {}
         row_count = table_widget.rowCount()
         for row in range(row_count):
@@ -522,7 +526,7 @@ class ImageProcessingTabHandler(QThread):
             value_item = table_widget.item(row, 1)
             if name_item and value_item:
                 params[name_item.text()] = self.convert_value(value_item.text())
-        return params
+        return params  # type: ignore
 
     def update_segment_parameters(self) -> bool:
         # Update the params in the model
@@ -534,7 +538,7 @@ class ImageProcessingTabHandler(QThread):
             if algorithm_name == self.model.algorithm:
                 for name, value in params.items():
                     print("Updating", name, "to", value)
-                    params_in_dict[name] = value
+                    params_in_dict[name] = value 
 
         return True
 
@@ -542,7 +546,7 @@ class ImageProcessingTabHandler(QThread):
         step_1_img = self.model.step_1_main(self.current_index)
         self.update_label_before_filtering(step_1_img)
 
-    def update_label_before_filtering(self, img) -> None:
+    def update_label_before_filtering(self, img: npt.NDArray[np.int_]) -> None:
         self.gui.label_before_filtering.axes.clear()
         self.gui.label_before_filtering.axes.imshow(img)
         self.gui.label_before_filtering.draw()
@@ -597,7 +601,7 @@ class ImageProcessingTabHandler(QThread):
         img = self.model.ellipse_manual_adjustment(self.current_index)
         self.update_process_image_preview(img)
 
-    def update_process_image_preview(self, img) -> None:
+    def update_process_image_preview(self, img: npt.NDArray[np.int_]) -> None:
         self.gui.processed_image_preview.axes.clear()
         self.gui.processed_image_preview.axes.imshow(img)
         self.gui.processed_image_preview.draw()
@@ -636,7 +640,7 @@ class ImageProcessingTabHandler(QThread):
         dialog.setCheckBox(save_images_checkbox)
         return save_images_checkbox
 
-    def update_if_save_processed_images(self, state) -> None:
+    def update_if_save_processed_images(self, state: bool) -> None: 
         self.if_save_processed_images = state
 
     def batch_process_images(self) -> None:
@@ -714,10 +718,10 @@ class ResultsTabHandler:
         self.ellipses_properties: list[list[dict[str, float]]]
         self.export_handler: ExportSettingsHandler
 
-    def load_gui(self, gui) -> None:
+    def load_gui(self, gui) -> None: # type: ignore
         self.gui = gui
 
-    def load_ellipse_properties(self, properties) -> None:
+    def load_ellipse_properties(self, properties: list[list[dict[str, float]]]) -> None:
         self.ellipses_properties = properties
         pass
 
@@ -856,7 +860,7 @@ class ResultsTabHandler:
 
         return d32, d_mean, dxy
 
-    def get_equivalent_diameters_list(self) -> None:
+    def get_equivalent_diameters_list(self) -> npt.NDArray[np.float64]:
         equivalent_diameters = []
         for image in self.ellipses_properties:
             for ellipse in image:
@@ -1070,7 +1074,7 @@ class MainHandler:
 
     def start_generate_histogram(self) -> None:
         self.results_tab_handler.load_ellipse_properties(
-            self.image_processing_model.ellipses_properties
+            self.image_processing_model.ellipses_properties 
         )
         self.results_tab_handler.generate_histogram()
 
@@ -1078,30 +1082,30 @@ class MainHandler:
         self.results_tab_handler.save_results()
 
     def restart(self) -> None:
-        self.toml_handler = None
-        self.input_file_model = None
-        self.folder_tab_handler = None
-        self.calibration_model = None
-        self.calibration_tab_handler = None
-        self.image_processing_model = None
-        self.image_processing_tab_handler = None
-        self.results_tab_handler = None
-        self.export_handler = None
+        # self.toml_handler = None
+        # self.input_file_model = None
+        # self.folder_tab_handler = None
+        # self.calibration_model = None
+        # self.calibration_tab_handler = None
+        # self.image_processing_model = None
+        # self.image_processing_tab_handler = None
+        # self.results_tab_handler = None
+        # self.export_handler = None
 
         # Close the existing QApplication instance
         # self.app.quit()
         # self.app = None
 
         # QCoreApplication.quit()
-        QTimer.singleShot(0, self.reinitialize_main_handler)
+        # QTimer.singleShot(0, self.reinitialize_main_handler)
 
         # Start a new detached process running the same Python executable with the same arguments
         QProcess.startDetached(sys.executable, sys.argv)
         # Quit the current application
         QApplication.quit()
 
-    def reinitialize_main_handler(self) -> None:
-        self.__init__()
+    # def reinitialize_main_handler(self) -> None:
+    #     self.__init__()
 
 
 if __name__ == "__main__":
