@@ -15,6 +15,20 @@ from bubble_analyser.processing import (
 )
 
 class WorkerThread(QThread):
+    """A worker thread class for handling batch image processing operations.
+
+    This class extends QThread to perform image processing tasks in the background,
+    preventing the GUI from freezing during lengthy operations. It provides progress
+    updates and completion signals.
+
+    Attributes:
+        update_progress (Signal[int]): Signal emitted to update the progress bar.
+        processing_done (Signal): Signal emitted when processing is complete.
+        if_save (bool): Flag indicating whether to save processed images.
+        save_path (Path): Directory path where processed images should be saved.
+        model (ImageProcessingModel): The model containing image processing logic.
+    """
+
     update_progress = Signal(int)
     processing_done = Signal()
     
@@ -24,22 +38,57 @@ class WorkerThread(QThread):
         if_save_processed_image: bool = False,
         save_path: Path = cast(Path, None)
     ) -> None:
+        """Initialize the worker thread with processing parameters.
+
+        Args:
+            model (ImageProcessingModel): The model containing image processing logic.
+            if_save_processed_image (bool, optional): Whether to save processed images. Defaults to False.
+            save_path (Path, optional): Directory to save processed images. Defaults to None.
+        """
         super().__init__()
         self.if_save = if_save_processed_image
         self.save_path = save_path
         self.model: ImageProcessingModel = model
 
     def run(self) -> None:
+        """Execute the batch processing operation.
+
+        This method is called when the thread starts. It delegates the actual processing
+        to the model's batch_process_images method.
+        """
         self.model.batch_process_images(self, self.if_save, self.save_path)
 
     def update_progress_bar(self, value: int) -> None:
+        """Emit a signal to update the progress bar in the GUI.
+
+        Args:
+            value (int): The current progress value to display.
+        """
         self.update_progress.emit(value)
 
     def on_processing_done(self) -> None:
+        """Emit a signal indicating that processing is complete.
+
+        This method is called when all images have been processed.
+        """
         self.processing_done.emit()
         
 class InputFilesModel:
+    """A model class for managing input image files and their paths.
+
+    This class handles the selection, confirmation, and tracking of image files from a specified folder.
+    It maintains lists of image paths in different formats for use by the UI and processing components.
+
+    Attributes:
+        sample_images_confirmed (bool): Flag indicating whether the folder selection has been confirmed.
+        folder_path (Path): Path to the selected folder containing images.
+        image_list (list[str]): List of image filenames without full paths.
+        image_list_full_path (list[str]): List of full string paths to images for UI handlers.
+        image_list_full_path_in_path (list[Path]): List of full Path objects for processing models.
+        current_image_idx (int): Index of the currently selected image.
+    """
     def __init__(self) -> None:
+        """Initialize the InputFilesModel with default empty values."""
         self.sample_images_confirmed: bool = False
         self.folder_path: Path = cast(Path, None)
 
@@ -53,6 +102,14 @@ class InputFilesModel:
         self.current_image_idx: int = 0
 
     def confirm_folder_selection(self, folder_path: str) -> None:
+        """Confirm the selected folder and populate image lists.
+
+        This method sets the folder path, retrieves the list of images from the folder,
+        and converts string paths to Path objects for the processing models.
+
+        Args:
+            folder_path (str): The path to the folder containing images.
+        """
         self.folder_path = Path(folder_path)
         _ = self.get_image_list(folder_path)
 
@@ -62,6 +119,18 @@ class InputFilesModel:
         self.sample_images_confirmed = True
 
     def get_image_list(self, folder_path: str = cast(str, None)) -> tuple[list[str], list[str]]:
+        """Get lists of image files from the specified folder.
+
+        This method scans the specified folder for image files with supported extensions
+        and populates both the filename list and full path list.
+
+        Args:
+            folder_path (str, optional): The path to scan for images. Defaults to None.
+
+        Returns:
+            tuple[list[str], list[str]]: A tuple containing the list of image filenames and
+                                         the list of full paths to those images.
+        """
         # if folder_path is None:
         #     folder_path = self.folder_path
 
@@ -75,7 +144,24 @@ class InputFilesModel:
         return self.image_list, self.image_list_full_path
 
 class CalibrationModel:
+    """A model class for managing calibration data and pixel-to-millimeter conversion.
+
+    This class handles the calibration process, including loading and processing calibration images,
+    calculating the pixel-to-millimeter ratio, and managing background image correction.
+
+    Attributes:
+        pixel_img_confirmed (bool): Flag indicating whether the pixel calibration image has been confirmed.
+        bknd_img_confirmed (bool): Flag indicating whether the background image has been confirmed.
+        bknd_img_path (Path): Path to the background image file.
+        bknd_img (npt.NDArray[np.int_]): Array containing the background image data.
+        if_bknd (bool): Flag indicating whether a background image is being used.
+        pixel_img_path (Path): Path to the pixel calibration image file.
+        pixel_img (npt.NDArray[np.int_]): Array containing the pixel calibration image data.
+        px2mm (float): The calculated pixel-to-millimeter conversion ratio.
+        calibration_confirmed (bool): Flag indicating whether the calibration has been confirmed.
+    """
     def __init__(self) -> None:
+        """Initialize the CalibrationModel with default empty values."""
         self.pixel_img_confirmed: bool = False
         self.bknd_img_confirmed: bool = False
 
@@ -92,15 +178,58 @@ class CalibrationModel:
     def get_px2mm_ratio( # type: ignore
         self, pixel_img_path: Path, img_resample: float = 0.5, gui = None, # type: ignore
     ) -> float:  
+        """Calculate the pixel-to-millimeter ratio from a calibration image.
+
+        This method uses the calculate_px2mm function to determine the conversion ratio
+        between pixels and millimeters based on a calibration image (typically containing a ruler).
+
+        Args:
+            pixel_img_path (Path): Path to the calibration image file.
+            img_resample (float, optional): Resampling factor for the image. Defaults to 0.5.
+            gui (object, optional): GUI object for displaying interactive elements. Defaults to None.
+
+        Returns:
+            float: The calculated pixel-to-millimeter ratio.
+        """
         __, self.px2mm = calculate_px2mm(pixel_img_path, img_resample, gui)
 
         return self.px2mm
 
     def confirm_calibration(self) -> None:
+        """Mark the calibration as confirmed.
+
+        This method sets the calibration_confirmed flag to True, indicating that
+        the calibration process has been completed and confirmed by the user.
+        """
         self.calibration_confirmed = True
 
 class ImageProcessingModel:
+    """A model class for managing image processing operations and parameters.
+
+    This class handles the processing of images using various algorithms, maintains processing parameters,
+    and manages the state of processed images. It interfaces with the MethodsHandler to access
+    processing routines and stores the results of image processing operations.
+
+    Attributes:
+        algorithm (str): The currently selected processing algorithm name.
+        params (Config): Configuration parameters for image processing.
+        filter_param_dict (dict[str, float]): Dictionary of filtering parameters.
+        px2mm (float): Conversion factor from pixels to millimeters.
+        if_bknd (bool): Flag indicating whether a background image is being used.
+        bknd_img_path (Path): Path to the background image file.
+        img_path_list (list[Path]): List of paths to images to be processed.
+        img_dict (dict[Path, Image]): Dictionary mapping image paths to their Image objects.
+        adjuster (EllipseAdjuster): Tool for manual adjustment of detected ellipses.
+        ellipses_properties (list[list[dict[str, float]]]): Properties of detected ellipses for all images.
+        methods_handler (MethodsHandler): Handler for accessing processing methods.
+        all_methods_n_params (dict): Dictionary of all available methods and their parameters.
+    """
     def __init__(self, params: Config) -> None:
+        """Initialize the ImageProcessingModel with the provided configuration.
+
+        Args:
+            params (Config): Configuration parameters for image processing.
+        """
         super().__init__()
 
         self.algorithm: str = ""
@@ -126,20 +255,51 @@ class ImageProcessingModel:
         self.initialize_methods_handlers()
 
     def initialize_methods_handlers(self) -> None:
+        """Initialize the methods handler and retrieve available processing methods.
+
+        This method creates a new MethodsHandler instance using the current configuration
+        and retrieves the dictionary of available processing methods and their parameters.
+        """
         self.methods_handler = MethodsHandler(self.params)
         self.all_methods_n_params = self.methods_handler.full_dict
         print("all_methods_n_params", self.all_methods_n_params)
 
     def confirm_folder_selection(self, folder_path_list: list[Path]) -> None:
+        """Set the list of image paths to be processed.
+
+        Args:
+            folder_path_list (list[Path]): List of paths to images to be processed.
+        """
         self.img_path_list = folder_path_list
 
     def get_bknd_img_path(self, bknd_img_path: Path) -> None:
+        """Set the path to the background image.
+
+        Args:
+            bknd_img_path (Path): Path to the background image file.
+        """
         self.bknd_img_path = Path(bknd_img_path)
 
     def update_px2mm(self, px2mm: float) -> None:
+        """Update the pixel-to-millimeter conversion ratio.
+
+        Args:
+            px2mm (float): The new pixel-to-millimeter conversion ratio.
+        """
         self.px2mm = px2mm
 
     def preview_processed_image(self, index: int) -> tuple[bool, npt.NDArray[np.int_], npt.NDArray[np.int_]]:
+        """Retrieve the processed images for preview.
+
+        Args:
+            index (int): Index of the image in the image list.
+
+        Returns:
+            tuple[bool, npt.NDArray[np.int_], npt.NDArray[np.int_]]: A tuple containing:
+                - Boolean indicating if the image exists and has been processed
+                - The image with labels before filtering
+                - The image with ellipses overlaid after filtering
+        """
         name = self.img_path_list[index]
         if_img = False
         img_before_filter = cast(npt.NDArray[np.int_], None)
@@ -158,19 +318,19 @@ class ImageProcessingModel:
         return if_img, img_before_filter, img_after_filter
 
     def load_filter_params(self, dict_params: dict[str, float]) -> None:
+        """Load filtering parameters into the model.
+
+        Args:
+            dict_params (dict[str, float]): Dictionary containing filtering parameters.
+        """
         self.filter_param_dict = dict_params
 
-    # def processing_image_before_filtering(self) -> None:
-    #     if self.algorithm == "normal_watershed":
-    #         self.img_resample_factor = self.img_resample_factor
-    #         self.threshold_value = self.threshold_value
-    #         self.element_size = self.element_size
-    #         self.connectivity = self.connectivity
-    #     else:
-    #         self.img_resample_factor = self.img_resample_factor
-    #         self.element_size = self.element_size
-
     def initialize_image(self, name: Path) -> None:
+        """Initialize an Image object for processing if it doesn't already exist.
+
+        Args:
+            name (Path): Path to the image file.
+        """
         if name not in self.img_dict:
             self.img_dict[name] = Image( 
                 self.px2mm,
@@ -181,6 +341,14 @@ class ImageProcessingModel:
             )
 
     def step_1_main(self, index: int) -> npt.NDArray[np.int_]:
+        """Execute the first step of image processing (pre-filtering).
+
+        Args:
+            index (int): Index of the image to process.
+
+        Returns:
+            npt.NDArray[np.int_]: The processed image with labels before filtering.
+        """
         name = self.img_path_list[index]
         self.initialize_image(name)
 
@@ -188,6 +356,14 @@ class ImageProcessingModel:
         return self.img_dict[name].labels_on_img_before_filter
 
     def step_2_main(self, index: int) -> npt.NDArray[np.int_]:
+        """Execute the second step of image processing (filtering and ellipse detection).
+
+        Args:
+            index (int): Index of the image to process.
+
+        Returns:
+            npt.NDArray[np.int_]: The processed image with detected ellipses overlaid.
+        """
         name = self.img_path_list[index]
         self.img_dict[name].load_filter_params(self.filter_param_dict)
         self.img_dict[name].initialize_circle_handler()
@@ -198,6 +374,17 @@ class ImageProcessingModel:
         return self.img_dict[name].ellipses_on_images
 
     def ellipse_manual_adjustment(self, index: int) -> npt.NDArray[np.int_]:
+        """Launch the ellipse adjustment tool for manual fine-tuning of detected ellipses.
+
+        This method creates an EllipseAdjuster instance for the specified image, displays
+        the adjustment interface, and waits for the user to complete the adjustments.
+
+        Args:
+            index (int): Index of the image to adjust.
+
+        Returns:
+            npt.NDArray[np.int_]: The updated image with adjusted ellipses overlaid.
+        """
         name = self.img_path_list[index]
         image = self.img_dict[name]
         self.adjuster = EllipseAdjuster(image.ellipses, image.img_rgb)
@@ -215,6 +402,14 @@ class ImageProcessingModel:
         return image.ellipses_on_images
 
     def handle_ellipse_adjustment_finished(self, image: Image) -> None:
+        """Process the results of manual ellipse adjustment.
+
+        This method is called when the user completes the manual adjustment process.
+        It updates the image's ellipses with the adjusted ones and regenerates the overlay.
+
+        Args:
+            image (Image): The image object containing the ellipses to update.
+        """
         print("ellipse handler triggered")
         print(image.filter_param_dict)
         image.update_ellipses(self.adjuster.ellipses)
@@ -224,6 +419,17 @@ class ImageProcessingModel:
     def batch_process_images(
         self, worker_thread: WorkerThread, if_save: bool, save_path: Path = cast(Path, None)
     ) -> None:
+        """Process all images in the image list using the current parameters.
+
+        This method iterates through all images in the image list, applies the current
+        processing parameters, and optionally saves the processed images. It updates
+        the progress through the provided worker thread.
+
+        Args:
+            worker_thread (WorkerThread): Thread object for progress reporting.
+            if_save (bool): Whether to save the processed images.
+            save_path (Path, optional): Directory to save processed images. Defaults to None.
+        """
         # Process every image in the list
         for index, name in enumerate(self.img_path_list):
             print("-----------------")
@@ -265,6 +471,13 @@ class ImageProcessingModel:
         worker_thread.on_processing_done()
 
     def save_processed_images(self, img: npt.NDArray[np.int_], img_name: Path, save_path: Path) -> None:
+        """Save the processed image with detected ellipses to disk.
+
+        Args:
+            img (npt.NDArray[np.int_]): The processed image array to save.
+            img_name (Path): Original image path used to generate the output filename.
+            save_path (Path): Directory where the image should be saved.
+        """
         file_name = os.path.basename(img_name)
         new_name = os.path.join(save_path, file_name)
         print("new_saving_img_name:", new_name)
@@ -275,6 +488,16 @@ class ImageProcessingModel:
             print(e)
 
     def save_labelled_masks(self, img: npt.NDArray[np.int_], img_name: Path, save_path: Path) -> None:
+        """Save the labelled mask image to disk.
+
+        This method saves a mask image where each detected ellipse is labeled with a unique identifier.
+        The output filename is the original filename with '_mask.png' appended.
+
+        Args:
+            img (npt.NDArray[np.int_]): The mask image array to save.
+            img_name (Path): Original image path used to generate the output filename.
+            save_path (Path): Directory where the mask should be saved.
+        """
         file_name = os.path.basename(img_name)
         new_name = os.path.join(save_path, f"{file_name}_mask.png")
         try:
@@ -282,4 +505,3 @@ class ImageProcessingModel:
             print("saved")
         except Exception as e:
             print(e)
-
