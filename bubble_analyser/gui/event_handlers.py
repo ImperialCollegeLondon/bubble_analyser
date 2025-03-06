@@ -1,6 +1,6 @@
-import csv
 import os
 import sys
+import csv
 from pathlib import Path
 
 import numpy as np
@@ -37,7 +37,23 @@ from bubble_analyser.processing import Config
 
 
 class ExportSettingsHandler(QDialog):
+    """A dialog for configuring export settings for processed images.
+
+    This class provides a user interface for selecting and confirming the directory
+    where processed images will be saved.
+
+    Attributes:
+        save_path (Path): The directory path where processed images will be saved.
+        default_path_edit (QLineEdit): Text field displaying the current save path.
+        confirm_button (QPushButton): Button to confirm the selected path.
+    """
     def __init__(self, parent = None, params: Config = None) -> None: # type: ignore
+        """Initialize the export settings dialog.
+
+        Args:
+            parent: The parent widget. Defaults to None.
+            params (Config, optional): Configuration parameters containing the default save path. Defaults to None.
+        """
         super().__init__(parent)
 
         self.setWindowTitle("Export Settings")
@@ -70,17 +86,34 @@ class ExportSettingsHandler(QDialog):
         layout.addLayout(path_layout)
 
     def accept(self) -> None:
+        """Handle the confirmation of the selected save path.
+
+        Validates the path before accepting the dialog. If the path is invalid,
+        the dialog remains open.
+
+        Returns:
+            None
+        """
         if self.check_if_path_valid() is False: 
             return None
         super().accept()
-        self.save_path = self.default_path_edit.text()
+        self.save_path = cast(Path, self.default_path_edit.text())
 
     def select_folder(self) -> None:
+        """Open a file dialog to select a folder for saving processed images.
+
+        Updates the text field with the selected folder path.
+        """
         folder_path = QFileDialog.getExistingDirectory(self, "Select Folder")
         if folder_path:
             self.default_path_edit.setText(folder_path)
 
     def check_if_path_valid(self) -> bool:
+        """Check if the selected path is valid and accessible.
+
+        Returns:
+            bool: True if the path is valid, False otherwise.
+        """
         try:
             Path(self.save_path).resolve()
             return True
@@ -91,15 +124,39 @@ class ExportSettingsHandler(QDialog):
 
 
 class TomlFileHandler:
+    """A handler class for loading and validating TOML configuration files.
+
+    This class is responsible for reading configuration parameters from a TOML file,
+    validating them against the Config schema, and providing access to the parsed parameters.
+
+    Attributes:
+        file_path (Path): Path to the TOML configuration file.
+        params (Config): Validated configuration parameters loaded from the file.
+        gui: Reference to the GUI instance for displaying warnings.
+    """
     def __init__(self, file_path: Path) -> None:
+        """Initialize the TOML file handler with the specified file path.
+
+        Args:
+            file_path (Path): Path to the TOML configuration file to load.
+        """
         self.file_path: Path = file_path
         self.params: Config
         self.load_toml()
 
     def load_gui(self) -> None:
+        """Load a reference to the GUI instance for displaying warnings.
+
+        This method should be called after the GUI has been initialized.
+        """
         self.gui = gui # type: ignore
 
     def load_toml(self) -> None:
+        """Load and validate the TOML configuration file.
+
+        Attempts to parse the TOML file and validate its contents against the Config schema.
+        If validation fails, an error message is displayed.
+        """
         try:
             self.params = Config(**tomllib.load(self.file_path))
         except ValidationError as e:
@@ -116,18 +173,50 @@ class TomlFileHandler:
     #     return True
 
     def _show_warning(self, title: str, message: str) -> None:
+        """Display a warning message box to the user.
+
+        Args:
+            title (str): The title of the warning dialog.
+            message (str): The detailed warning message to display.
+        """
         QMessageBox.warning(self.gui, title, message) 
 
 
 class FolderTabHandler:
+    """Handler for the folder selection tab in the GUI.
+
+    This class manages the selection and confirmation of folders containing image files
+    for processing, and handles the preview of selected images.
+
+    Attributes:
+        model (InputFilesModel): Model for managing input image files and paths.
+        image_path (Path): Default path for raw images from configuration.
+        gui: Reference to the main GUI instance.
+    """
     def __init__(self, model: InputFilesModel, params: Config) -> None:
+        """Initialize the folder tab handler with model and configuration parameters.
+
+        Args:
+            model (InputFilesModel): Model for managing input image files.
+            params (Config): Configuration parameters containing default paths.
+        """
         self.model: InputFilesModel = model
         self.image_path: Path = params.raw_img_path
 
     def load_gui(self, gui) -> None: # type: ignore
+        """Load a reference to the GUI instance.
+
+        Args:
+            gui: The main GUI instance.
+        """
         self.gui = gui
 
     def select_folder(self) -> None:
+        """Handle the folder selection process.
+
+        Opens a file dialog for the user to select a folder containing images.
+        If a folder has already been confirmed, displays a warning instead.
+        """
         if self.model.sample_images_confirmed:
             self._show_warning(
                 "Selection Locked", "You have already confirmed the folder selection."
@@ -140,11 +229,20 @@ class FolderTabHandler:
             self._populate_image_list(folder_path)
 
     def _update_folder_path(self, folder_path: str) -> None:
-        """Update the model and GUI with the selected folder path."""
+        """Update the model and GUI with the selected folder path.
+
+        Args:
+            folder_path (str): The path to the selected folder.
+        """
         self.model.folder_path = cast(Path, folder_path)
         self.gui.folder_path_edit.setText(folder_path)
 
     def _populate_image_list(self, folder_path: str) -> None:
+        """Populate the image list widget with images from the selected folder.
+
+        Args:
+            folder_path (str): The path to the folder containing images.
+        """
         images, _ = self.model.get_image_list(folder_path)
         self.gui.image_list.clear()
 
@@ -154,6 +252,11 @@ class FolderTabHandler:
         self.gui.image_list.addItems(images)
 
     def confirm_folder_selection(self) -> None:
+        """Confirm the selected folder and proceed to the next tab.
+
+        Updates the model with the selected folder path, populates the image list,
+        and switches to the calibration tab if a folder has been selected.
+        """
         if self.model.sample_images_confirmed:
             self._show_warning(
                 "Selection Locked", "You have already confirmed the folder selection."
@@ -170,6 +273,11 @@ class FolderTabHandler:
             )
 
     def preview_image_folder_tab(self) -> None:
+        """Display a preview of the selected image in the folder tab.
+
+        Loads the selected image from the list and displays it in the preview area,
+        maintaining the aspect ratio.
+        """
         selected_image = self.gui.image_list.currentItem().text()
         folder_path = self.gui.folder_path_edit.text()
         image_path = folder_path + "/" + selected_image
@@ -183,19 +291,52 @@ class FolderTabHandler:
         )
 
     def _show_warning(self, title: str, message: str) -> None:
+        """Display a warning message box to the user.
+
+        Args:
+            title (str): The title of the warning dialog.
+            message (str): The detailed warning message to display.
+        """
         QMessageBox.warning(self.gui, title, message)
 
 
 class CalibrationTabHandler:
+    """Handler for the calibration tab in the GUI.
+
+    This class manages the calibration process, including selection and processing of
+    ruler images for pixel-to-millimeter conversion and optional background image correction.
+
+    Attributes:
+        calibration_model (CalibrationModel): Model for managing calibration data.
+        img_resample (float): Resampling factor for image processing.
+        px_img_path (Path): Default path for the ruler calibration image.
+        gui: Reference to the main GUI instance.
+    """
     def __init__(self, calibration_model: CalibrationModel, params: Config) -> None:
+        """Initialize the calibration tab handler.
+
+        Args:
+            calibration_model (CalibrationModel): Model for managing calibration data.
+            params (Config): Configuration parameters containing default values.
+        """
         self.calibration_model: CalibrationModel = calibration_model
         self.img_resample: float = params.resample
         self.px_img_path: Path = params.ruler_img_path
 
     def load_gui(self, gui) -> None: # type: ignore
+        """Load a reference to the GUI instance.
+
+        Args:
+            gui: The main GUI instance.
+        """
         self.gui = gui
 
     def select_px_mm_image(self) -> None:
+        """Handle the selection of a ruler image for pixel-to-millimeter calibration.
+
+        Opens a file dialog for selecting a ruler image and updates the preview in the GUI.
+        If calibration has already been confirmed, displays a warning instead.
+        """
         if self.calibration_model.calibration_confirmed:
             self._show_warning(
                 "Selection Locked",
@@ -208,7 +349,6 @@ class CalibrationTabHandler:
         )
 
         if image_path:
-            # self.calibration_model.pixel_img_path = Path(image_path)
             self.gui.pixel_img_name.setText(image_path)
             pixmap = QPixmap(image_path)
             self.gui.pixel_img_preview.setPixmap(
@@ -219,6 +359,11 @@ class CalibrationTabHandler:
             )
 
     def get_px2mm_ratio(self) -> None:
+        """Calculate the pixel-to-millimeter ratio from the selected ruler image.
+
+        If calibration has already been confirmed or no image is selected, displays
+        appropriate warning messages.
+        """
         if self.calibration_model.calibration_confirmed:
             self._show_warning(
                 "Selection Locked", "You have already confirmed the pixel-to-mm ratio."
@@ -227,7 +372,6 @@ class CalibrationTabHandler:
 
         img_path: Path = cast(Path, self.gui.pixel_img_name.text())
         if os.path.exists(img_path):
-            # self.calibration_model.pixel_img_path = img_path
             px2mm = self.calibration_model.get_px2mm_ratio(
                 pixel_img_path=img_path, img_resample=self.img_resample, gui=self.gui
             )
@@ -238,6 +382,11 @@ class CalibrationTabHandler:
             )
 
     def select_bg_corr_image(self) -> None:
+        """Handle the selection of a background correction image.
+
+        Opens a file dialog for selecting a background image and updates the preview in the GUI.
+        If calibration has already been confirmed, displays a warning instead.
+        """
         if self.calibration_model.calibration_confirmed:
             self._show_warning(
                 "Selection Locked",
@@ -265,6 +414,12 @@ class CalibrationTabHandler:
             self.calibration_model.if_bknd = True
 
     def confirm_calibration(self) -> None:
+        """Confirm the calibration settings and proceed to the next tab.
+
+        Updates the calibration model with the final values and switches to the
+        image processing tab. If calibration has already been confirmed, displays
+        a warning instead.
+        """
         if self.calibration_model.calibration_confirmed:
             self.gui.manual_px_mm_input.setText(f"{self.calibration_model.px2mm:.3f}")
             self._show_warning(
@@ -281,15 +436,45 @@ class CalibrationTabHandler:
         )
 
     def _show_warning(self, title: str, message: str) -> None:
+        """Display a warning message box to the user.
+
+        Args:
+            title (str): The title of the warning dialog.
+            message (str): The detailed warning message to display.
+        """
         QMessageBox.warning(self.gui, title, message)
 
 
 class ImageProcessingTabHandler(QThread):
+    """Handler for the image processing tab in the GUI.
+
+    This class manages the image processing operations, including algorithm selection,
+    parameter configuration, and batch processing. It extends QThread to handle
+    long-running processing tasks without blocking the GUI.
+
+    Attributes:
+        batch_processing_done (Signal): Signal emitted when batch processing completes.
+        model (ImageProcessingModel): Model for managing image processing operations.
+        params (Config): Configuration parameters for processing.
+        current_index (int): Index of the currently selected image.
+        algorithm_list (list[str]): List of available processing algorithms.
+        export_handler (ExportSettingsHandler): Handler for export settings.
+        if_save_processed_images (bool): Flag indicating whether to save processed images.
+        temp_param_dict (dict[str, int | float]): Temporary storage for processing parameters.
+        temp_filter_param_dict (dict[str, float]): Temporary storage for filter parameters.
+        save_path (Path): Path where processed images will be saved.
+    """
     batch_processing_done = Signal()
 
     def __init__(
         self, image_processing_model: ImageProcessingModel, params: Config
     ) -> None:
+        """Initialize the image processing tab handler.
+
+        Args:
+            image_processing_model (ImageProcessingModel): Model for managing image processing.
+            params (Config): Configuration parameters for processing.
+        """
         super().__init__()
         self.model: ImageProcessingModel = image_processing_model
         self.params: Config = params
@@ -308,12 +493,27 @@ class ImageProcessingTabHandler(QThread):
         self.save_path: Path = cast(Path, None)
 
     def load_gui(self, gui) -> None: # type: ignore
+        """Load a reference to the GUI instance.
+
+        Args:
+            gui: The main GUI instance.
+        """
         self.gui = gui
 
     def pass_filter_params(self, filter_param_dict: dict[str, int | float]) -> None:
+        """Pass filter parameters to the processing model.
+
+        Args:
+            filter_param_dict (dict[str, int | float]): Dictionary of filter parameters.
+        """
         self.model.load_filter_params(filter_param_dict)
 
     def preview_image(self) -> None:
+        """Display a preview of the currently selected image.
+
+        Loads the selected image from the list and displays it in the preview area,
+        maintaining the aspect ratio.
+        """
         selected_image = self.gui.image_list.currentItem().text()
         folder_path = self.gui.folder_path_edit.text()
         image_path = folder_path + "/" + selected_image
@@ -327,16 +527,25 @@ class ImageProcessingTabHandler(QThread):
         )
 
     def check_params(self, name: str, value: int | float) -> bool:
+        """Validate a parameter value against the configuration schema.
+
+        Args:
+            name (str): The name of the parameter to validate.
+            value (int | float): The value to validate.
+
+        Returns:
+            bool: True if the parameter is valid, False otherwise.
+        """
         if name == "element_size":
             try:
-                self.params.element_size = value
+                self.params.element_size = cast(int, value)
             except ValidationError as e:
                 self._show_warning("Invalid Element Size", str(e))
                 return False
 
         if name == "connectivity":
             try:
-                self.params.connectivity = value
+                self.params.connectivity = cast(int, value)
             except ValidationError as e:
                 self._show_warning("Invalid Connectivity", str(e))
                 return False
@@ -400,11 +609,22 @@ class ImageProcessingTabHandler(QThread):
         return True
 
     def _show_warning(self, title: str, message: str) -> None:
+        """Display a warning message box to the user.
+
+        Args:
+            title (str): The title of the warning dialog.
+            message (str): The detailed warning message to display.
+        """
         QMessageBox.warning(self.gui, title, message)
 
     def update_sample_image(self, direction: str) -> None:
+        """Navigate between images in the image list.
+    
+        Args:
+            direction (str): The direction to navigate, either "prev" or "next".
+        """
         current_row = self.gui.image_list.currentRow()
-
+    
         if direction == "prev":
             if current_row > 0:
                 current_row -= 1
@@ -413,34 +633,44 @@ class ImageProcessingTabHandler(QThread):
             if current_row < self.gui.image_list.count() - 1:
                 current_row += 1
                 self.gui.image_list.setCurrentRow(current_row)
-
+    
         self.current_index = current_row
         self.preview_image()
-
+    
     # -------Second Column Functions-------------------------
     def initialize_algorithm_combo(self) -> None:
+        """Initialize the algorithm combo box with available processing methods.
+    
+        Populates the combo box with the names of all available processing algorithms
+        and sets the default algorithm.
+        """
         # Initialize the algorithm combo box
         # And achieve all the available methods' names
-
+    
         for algorithm, params in self.model.all_methods_n_params.items():
             print("initialize algorithm:", algorithm)
             self.algorithm_list.append(algorithm)
-
+    
         self.gui.algorithm_combo.addItems(self.algorithm_list)
         self.update_model_algorithm(self.algorithm_list[0])
-
+    
     def load_parameter_table_1(self, algorithm: str) -> None:
+        """Load the parameter table with values for the selected algorithm.
+    
+        Args:
+            algorithm (str): The name of the algorithm whose parameters should be loaded.
+        """
         # pass the current algorithm text in the gui to the model
         # This function only triggered by first initialization and algorithm change
-
+    
         self.current_algorithm = algorithm
         print("current algorithm:", self.current_algorithm)
-
+    
         for algorithm_name, params in self.model.all_methods_n_params.items():
             print("algorithm name:", algorithm_name)
             if algorithm_name == self.current_algorithm:
                 self.gui.param_sandbox1.setRowCount(len(params))
-
+    
                 for (
                     row,
                     (name, value),
@@ -450,23 +680,41 @@ class ImageProcessingTabHandler(QThread):
                         row, 1, QTableWidgetItem(str(value))
                     )
                     self.temp_param_dict[name] = value
-
+    
                 break
-
+    
     def handle_algorithm_change(self, new_algorithm: str) -> None:
+        """Handle a change in the selected algorithm.
+    
+        Updates the parameters in the model, reloads the parameter table,
+        and updates the model with the new algorithm.
+    
+        Args:
+            new_algorithm (str): The name of the newly selected algorithm.
+        """
         # Update the algorithm in the model
         self.update_segment_parameters()
-
+    
         # Reload the param table in the GUI
         self.load_parameter_table_1(new_algorithm)
-
+    
         # Update params in the model
         self.update_model_algorithm(new_algorithm)
-
+    
     def update_model_algorithm(self, algorithm: str) -> None:
+        """Update the algorithm in the processing model.
+    
+        Args:
+            algorithm (str): The name of the algorithm to set in the model.
+        """
         self.model.algorithm = algorithm
 
     def preview_processed_images(self) -> None:
+        """Preview the processed images for the current image.
+
+        Retrieves the processed images from the model and displays them in the preview areas.
+        If the image hasn't been processed yet, displays a warning.
+        """
         if_img, img_before_filter, img_after_filter = (
             self.model.preview_processed_image(self.current_index)
         )
@@ -480,6 +728,11 @@ class ImageProcessingTabHandler(QThread):
             )
 
     def confirm_parameter_before_filtering(self) -> None:
+        """Confirm the parameters for the first step of image processing.
+
+        Validates all parameters against the configuration schema before
+        proceeding with the first processing step.
+        """
         # Update the model parameters
         for algorithm_name, params in self.model.all_methods_n_params.items():
             if algorithm_name == self.model.algorithm:
@@ -500,6 +753,14 @@ class ImageProcessingTabHandler(QThread):
         self._process_step_1()
 
     def looks_like_float(self, s: str) -> bool:
+        """Check if a string represents a floating-point number.
+
+        Args:
+            s (str): The string to check.
+
+        Returns:
+            bool: True if the string represents a floating-point number, False otherwise.
+        """
         try:
             f = float(s)
             # Check if it has a fractional part
@@ -510,6 +771,16 @@ class ImageProcessingTabHandler(QThread):
             return False
 
     def convert_value(self, text: str) -> int | float | str:
+        """Convert a string to the appropriate numeric type.
+
+        Args:
+            text (str): The string to convert.
+
+        Returns:
+            int | float | str: The converted value, as an integer if the value is an integer,
+                               as a float if the value is a floating-point number,
+                               or as a string if the value cannot be converted to a number.
+        """
         try:
             value = float(text)
             # Return an int if the number is integer
@@ -519,6 +790,14 @@ class ImageProcessingTabHandler(QThread):
             return text
 
     def extract_parameters_from_table(self, table_widget) -> dict[str, int|float]: # type: ignore
+        """Extract parameters from a table widget.
+
+        Args:
+            table_widget: The table widget containing parameter names and values.
+
+        Returns:
+            dict[str, int|float]: A dictionary mapping parameter names to their values.
+        """
         params = {}
         row_count = table_widget.rowCount()
         for row in range(row_count):
@@ -529,30 +808,53 @@ class ImageProcessingTabHandler(QThread):
         return params  # type: ignore
 
     def update_segment_parameters(self) -> bool:
+        """Update the segment parameters in the model from the GUI table.
+    
+        Extracts parameters from the table widget and updates the corresponding
+        parameters in the model for the currently selected algorithm.
+    
+        Returns:
+            bool: True if the parameters were successfully updated.
+        """
         # Update the params in the model
         # Extract parameters from the table
         params = self.extract_parameters_from_table(self.gui.param_sandbox1)
-
+    
         # Update the model's dictionary for the selected algorithm
         for algorithm_name, params_in_dict in self.model.all_methods_n_params.items():
             if algorithm_name == self.model.algorithm:
                 for name, value in params.items():
                     print("Updating", name, "to", value)
                     params_in_dict[name] = value 
-
+    
         return True
-
+    
     def _process_step_1(self) -> None:
+        """Execute the first step of image processing.
+    
+        Calls the model's step_1_main method to process the current image
+        and updates the preview with the results.
+        """
         step_1_img = self.model.step_1_main(self.current_index)
         self.update_label_before_filtering(step_1_img)
-
+    
     def update_label_before_filtering(self, img: npt.NDArray[np.int_]) -> None:
+        """Update the preview of the image after the first processing step.
+    
+        Args:
+            img (npt.NDArray[np.int_]): The processed image to display.
+        """
         self.gui.label_before_filtering.axes.clear()
         self.gui.label_before_filtering.axes.imshow(img)
         self.gui.label_before_filtering.draw()
 
     # -------Third Column Functions: Filtering-------------------------
     def initialize_parameter_table_2(self) -> None:
+        """Initialize the filtering parameters table with default values.
+    
+        Populates the filtering parameters table with the current values from
+        the temporary filter parameter dictionary.
+        """
         params = [
             ("max_eccentricity", self.temp_filter_param_dict["max_eccentricity"]),
             ("min_solidity", self.temp_filter_param_dict["min_solidity"]),
@@ -568,6 +870,11 @@ class ImageProcessingTabHandler(QThread):
             self.gui.param_sandbox2.setItem(row, 1, QTableWidgetItem(str(value)))
 
     def confirm_parameter_for_filtering(self) -> None:
+        """Confirm the filtering parameters and apply them to the current image.
+    
+        Validates all filtering parameters against the configuration schema before
+        proceeding with the second processing step.
+        """
         for name, value in self.temp_filter_param_dict.items():
             if_valid = self.check_params(name, value)
             if not if_valid:
@@ -578,6 +885,11 @@ class ImageProcessingTabHandler(QThread):
         self._process_step_2()
 
     def store_filter_params(self) -> None:
+        """Store the filtering parameters from the GUI table into the temporary dictionary.
+    
+        Extracts the filtering parameters from the table widget and updates the
+        temporary filter parameter dictionary with the new values.
+        """
         params = {}
 
         for row in range(self.gui.param_sandbox2.rowCount()):
@@ -593,22 +905,41 @@ class ImageProcessingTabHandler(QThread):
         self.temp_filter_param_dict["min_size"] = params.get("min_size", 0)
 
     def _process_step_2(self) -> None:
+        """Execute the second step of image processing (filtering).
+    
+        Calls the model's step_2_main method to apply filtering to the current image
+        and updates the preview with the results.
+        """
         step_2_img = self.model.step_2_main(self.current_index)
         self.update_process_image_preview(step_2_img)
 
     # -------Third Column Functions: Manual Ellipse Adjustment-------------------------
     def ellipse_manual_adjustment(self) -> None:
+        """Launch the ellipse adjustment tool for manual fine-tuning of detected ellipses.
+
+        Opens a separate window with tools for manually adjusting the detected ellipses,
+        and updates the preview with the adjusted ellipses when complete.
+        """
         img = self.model.ellipse_manual_adjustment(self.current_index)
         self.update_process_image_preview(img)
 
     def update_process_image_preview(self, img: npt.NDArray[np.int_]) -> None:
+        """Update the preview of the processed image after filtering or adjustment.
+
+        Args:
+            img (npt.NDArray[np.int_]): The processed image to display.
+        """
         self.gui.processed_image_preview.axes.clear()
         self.gui.processed_image_preview.axes.imshow(img)
         self.gui.processed_image_preview.draw()
 
     # -------Third Column Functions: Batch Processing----------------------------
     def ask_if_batch(self) -> None:
-        """Function to handle the batch processing of all images in the folder."""
+        """Function to handle the batch processing of all images in the folder.
+    
+        Creates and displays a confirmation dialog with options for saving processed images.
+        If confirmed, initiates the batch processing operation.
+        """
         confirm_dialog = self.create_confirm_dialog()
         save_images_checkbox = self.create_save_images_checkbox(confirm_dialog)
 
@@ -620,6 +951,11 @@ class ImageProcessingTabHandler(QThread):
             print("Batch processing canceled.")
 
     def create_confirm_dialog(self) -> QMessageBox:
+        """Create a confirmation dialog for batch processing.
+    
+        Returns:
+            QMessageBox: The configured confirmation dialog.
+        """
         confirm_dialog = QMessageBox(self.gui)
         confirm_dialog.setWindowTitle("Batch Processing Confirmation")
         confirm_dialog.setText(
@@ -631,6 +967,14 @@ class ImageProcessingTabHandler(QThread):
         return confirm_dialog
 
     def create_save_images_checkbox(self, dialog: QMessageBox) -> QCheckBox:
+        """Create a checkbox for enabling image saving during batch processing.
+    
+        Args:
+            dialog (QMessageBox): The dialog to add the checkbox to.
+    
+        Returns:
+            QCheckBox: The configured checkbox widget.
+        """
         save_images_checkbox = QCheckBox("Save processed images")
         save_images_checkbox.stateChanged.connect(
             lambda: self.update_if_save_processed_images(
@@ -641,9 +985,20 @@ class ImageProcessingTabHandler(QThread):
         return save_images_checkbox
 
     def update_if_save_processed_images(self, state: bool) -> None: 
+        """Update the flag indicating whether to save processed images.
+    
+        Args:
+            state (bool): The new state of the save images flag.
+        """
         self.if_save_processed_images = state
 
     def batch_process_images(self) -> None:
+        """Execute batch processing on all images in the folder.
+    
+        Validates all parameters, initializes the progress window, and starts
+        the worker thread to process all images. If saving is enabled, verifies
+        that the save path exists before proceeding.
+        """
         for name, value in self.temp_param_dict.items():
             if_valid = self.check_params(name, value)
             if not if_valid:
@@ -678,7 +1033,11 @@ class ImageProcessingTabHandler(QThread):
         self.worker_thread.start()
 
     def show_progress_window(self, num_images: int) -> None:
-        """Create and show a progress window with a loading bar."""
+        """Create and show a progress window with a loading bar.
+
+        Args:
+            num_images (int): The total number of images to process, used to set the progress bar range.
+        """
         self.progress_dialog = QDialog(self.gui)
         self.progress_dialog.setWindowTitle("Batch Processing in Progress")
         self.progress_dialog.setFixedSize(400, 100)
@@ -695,12 +1054,20 @@ class ImageProcessingTabHandler(QThread):
         self.progress_dialog.show()
 
     def update_progress_bar(self, value: int) -> None:
-        """Update the progress bar value."""
+        """Update the progress bar value.
+
+        Args:
+            value (int): The new progress value to display.
+        """
         self.progress_bar.setValue(value)
         print("update progress bar:", value)
 
     def on_processing_done(self) -> None:
-        """Handle the completion of image processing."""
+        """Handle the completion of image processing.
+
+        Closes the progress dialog, emits the batch_processing_done signal,
+        and switches to the results tab.
+        """
         # Close the progress dialog
         self.progress_dialog.close()
         self.batch_processing_done.emit()
@@ -710,7 +1077,24 @@ class ImageProcessingTabHandler(QThread):
 
 
 class ResultsTabHandler:
+    """Handler for the results tab in the GUI.
+
+    This class manages the display and export of processing results, including
+    histogram generation and descriptive statistics calculation.
+
+    Attributes:
+        params (Config): Configuration parameters for results display.
+        save_path (Path): Path where results will be saved.
+        ellipses_properties (list[list[dict[str, float]]]): Properties of detected ellipses for all images.
+        export_handler (ExportSettingsHandler): Handler for export settings.
+        gui: Reference to the main GUI instance.
+    """
     def __init__(self, params: Config) -> None:
+        """Initialize the results tab handler.
+
+        Args:
+            params (Config): Configuration parameters containing default values.
+        """
         # self.gui = gui
         self.params = params
         self.save_path = params.save_path
@@ -719,13 +1103,29 @@ class ResultsTabHandler:
         self.export_handler: ExportSettingsHandler
 
     def load_gui(self, gui) -> None: # type: ignore
+        """Load a reference to the GUI instance.
+
+        Args:
+            gui: The main GUI instance.
+        """
         self.gui = gui
 
     def load_ellipse_properties(self, properties: list[list[dict[str, float]]]) -> None:
+        """Load the properties of detected ellipses for display and analysis.
+
+        Args:
+            properties (list[list[dict[str, float]]]): Properties of detected ellipses for all images.
+        """
         self.ellipses_properties = properties
         pass
 
     def generate_histogram(self) -> None:
+        """Generate and display a histogram of bubble sizes.
+
+        Creates a histogram showing the distribution of equivalent diameters of detected bubbles.
+        Optionally displays PDF, CDF, and characteristic diameters (d32, dmean, dxy) based on
+        user selections. Updates the plot with appropriate labels and legend.
+        """
         num_bins = self.gui.bins_spinbox.value()
         show_pdf = self.gui.pdf_checkbox.isChecked()
         show_cdf = self.gui.cdf_checkbox.isChecked()
@@ -845,10 +1245,20 @@ class ResultsTabHandler:
     def calculate_descriptive_sizes(
         self, equivalent_diameters: npt.NDArray[np.float64]
     ) -> tuple[float, float, float]:
-        """Calculate d32, d mean, and dxy based on the equivalent diameters."""
+        """Calculate characteristic diameters from the equivalent diameters.
+
+        Args:
+            equivalent_diameters (npt.NDArray[np.float64]): Array of equivalent diameters.
+
+        Returns:
+            tuple[float, float, float]: A tuple containing (d32, d_mean, dxy) where:
+                - d32: Sauter mean diameter
+                - d_mean: Arithmetic mean diameter
+                - dxy: General mean diameter with user-specified powers
+        """
         dxy_x_power: int = int(self.gui.dxy_x_input.text())
         dxy_y_power: int = int(self.gui.dxy_y_input.text())
-        d32: float = np.sum(equivalent_diameters**3) / np.sum(equivalent_diameters**2)
+        d32: float = np.sum(equivalent_diameters**3) / np.sum(equivalent_diameters**2) # type: ignore
 
         # d32, Sauter diameter, should be calculated based on the area, and volume
         # diameter of a circle, which is unkown right now
@@ -856,11 +1266,16 @@ class ResultsTabHandler:
         d_mean: float = float(np.mean(equivalent_diameters))
         dxy: float = np.sum(equivalent_diameters**dxy_x_power) / np.sum(
             equivalent_diameters**dxy_y_power
-        )
-
+        ) # type: ignore
+ 
         return d32, d_mean, dxy
 
     def get_equivalent_diameters_list(self) -> npt.NDArray[np.float64]:
+        """Extract equivalent diameters from all detected ellipses.
+
+        Returns:
+            npt.NDArray[np.float64]: Array of equivalent diameters from all processed images.
+        """
         equivalent_diameters = []
         for image in self.ellipses_properties:
             for ellipse in image:
@@ -885,7 +1300,7 @@ class ResultsTabHandler:
 
         if not graph_filename or not csv_filename:
             QMessageBox.warning(
-                self,
+                self.gui,
                 "Filename Missing",
                 "Please provide filenames for both graph and CSV files.",
             )
@@ -936,6 +1351,12 @@ class ResultsTabHandler:
         return
 
     def _show_warning(self, title: str, message: str) -> None:
+        """Display a warning message box to the user.
+
+        Args:
+            title (str): The title of the warning dialog.
+            message (str): The detailed warning message to display.
+        """
         QMessageBox.warning(self.gui, title, message)
 
 
@@ -1011,9 +1432,9 @@ class MainHandler:
             self.gui,
             "Restart",
             "Do you want to start a new mission? \n Current unsaved progress will be lost",
-            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
-        if restart == QMessageBox.Yes:
+        if restart == QMessageBox.StandardButton.Yes:
             self.restart()
 
     def tab1_select_folder(self) -> None:
@@ -1082,31 +1503,15 @@ class MainHandler:
         self.results_tab_handler.save_results()
 
     def restart(self) -> None:
-        # self.toml_handler = None
-        # self.input_file_model = None
-        # self.folder_tab_handler = None
-        # self.calibration_model = None
-        # self.calibration_tab_handler = None
-        # self.image_processing_model = None
-        # self.image_processing_tab_handler = None
-        # self.results_tab_handler = None
-        # self.export_handler = None
+        """Restart the application by launching a new instance and closing the current one.
 
-        # Close the existing QApplication instance
-        # self.app.quit()
-        # self.app = None
-
-        # QCoreApplication.quit()
-        # QTimer.singleShot(0, self.reinitialize_main_handler)
-
-        # Start a new detached process running the same Python executable with the same arguments
+        Creates a new detached process running the same Python executable with the same
+        arguments, then closes the current application instance.
+        """
         QProcess.startDetached(sys.executable, sys.argv)
-        # Quit the current application
         QApplication.quit()
 
     # def reinitialize_main_handler(self) -> None:
     #     self.__init__()
-
-
 if __name__ == "__main__":
     main_handler = MainHandler()
