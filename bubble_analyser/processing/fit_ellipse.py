@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 from numpy import typing as npt
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QImage, QMouseEvent, QPixmap, QCloseEvent
+from PySide6.QtGui import QCloseEvent, QImage, QMouseEvent, QPixmap
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,

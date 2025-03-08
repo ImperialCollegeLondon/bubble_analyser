@@ -4,8 +4,10 @@ import matplotlib
 
 # from bubble_analyser.gui import MainHandler
 import bubble_analyser.gui.event_handlers as hd
+
 matplotlib.use("Agg")  # Force backend to Agg for CI
 from typing import cast
+
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PySide6.QtCore import Qt
