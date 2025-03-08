@@ -1,4 +1,5 @@
 import math
+from typing import cast
 
 import cv2
 import numpy as np
@@ -16,13 +17,41 @@ from PySide6.QtWidgets import (
 
 
 class EllipseAdjuster(QMainWindow):
+    """A graphical user interface for manually adjusting ellipses on images.
+
+    This class provides a window with controls for selecting, moving, resizing, and rotating
+    ellipses that have been detected in an image. It allows for fine-tuning of automatically
+    detected ellipses or adding new ellipses manually.
+
+    The interface displays the image with ellipses overlaid and provides control points
+    for manipulating the ellipses. The major and minor axes of each ellipse are shown
+    with different colors, and control points are provided at the endpoints of each axis,
+    at the center, and at rotation handles.
+
+    Attributes:
+        finished (Signal): Signal emitted when the window is closed, passing the original
+            image and the final list of adjusted ellipses.
+        ellipses (list): List of ellipse tuples, where each tuple contains (center, axes, angle).
+        B (ndarray): The original RGB image.
+        dragging (bool): Flag indicating whether an axis endpoint is being dragged.
+        moving_center (bool): Flag indicating whether an ellipse center is being moved.
+        rotating (bool): Flag indicating whether an ellipse is being rotated.
+        selected_ellipse (int): Index of the ellipse currently being manipulated.
+        selected_ellipse_index (int): Index of the currently selected ellipse.
+        selected_point (tuple): Last recorded mouse position in image coordinates.
+        selected_axis (int): Index of the selected control point (0-3 for endpoints,
+            4 for center, 5-6 for rotation handles).
+        adding_new_circle (bool): Flag indicating whether a new circle is being added.
+        scale_factor (float): Scaling factor for display.
+    """
+
     # Signal to emit when the window is closed.
     # It sends the original image and the final ellipses list.
     finished = Signal(object, object)
 
     def __init__(
         self,
-        ellipse_list: list[tuple[tuple[float, float], tuple[int, int], int]],
+        ellipse_list: list[tuple[tuple[float, float], tuple[int, int], float]],
         img_rgb: npt.NDArray[np.int_],
     ) -> None:
         """Constructor for EllipseAdjuster.
@@ -54,7 +83,7 @@ class EllipseAdjuster(QMainWindow):
         self.image_label.setMouseTracking(True)
         self.main_layout.addWidget(self.image_label, 85)
 
-        self.ellipses: list[tuple[tuple[float, float], tuple[int, int], int]] = ellipse_list.copy()
+        self.ellipses: list[tuple[tuple[float, float], tuple[int, int], float]] = ellipse_list.copy()
         self.B = img_rgb.copy()
 
         # Control panel setup
@@ -83,16 +112,18 @@ class EllipseAdjuster(QMainWindow):
         self.dragging = False
         self.moving_center = False  # For dragging the center of an ellipse.
         self.rotating = False  # For rotation via rotation handle.
-        self.selected_ellipse = None  # Index of the ellipse being manipulated.
-        self.selected_ellipse_index = None  # Used for highlighting/deletion.
-        self.selected_point = None  # Last recorded mouse position (in image coordinates).
-        self.selected_axis = None  # 0-3 for endpoints, 4 for center, 5 for rotation handle.
+        self.selected_ellipse: int = cast(int, None)  # Index of the ellipse being manipulated.
+        self.selected_ellipse_index: int = cast(int, None)  # Used for highlighting/deletion.
+        self.selected_point: tuple[float, float] = cast(
+            tuple[float, float], None
+        )  # Last recorded mouse position (in image coordinates).
+        self.selected_axis: int = cast(int, None)  # 0-3 for endpoints, 4 for center, 5 for rotation handle.
         self.adding_new_circle = False  # Flag for adding a new circle.
         self.scale_factor = 1.0
 
         # For rotation handling:
         self.initial_handle_angle = 0.0  # Angle between center and mouse when rotation started (radians).
-        self.initial_ellipse_angle = 0  # Ellipse's original angle at start of rotation (degrees).
+        self.initial_ellipse_angle = 0.0  # Ellipse's original angle at start of rotation (degrees).
 
         # Default new ellipse parameters (a circle)
         self.default_axes = (100, 100)  # Both axes the same for a circle.
@@ -102,6 +133,7 @@ class EllipseAdjuster(QMainWindow):
 
     def update_image(self) -> None:
         """Updates the displayed image with the current list of ellipses.
+
         Copies the stored image (self.B) and draws the ellipses on it.
         Then scales the image to a fixed width of 1500 pixels while maintaining aspect ratio.
         Finally, converts the image to a QImage and displays it in the QLabel.
@@ -128,7 +160,7 @@ class EllipseAdjuster(QMainWindow):
     def draw_ellipses(
         self,
         image: npt.NDArray[np.int_],
-        ellipses: list[tuple[tuple[float, float], tuple[int, int], int]],
+        ellipses: list[tuple[tuple[float, float], tuple[int, int], float]],
     ) -> None:
         """Draws ellipses on the image.
 
@@ -204,7 +236,7 @@ class EllipseAdjuster(QMainWindow):
             )
 
             # Compute and draw rotation handles.
-            # We use two angles (45° and 225° in the ellipse’s local parametric space)
+            # We use two angles (45° and 225° in the ellipses local parametric space)
             for t_deg in (45, 225):
                 t = np.deg2rad(t_deg)
                 # Parametric form for an ellipse:
@@ -236,8 +268,8 @@ class EllipseAdjuster(QMainWindow):
         If any of the above is true, it calls `update_image` to redraw the image with the new selection.
         """
         if event.button() == Qt.MouseButton.RightButton:
-            self.selected_ellipse_index = None
-            self.selected_ellipse = None
+            self.selected_ellipse_index = cast(int, None)
+            self.selected_ellipse = cast(int, None)
             self.rotating = False
             self.moving_center = False
             self.dragging = False
@@ -323,7 +355,7 @@ class EllipseAdjuster(QMainWindow):
                         # Store the initial handle angle and ellipse angle.
                         # Angle from center to click in radians.
                         self.initial_handle_angle = math.atan2(y - center[1], x - center[0])
-                        self.initial_ellipse_angle = angle  # in degrees
+                        self.initial_ellipse_angle = cast(float, angle)  # in degrees
                     else:
                         self.dragging = True
                     break
@@ -357,7 +389,7 @@ class EllipseAdjuster(QMainWindow):
         being dragged.
         - Updates the image to reflect changes.
         """
-        if self.selected_ellipse is None:
+        if self.selected_ellipse is cast(tuple[float, float], None):
             return
 
         label_pos = self.image_label.mapFromGlobal(event.globalPosition().toPoint())  # type: ignore
@@ -432,9 +464,9 @@ class EllipseAdjuster(QMainWindow):
         self.dragging = False
         self.moving_center = False
         self.rotating = False
-        self.selected_ellipse = None
-        self.selected_point = None
-        self.selected_axis = None
+        self.selected_ellipse = cast(int, None)
+        self.selected_point = cast(tuple[float, float], None)
+        self.selected_axis = cast(int, None)
 
     def delete_selected_ellipse(self) -> None:
         """Deletes the currently selected ellipse.
@@ -446,7 +478,7 @@ class EllipseAdjuster(QMainWindow):
         """
         if self.selected_ellipse_index is not None:
             del self.ellipses[self.selected_ellipse_index]  # type: ignore
-            self.selected_ellipse_index = None
+            self.selected_ellipse_index = cast(int, None)
             self.update_image()
 
     def closeEvent(self, event: QCloseEvent) -> None:

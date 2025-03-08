@@ -1,3 +1,24 @@
+"""GUI module for the Bubble Analyser application.
+
+This module implements the graphical user interface for the Bubble Analyser application,
+providing a user-friendly interface for analyzing bubble images. It defines the main
+window and all UI components including tabs for folder selection, calibration, image
+processing, and results visualization.
+
+The module contains the following key components:
+- MplCanvas: A class for embedding Matplotlib figures in the PySide6 application
+- MainWindow: The main application window with multiple tabs for different functionalities
+
+The GUI is structured around a tab-based interface with separate sections for:
+1. Folder selection - for choosing input image folders
+2. Calibration - for pixel-to-mm calibration and background image selection
+3. Image processing - for bubble detection, filtering, and manual adjustment
+4. Results - for visualizing and exporting histogram data
+
+The module works closely with event handlers defined in the event_handlers module
+to connect UI interactions with the underlying processing functionality.
+"""
+
 from datetime import datetime
 
 import matplotlib
@@ -31,6 +52,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+
 class MplCanvas(FigureCanvas):
     """A class for creating a Matplotlib figure within a PySide6 application.
 
@@ -51,6 +73,7 @@ class MplCanvas(FigureCanvas):
         self.fig = Figure(figsize=(width, height), dpi=dpi)
         self.axes = self.fig.add_subplot(111)
         super().__init__(self.fig)
+
 
 class MainWindow(QMainWindow):
     """The main window of the Bubble Analyser application.

@@ -19,10 +19,12 @@ class MethodsHandler:
     instantiating them with a given configuration, and aggregating their required parameters into a dictionary.
 
     Attributes:
-        params_dict (dict): A dictionary representation of the configuration parameters obtained via the `model_dump()` method.
+        params_dict (dict): A dictionary representation of the configuration parameters obtained via the
+            `model_dump()` method.
         folder_path (Path): The file system path to the folder containing the method modules.
         modules (dict[str, object]): A dictionary mapping module names to their corresponding loaded module objects.
-        all_classes (dict[str, object]): A dictionary mapping instance names (from each module's class instance) to the instantiated objects.
+        all_classes (dict[str, object]): A dictionary mapping instance names (from each module's class instance) to
+            the instantiated objects.
         full_dict (dict[str, dict[str, float|int]]): A dictionary mapping instance names to their required parameters.
     """
 
@@ -33,8 +35,8 @@ class MethodsHandler:
         instantiates classes from those modules, and collects the necessary parameters from each instance.
 
         Args:
-            params (Config): A configuration object that includes the necessary parameters. The configuration is converted
-                             to a dictionary using its `model_dump()` method.
+            params (Config): A configuration object that includes the necessary parameters. The configuration is
+                converted to a dictionary using its `model_dump()` method.
 
         Side Effects:
             - Populates the `params_dict`, `modules`, `all_classes`, and `full_dict` attributes.
@@ -58,7 +60,8 @@ class MethodsHandler:
         and stores the module objects in a dictionary keyed by the module name (derived from the file name).
 
         Returns:
-            dict[str, object]: A dictionary where each key is a module name and each value is the corresponding module object.
+            dict[str, object]: A dictionary where each key is a module name and each value is the corresponding module
+                object.
         """
         folder_path = self.folder_path
         modules = {}
@@ -75,15 +78,17 @@ class MethodsHandler:
     def get_new_classes(self, module: object) -> dict[str, object]:  # type: ignore
         """Retrieve classes that are defined within the provided module.
 
-        This method uses the `inspect` module to iterate over members of the module, filtering out only those that are classes
-        and verifying that they were defined in the module itself (by comparing the class's `__module__` attribute to the module's name).
+        This method uses the `inspect` module to iterate over members of the module, filtering out only those that are
+        classes and verifying that they were defined in the module itself (by comparing the class's `__module__`
+        attribute to the module's name).
 
         Args:
             module (module): A Python module object from which to extract classes. If a falsy value is provided,
                              the method defaults to using the modules stored in the `self.modules` attribute.
 
         Returns:
-            dict[str, object]: A dictionary mapping class names to their corresponding class objects defined in the module.
+            dict[str, object]: A dictionary mapping class names to their corresponding class objects defined in the
+                module.
         """
         if not module:
             module = self.modules
@@ -100,7 +105,8 @@ class MethodsHandler:
         Iterates through each module loaded in `self.modules`, retrieves the classes defined in the module,
         instantiates each class using the configuration dictionary (`self.params_dict`), and then:
           - Stores the instance in `self.all_classes` using its `name` attribute as the key.
-          - Retrieves the necessary parameters via the instance's `get_needed_params()` method and stores them in `self.full_dict`.
+          - Retrieves the necessary parameters via the instance's `get_needed_params()` method and stores
+            them in `self.full_dict`.
 
         Side Effects:
             - Populates the `all_classes` and `full_dict` attributes with the instances and their parameters.
