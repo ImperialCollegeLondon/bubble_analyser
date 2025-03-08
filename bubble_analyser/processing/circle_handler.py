@@ -58,7 +58,7 @@ class CircleHandler:
 
         self.px2mm: float = px2mm
 
-        self.ellipses: list[tuple[tuple[float, float], tuple[int, int], int]]
+        self.ellipses: list[tuple[tuple[float, float], tuple[int, int], float]]
         self.ellipses_on_image: npt.NDArray[np.int_]
         self.ellipses_properties: list[dict[str, float]]
 
@@ -115,7 +115,7 @@ class CircleHandler:
 
     def fill_ellipse_labels(
         self,
-    ) -> list[tuple[tuple[float, float], tuple[int, int], int]]:
+    ) -> list[tuple[tuple[float, float], tuple[int, int], float]]:
         """Fill each ellipse label in labels_before_filtering and return a new label object.
 
         Returns:

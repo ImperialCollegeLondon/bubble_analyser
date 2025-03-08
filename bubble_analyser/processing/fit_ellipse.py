@@ -1,3 +1,10 @@
+"""Ellipse adjustment module for the Bubble Analyser application.
+
+This module provides a graphical user interface for manually adjusting ellipses detected in images.
+It allows users to fine-tune the position, size, and orientation of ellipses to improve accuracy
+of bubble measurements when automatic detection is not perfect.
+"""
+
 import math
 from typing import cast
 
@@ -336,7 +343,8 @@ class EllipseAdjuster(QMainWindow):
                 minor_axis1,
                 minor_axis2,
                 (int(center[0]), int(center[1])),
-            ] + rot_handles
+                *rot_handles,
+            ]
 
             # Check each control point.
             for j, point in enumerate(control_points):
