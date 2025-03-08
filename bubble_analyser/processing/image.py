@@ -41,9 +41,7 @@ class MethodsHandler:
             - Loads modules and prints module and class information to the console.
         """
         self.params_dict = params.model_dump()
-        self.folder_path: Path = (
-            "/mnt/c/new_sizer/bubble_analyser/bubble_analyser/methods"  # type: ignore
-        )
+        self.folder_path: Path = "/mnt/c/new_sizer/bubble_analyser/bubble_analyser/methods"  # type: ignore
 
         self.modules: dict[str, object] = {}
         self.modules = self.load_modules_from_folder()
@@ -113,9 +111,7 @@ class MethodsHandler:
             for class_name, class_obj in new_classes.items():
                 print(f"  Class: {class_name}")
 
-                instance: IterativeWatershed | NormalWatershed = class_obj(
-                    self.params_dict
-                )  # type: ignore
+                instance: IterativeWatershed | NormalWatershed = class_obj(self.params_dict)  # type: ignore
                 self.all_classes[instance.name] = instance
                 self.full_dict[instance.name] = instance.get_needed_params()  # type: ignore
 
@@ -204,9 +200,7 @@ class Image:
         self.ellipses_properties: list[dict[str, float]]
         self.ellipses_on_images: npt.NDArray[np.int_]
 
-        self.all_methods_n_params: dict[str, dict[str, float | int]] = (
-            all_methods_n_params
-        )
+        self.all_methods_n_params: dict[str, dict[str, float | int]] = all_methods_n_params
 
         self.methods_handler: MethodsHandler = methods_handler
 
@@ -297,9 +291,7 @@ class Image:
         if self.new_circle_handler is not None:
             del self.new_circle_handler
 
-        self.new_circle_handler = CircleHandler(
-            labels_before_filter, rgb_img, self.px2mm
-        )
+        self.new_circle_handler = CircleHandler(labels_before_filter, rgb_img, self.px2mm)
         self.new_circle_handler.load_filter_params(self.filter_param_dict)
 
     def labels_filtering(self) -> None:
@@ -323,9 +315,7 @@ class Image:
         """
         self.ellipses = self.new_circle_handler.fill_ellipse_labels()
 
-    def update_ellipses(
-        self, ellipses: list[tuple[tuple[float, float], tuple[int, int], int]]
-    ) -> None:
+    def update_ellipses(self, ellipses: list[tuple[tuple[float, float], tuple[int, int], int]]) -> None:
         """Update the detected ellipses with a manually provided list of ellipses.
 
         This allows for manual fine-tuning of ellipse detection. The method updates both the instance's
@@ -364,9 +354,7 @@ class Image:
         self.ellipses_on_images = self.new_circle_handler.overlay_ellipses_on_image()
 
     def get_labelled_mask(self) -> None:
-        self.labelled_ellipses_mask = (
-            self.new_circle_handler.create_labelled_image_from_ellipses()
-        )
+        self.labelled_ellipses_mask = self.new_circle_handler.create_labelled_image_from_ellipses()
 
     def filtering_processing(self) -> None:
         """Execute the complete filtering process on the image.

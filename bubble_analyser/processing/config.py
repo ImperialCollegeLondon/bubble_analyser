@@ -22,6 +22,7 @@ Methods:
 """
 
 from pathlib import Path
+from typing import cast
 
 import typing_extensions
 from pydantic import (
@@ -32,6 +33,10 @@ from pydantic import (
     StrictFloat,
     model_validator,
 )
+
+from pydantic import ValidationError
+from PySide6.QtWidgets import QMessageBox
+from bubble_analyser.gui import MainWindow
 
 
 class Config(BaseModel):  # type: ignore
@@ -107,16 +112,12 @@ class Config(BaseModel):  # type: ignore
         # Check if the lower bound is less than the upper bound
         if low >= high:
             # Raise a ValueError if the bounds are in the wrong order
-            raise ValueError(
-                "Limits for the Morphological_element_size_range are in the wrong order"
-            )
+            raise ValueError("Limits for the Morphological_element_size_range are in the wrong order")
         return self
 
     @model_validator(mode="after")
     def check_morphological_element_size(self) -> typing_extensions.Self:
-        if not (
-            self.element_size == 3 or self.element_size == 5 or self.element_size == 0
-        ):
+        if not (self.element_size == 3 or self.element_size == 5 or self.element_size == 0):
             raise ValueError("Morphological_element_size must be 3, 5 or 0")
         return self
 
@@ -182,9 +183,7 @@ class Config(BaseModel):  # type: ignore
         # Check if the lower bound is less than the upper bound
         if low >= high:
             # Raise a ValueError if the bounds are in the wrong order
-            raise ValueError(
-                "Limits for the Max_Eccentricity_range are in the wrong order"
-            )
+            raise ValueError("Limits for the Max_Eccentricity_range are in the wrong order")
 
         # Return the instance itself for method chaining
         return self
@@ -236,3 +235,87 @@ class Config(BaseModel):  # type: ignore
             raise ValueError("Limits for the min_size_range are in the wrong order")
         # Return the instance itself for method chaining
         return self
+
+class ParamChecker:
+    def __init__(self, params: Config, gui: MainWindow) -> None:
+        self.gui: MainWindow = gui
+        self.params: Config = params
+
+    def param_checker(self, name: str, value: int | float) -> bool:
+        if name == "element_size":
+            try:
+                value = cast(PositiveInt, value)
+                self.params.element_size = value
+            except ValidationError as e:
+                self._show_warning("Invalid Element Size", str(e))
+                return False
+
+        if name == "connectivity":
+            try:
+                value = cast(PositiveInt, value)
+                self.params.connectivity = value
+            except ValidationError as e:
+                self._show_warning("Invalid Connectivity", str(e))
+                return False
+
+        if name == "threshold_value":
+            try:
+                self.params.threshold_value = value
+            except ValidationError as e:
+                self._show_warning("Invalid Threshold Value", str(e))
+                return False
+
+        if name == "resample":
+            try:
+                self.params.resample = value
+            except ValidationError as e:
+                self._show_warning("Invalid Resample Factor", str(e))
+                return False
+
+        if name == "max_thresh":
+            try:
+                self.params.max_thresh = value
+            except ValidationError as e:
+                self._show_warning("Invalid Max Threshold", str(e))
+                return False
+
+        if name == "min_thresh":
+            try:
+                self.params.min_thresh = value
+            except ValidationError as e:
+                self._show_warning("Invalid Min Threshold", str(e))
+                return False
+
+        if name == "step_size":
+            try:
+                self.params.step_size = value
+            except ValidationError as e:
+                self._show_warning("Invalid Step Size", str(e))
+                return False
+
+        if name == "max_eccentricity":
+            try:
+                self.params.max_eccentricity = value
+            except ValidationError as e:
+                self._show_warning("Invalid Max Eccentricity", str(e))
+                return False
+
+        if name == "min_solidity":
+            try:
+                self.params.min_solidity = value
+            except ValidationError as e:
+                self._show_warning("Invalid Min Solidity", str(e))
+                return False
+
+        if name == "min_size":
+            try:
+                self.params.min_size = value
+            except ValidationError as e:
+                self._show_warning("Invalid Min Size", str(e))
+                return False
+
+        return True
+
+    def _show_warning(self, title: str, message: str) -> None:
+        QMessageBox.warning(self.gui, title, message)
+

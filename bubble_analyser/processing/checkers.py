@@ -13,6 +13,7 @@ class ParamChecker:
     def param_checker(self, name: str, value: int | float) -> bool:
         if name == "element_size":
             try:
+
                 self.params.element_size = value
             except ValidationError as e:
                 self._show_warning("Invalid Element Size", str(e))

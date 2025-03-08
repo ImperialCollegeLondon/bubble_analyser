@@ -33,9 +33,7 @@ from skimage import (
 )
 
 
-def morphological_process(
-    target_img: npt.NDArray[np.bool_], element_size: int = 8
-) -> npt.NDArray[np.int_]:
+def morphological_process(target_img: npt.NDArray[np.bool_], element_size: int = 8) -> npt.NDArray[np.int_]:
     """Apply morphological operations to process the target image.
 
     This function performs a series of morphological operations on the input image,

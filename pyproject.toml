@@ -57,6 +57,7 @@ addopts = "-v --mypy -p no:warnings --cov=bubble_analyser --cov-report=html --do
 
 [tool.ruff]
 target-version = "py312"
+line-length = 120
 
 [tool.ruff.lint]
 select = [

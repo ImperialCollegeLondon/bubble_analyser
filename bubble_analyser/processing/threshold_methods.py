@@ -56,9 +56,7 @@ class ThresholdMethods:
         Returns:
             A binary (inverted) image where the foreground and background are swapped.
         """
-        binary_image = target_img > filters.threshold_otsu(
-            target_img
-        )  # Binary image using Otsu's thresholding
+        binary_image = target_img > filters.threshold_otsu(target_img)  # Binary image using Otsu's thresholding
 
         return binary_image
 
@@ -113,9 +111,7 @@ class ThresholdMethods:
 
         return self.otsu_threshold(difference_img)
 
-    def threshold_without_background(
-        self, target_img: npt.NDArray[np.int_]
-    ) -> npt.NDArray[np.bool_]:
+    def threshold_without_background(self, target_img: npt.NDArray[np.int_]) -> npt.NDArray[np.bool_]:
         """Applies a threshold to the target image without background subtraction.
 
         Args:
@@ -133,9 +129,7 @@ if __name__ == "__main__":
     img_path = Path("../../tests/test_image_grey.JPG")
     bknd_path = Path("../../tests/background_image_grey.JPG")
     img_thresholded_path_otsu = Path("../../tests/test_image_thresholded_otsu.JPG")
-    img_thresholded_path_with_bknd = Path(
-        "../../tests/test_image_thresholded_with_bknd.JPG"
-    )
+    img_thresholded_path_with_bknd = Path("../../tests/test_image_thresholded_with_bknd.JPG")
 
     # Create an instance of the ThresholdMethods class
     threshold_methods = ThresholdMethods()
@@ -150,14 +144,10 @@ if __name__ == "__main__":
 
     # Apply Otsu's thresholding to the grayscale image
     img_thresholded_otsu = threshold_methods.threshold_without_background(img_grey)
-    img_thresholded_with_bknd = threshold_methods.threshold_with_background(
-        img_grey, bknd_grey
-    )
+    img_thresholded_with_bknd = threshold_methods.threshold_with_background(img_grey, bknd_grey)
 
     # Save the thresholded image
-    cv2.imwrite(
-        str(img_thresholded_path_otsu), img_thresholded_otsu.astype(np.uint8) * 255
-    )
+    cv2.imwrite(str(img_thresholded_path_otsu), img_thresholded_otsu.astype(np.uint8) * 255)
     cv2.imwrite(
         str(img_thresholded_path_with_bknd),
         img_thresholded_with_bknd.astype(np.uint8) * 255,

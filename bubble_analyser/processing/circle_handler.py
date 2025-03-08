@@ -68,11 +68,7 @@ class CircleHandler:
             solidity = prop.solidity
 
             # Check if the circle properties meet the thresholds
-            if not (
-                eccentricity <= max_eccentricity
-                and min_solidity <= solidity
-                and area >= min_size
-            ):
+            if not (eccentricity <= max_eccentricity and min_solidity <= solidity and area >= min_size):
                 # Remove the region by setting it to 1 (background)
                 new_labels[new_labels == prop.label] = 1
 
@@ -97,9 +93,7 @@ class CircleHandler:
 
             mask = np.zeros_like(self.labels_after_filtering, dtype=np.uint8)
             mask[self.labels_after_filtering == label] = 255
-            contours, _ = cv2.findContours(
-                mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-            )
+            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
             for contour in contours:
                 if len(contour) >= 5:
@@ -160,10 +154,7 @@ class CircleHandler:
             area = np.pi * (major_axis_length / 2) * (minor_axis_length / 2)
             perimeter = np.pi * (
                 3 * (major_axis_length + minor_axis_length)
-                - np.sqrt(
-                    (3 * major_axis_length + minor_axis_length)
-                    * (major_axis_length + 3 * minor_axis_length)
-                )
+                - np.sqrt((3 * major_axis_length + minor_axis_length) * (major_axis_length + 3 * minor_axis_length))
             )
             eccentricity = np.sqrt(1 - (minor_axis_length / major_axis_length) ** 2)
             equivalent_diameter = np.sqrt(4 * area / np.pi)

@@ -50,15 +50,11 @@ class EllipseAdjuster(QMainWindow):
 
         # Image display setup
         self.image_label = QLabel()
-        self.image_label.setAlignment(
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
-        )
+        self.image_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         self.image_label.setMouseTracking(True)
         self.main_layout.addWidget(self.image_label, 85)
 
-        self.ellipses: list[tuple[tuple[float, float], tuple[int, int], int]] = (
-            ellipse_list.copy()
-        )
+        self.ellipses: list[tuple[tuple[float, float], tuple[int, int], int]] = ellipse_list.copy()
         self.B = img_rgb.copy()
 
         # Control panel setup
@@ -89,22 +85,14 @@ class EllipseAdjuster(QMainWindow):
         self.rotating = False  # For rotation via rotation handle.
         self.selected_ellipse = None  # Index of the ellipse being manipulated.
         self.selected_ellipse_index = None  # Used for highlighting/deletion.
-        self.selected_point = (
-            None  # Last recorded mouse position (in image coordinates).
-        )
-        self.selected_axis = (
-            None  # 0-3 for endpoints, 4 for center, 5 for rotation handle.
-        )
+        self.selected_point = None  # Last recorded mouse position (in image coordinates).
+        self.selected_axis = None  # 0-3 for endpoints, 4 for center, 5 for rotation handle.
         self.adding_new_circle = False  # Flag for adding a new circle.
         self.scale_factor = 1.0
 
         # For rotation handling:
-        self.initial_handle_angle = (
-            0.0  # Angle between center and mouse when rotation started (radians).
-        )
-        self.initial_ellipse_angle = (
-            0  # Ellipse's original angle at start of rotation (degrees).
-        )
+        self.initial_handle_angle = 0.0  # Angle between center and mouse when rotation started (radians).
+        self.initial_ellipse_angle = 0  # Ellipse's original angle at start of rotation (degrees).
 
         # Default new ellipse parameters (a circle)
         self.default_axes = (100, 100)  # Both axes the same for a circle.
@@ -186,18 +174,10 @@ class EllipseAdjuster(QMainWindow):
             )
 
             # Draw the axis lines.
-            cv2.line(
-                image, (int(center[0]), int(center[1])), major_axis1, (255, 0, 0), 2
-            )
-            cv2.line(
-                image, (int(center[0]), int(center[1])), major_axis2, (255, 0, 0), 2
-            )
-            cv2.line(
-                image, (int(center[0]), int(center[1])), minor_axis1, (0, 0, 255), 2
-            )
-            cv2.line(
-                image, (int(center[0]), int(center[1])), minor_axis2, (0, 0, 255), 2
-            )
+            cv2.line(image, (int(center[0]), int(center[1])), major_axis1, (255, 0, 0), 2)
+            cv2.line(image, (int(center[0]), int(center[1])), major_axis2, (255, 0, 0), 2)
+            cv2.line(image, (int(center[0]), int(center[1])), minor_axis1, (0, 0, 255), 2)
+            cv2.line(image, (int(center[0]), int(center[1])), minor_axis2, (0, 0, 255), 2)
 
             # Draw small circles at each endpoint.
             cv2.circle(image, major_axis1, 8, (0, 255, 255), -1)
@@ -230,16 +210,8 @@ class EllipseAdjuster(QMainWindow):
                 # Parametric form for an ellipse:
                 # x = center[0] + (axes[0]/2)*cos(t)*cos(angle_rad) - (axes[1]/2)*sin(t)*sin(angle_rad)
                 # y = center[1] + (axes[0]/2)*cos(t)*sin(angle_rad) + (axes[1]/2)*sin(t)*cos(angle_rad)
-                rot_x = int(
-                    center[0]
-                    + (axes[0] / 2) * np.cos(t) * cos_angle
-                    - (axes[1] / 2) * np.sin(t) * sin_angle
-                )
-                rot_y = int(
-                    center[1]
-                    + (axes[0] / 2) * np.cos(t) * sin_angle
-                    + (axes[1] / 2) * np.sin(t) * cos_angle
-                )
+                rot_x = int(center[0] + (axes[0] / 2) * np.cos(t) * cos_angle - (axes[1] / 2) * np.sin(t) * sin_angle)
+                rot_y = int(center[1] + (axes[0] / 2) * np.cos(t) * sin_angle + (axes[1] / 2) * np.sin(t) * cos_angle)
                 # Draw a circle (e.g., magenta) for rotation handle.
                 cv2.circle(image, (rot_x, rot_y), 8, (255, 0, 255), -1)
 
@@ -321,16 +293,8 @@ class EllipseAdjuster(QMainWindow):
             rot_handles = []
             for t_deg in (45, 225):
                 t = np.deg2rad(t_deg)
-                rot_x = int(
-                    center[0]
-                    + (axes[0] / 2) * np.cos(t) * cos_angle
-                    - (axes[1] / 2) * np.sin(t) * sin_angle
-                )
-                rot_y = int(
-                    center[1]
-                    + (axes[0] / 2) * np.cos(t) * sin_angle
-                    + (axes[1] / 2) * np.sin(t) * cos_angle
-                )
+                rot_x = int(center[0] + (axes[0] / 2) * np.cos(t) * cos_angle - (axes[1] / 2) * np.sin(t) * sin_angle)
+                rot_y = int(center[1] + (axes[0] / 2) * np.cos(t) * sin_angle + (axes[1] / 2) * np.sin(t) * cos_angle)
                 rot_handles.append((rot_x, rot_y))
 
             # List of control points: endpoints then center, then rotation handles.
@@ -358,9 +322,7 @@ class EllipseAdjuster(QMainWindow):
                         self.rotating = True
                         # Store the initial handle angle and ellipse angle.
                         # Angle from center to click in radians.
-                        self.initial_handle_angle = math.atan2(
-                            y - center[1], x - center[0]
-                        )
+                        self.initial_handle_angle = math.atan2(y - center[1], x - center[0])
                         self.initial_ellipse_angle = angle  # in degrees
                     else:
                         self.dragging = True
