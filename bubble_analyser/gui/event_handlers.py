@@ -50,7 +50,7 @@ from bubble_analyser.gui import (
 )
 
 # from . import component_handlers as ch
-from bubble_analyser.gui.component_handlers import *
+# from bubble_analyser.gui.component_handlers import *
 from bubble_analyser.processing import Config
 
 
@@ -169,7 +169,7 @@ class TomlFileHandler:
 
         This method should be called after the GUI has been initialized.
         """
-        self.gui = gui  # type: ignore
+        self.gui = gui  # type: ignore # noqa: F821
 
     def load_toml(self) -> None:
         """Load and validate the TOML configuration file.
@@ -239,9 +239,7 @@ class FolderTabHandler:
         If a folder has already been confirmed, displays a warning instead.
         """
         if self.model.sample_images_confirmed:
-            self._show_warning(
-                "Selection Locked", "You have already confirmed the folder selection."
-            )
+            self._show_warning("Selection Locked", "You have already confirmed the folder selection.")
             return
 
         folder_path = QFileDialog.getExistingDirectory(self.gui, "Select Folder")
@@ -279,9 +277,7 @@ class FolderTabHandler:
         and switches to the calibration tab if a folder has been selected.
         """
         if self.model.sample_images_confirmed:
-            self._show_warning(
-                "Selection Locked", "You have already confirmed the folder selection."
-            )
+            self._show_warning("Selection Locked", "You have already confirmed the folder selection.")
             return
 
         folder_path = self.gui.folder_path_edit.text()
@@ -289,9 +285,7 @@ class FolderTabHandler:
             self._update_folder_path(folder_path)
             self._populate_image_list(folder_path)
             self.model.confirm_folder_selection(folder_path)
-            self.gui.tabs.setCurrentIndex(
-                self.gui.tabs.indexOf(self.gui.calibration_tab)
-            )
+            self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.calibration_tab))
 
     def preview_image_folder_tab(self) -> None:
         """Display a preview of the selected image in the folder tab.
@@ -387,9 +381,7 @@ class CalibrationTabHandler:
         appropriate warning messages.
         """
         if self.calibration_model.calibration_confirmed:
-            self._show_warning(
-                "Selection Locked", "You have already confirmed the pixel-to-mm ratio."
-            )
+            self._show_warning("Selection Locked", "You have already confirmed the pixel-to-mm ratio.")
             return
 
         img_path: Path = cast(Path, self.gui.pixel_img_name.text())
@@ -399,9 +391,7 @@ class CalibrationTabHandler:
             )
             self.gui.manual_px_mm_input.setText(f"{px2mm:.3f}")
         else:
-            self.gui.statusBar().showMessage(
-                "Image file does not exist or not selected.", 5000
-            )
+            self.gui.statusBar().showMessage("Image file does not exist or not selected.", 5000)
 
     def select_bg_corr_image(self) -> None:
         """Handle the selection of a background correction image.
@@ -444,18 +434,14 @@ class CalibrationTabHandler:
         """
         if self.calibration_model.calibration_confirmed:
             self.gui.manual_px_mm_input.setText(f"{self.calibration_model.px2mm:.3f}")
-            self._show_warning(
-                "Selection Locked", "You have already confirmed the calibration."
-            )
+            self._show_warning("Selection Locked", "You have already confirmed the calibration.")
             return
 
         self.calibration_model.bknd_img_path = Path(self.gui.bg_corr_image_name.text())
         self.calibration_model.px2mm = float(self.gui.manual_px_mm_input.text())
         self.calibration_model.confirm_calibration()
 
-        self.gui.tabs.setCurrentIndex(
-            self.gui.tabs.indexOf(self.gui.image_processing_tab)
-        )
+        self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.image_processing_tab))
 
     def _show_warning(self, title: str, message: str) -> None:
         """Display a warning message box to the user.
@@ -489,9 +475,7 @@ class ImageProcessingTabHandler(QThread):
 
     batch_processing_done = Signal()
 
-    def __init__(
-        self, image_processing_model: ImageProcessingModel, params: Config
-    ) -> None:
+    def __init__(self, image_processing_model: ImageProcessingModel, params: Config) -> None:
         """Initialize the image processing tab handler.
 
         Args:
@@ -699,9 +683,7 @@ class ImageProcessingTabHandler(QThread):
                     (name, value),
                 ) in enumerate(params.items()):
                     self.gui.param_sandbox1.setItem(row, 0, QTableWidgetItem(name))
-                    self.gui.param_sandbox1.setItem(
-                        row, 1, QTableWidgetItem(str(value))
-                    )
+                    self.gui.param_sandbox1.setItem(row, 1, QTableWidgetItem(str(value)))
                     self.temp_param_dict[name] = value
 
                 break
@@ -738,17 +720,13 @@ class ImageProcessingTabHandler(QThread):
         Retrieves the processed images from the model and displays them in the preview areas.
         If the image hasn't been processed yet, displays a warning.
         """
-        if_img, img_before_filter, img_after_filter = (
-            self.model.preview_processed_image(self.current_index)
-        )
+        if_img, img_before_filter, img_after_filter = self.model.preview_processed_image(self.current_index)
 
         if if_img:
             self.update_label_before_filtering(img_before_filter)
             self.update_process_image_preview(img_after_filter)
         else:
-            self._show_warning(
-                "Image Not Found", "Image has not been fully processed yet."
-            )
+            self._show_warning("Image Not Found", "Image has not been fully processed yet.")
 
     def confirm_parameter_before_filtering(self) -> None:
         """Confirm the parameters for the first step of image processing.
@@ -921,9 +899,7 @@ class ImageProcessingTabHandler(QThread):
             if name_item and value_item:
                 params[name_item.text()] = float(value_item.text())
 
-        self.temp_filter_param_dict["max_eccentricity"] = params.get(
-            "max_eccentricity", 1.0
-        )
+        self.temp_filter_param_dict["max_eccentricity"] = params.get("max_eccentricity", 1.0)
         self.temp_filter_param_dict["min_solidity"] = params.get("min_solidity", 0.0)
         self.temp_filter_param_dict["min_size"] = params.get("min_size", 0)
 
@@ -981,12 +957,8 @@ class ImageProcessingTabHandler(QThread):
         """
         confirm_dialog = QMessageBox(self.gui)
         confirm_dialog.setWindowTitle("Batch Processing Confirmation")
-        confirm_dialog.setText(
-            "The parameters will be applied to all the images. Confirm to process."
-        )
-        confirm_dialog.setStandardButtons(
-            QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel
-        )
+        confirm_dialog.setText("The parameters will be applied to all the images. Confirm to process.")
+        confirm_dialog.setStandardButtons(QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel)
         return confirm_dialog
 
     def create_save_images_checkbox(self, dialog: QMessageBox) -> QCheckBox:
@@ -1000,9 +972,7 @@ class ImageProcessingTabHandler(QThread):
         """
         save_images_checkbox = QCheckBox("Save processed images")
         save_images_checkbox.stateChanged.connect(
-            lambda: self.update_if_save_processed_images(
-                save_images_checkbox.isChecked()
-            )
+            lambda: self.update_if_save_processed_images(save_images_checkbox.isChecked())
         )
         dialog.setCheckBox(save_images_checkbox)
         return save_images_checkbox
@@ -1047,9 +1017,7 @@ class ImageProcessingTabHandler(QThread):
                 )
                 return
 
-        self.worker_thread = WorkerThread(
-            self.model, self.if_save_processed_images, self.export_handler.save_path
-        )
+        self.worker_thread = WorkerThread(self.model, self.if_save_processed_images, self.export_handler.save_path)
 
         self.worker_thread.update_progress.connect(self.update_progress_bar)
         self.worker_thread.processing_done.connect(self.on_processing_done)
@@ -1198,9 +1166,7 @@ class ResultsTabHandler:
         d32, d_mean, dxy = self.calculate_descriptive_sizes(equivalent_diameters_array)
 
         # Update descriptive size label
-        desc_text = (
-            f"Results:\nd32 = {d32:.2f} mm\ndmean = {d_mean:.2f} mm\ndxy = {dxy:.2f} mm"
-        )
+        desc_text = f"Results:\nd32 = {d32:.2f} mm\ndmean = {d_mean:.2f} mm\ndxy = {dxy:.2f} mm"
         self.gui.descriptive_size_label.setText(desc_text)
 
         # Optionally add CDF
@@ -1210,30 +1176,20 @@ class ResultsTabHandler:
 
             if show_cdf:
                 cdf = np.cumsum(counts) / np.sum(counts) * 100
-                self.gui.histogram_canvas.axes2.plot(
-                    bins[:-1], cdf, "r-", marker="o", label="CDF"
-                )
+                self.gui.histogram_canvas.axes2.plot(bins[:-1], cdf, "r-", marker="o", label="CDF")
 
             if show_pdf:
                 pdf = counts / np.sum(counts) * 100
-                self.gui.histogram_canvas.axes2.plot(
-                    bins[:-1], pdf, "b-", marker="o", label="PDF"
-                )
+                self.gui.histogram_canvas.axes2.plot(bins[:-1], pdf, "b-", marker="o", label="PDF")
 
         if show_d32:
-            self.gui.histogram_canvas.axes.axvline(
-                x=d32, color="r", linestyle="-", label="d32"
-            )
+            self.gui.histogram_canvas.axes.axvline(x=d32, color="r", linestyle="-", label="d32")
 
         if show_dmean:
-            self.gui.histogram_canvas.axes.axvline(
-                x=d_mean, color="g", linestyle="--", label="dmean"
-            )
+            self.gui.histogram_canvas.axes.axvline(x=d_mean, color="g", linestyle="--", label="dmean")
 
         if show_dxy:
-            self.gui.histogram_canvas.axes.axvline(
-                x=dxy, color="b", linestyle="--", label="dxy"
-            )
+            self.gui.histogram_canvas.axes.axvline(x=dxy, color="b", linestyle="--", label="dxy")
 
         # Apply Legend Options
         legend_position = self.gui.legend_position_combobox.currentText()
@@ -1252,9 +1208,7 @@ class ResultsTabHandler:
         if show_cdf or show_pdf or show_d32 or show_dmean or show_dxy:
             lines1, labels1 = self.gui.histogram_canvas.axes.get_legend_handles_labels()
             if show_cdf or show_pdf:
-                lines2, labels2 = (
-                    self.gui.histogram_canvas.axes2.get_legend_handles_labels()
-                )
+                lines2, labels2 = self.gui.histogram_canvas.axes2.get_legend_handles_labels()
                 self.gui.histogram_canvas.axes.legend(
                     lines1 + lines2,
                     labels1 + labels2,
@@ -1266,9 +1220,7 @@ class ResultsTabHandler:
 
         return
 
-    def calculate_descriptive_sizes(
-        self, equivalent_diameters: npt.NDArray[np.float64]
-    ) -> tuple[float, float, float]:
+    def calculate_descriptive_sizes(self, equivalent_diameters: npt.NDArray[np.float64]) -> tuple[float, float, float]:
         """Calculate characteristic diameters from the equivalent diameters.
 
         Args:
@@ -1288,9 +1240,7 @@ class ResultsTabHandler:
         # diameter of a circle, which is unkown right now
 
         d_mean: float = float(np.mean(equivalent_diameters))
-        dxy: float = np.sum(equivalent_diameters**dxy_x_power) / np.sum(
-            equivalent_diameters**dxy_y_power
-        )  # type: ignore
+        dxy: float = np.sum(equivalent_diameters**dxy_x_power) / np.sum(equivalent_diameters**dxy_y_power)  # type: ignore
 
         return d32, d_mean, dxy
 
@@ -1313,9 +1263,7 @@ class ResultsTabHandler:
         # folder_path = self.gui.save_folder_edit.text()
         folder_path = self.export_handler.save_path
         if folder_path == "" or not os.path.exists(folder_path):
-            self._show_warning(
-                "Folder Not Found", "Please select a valid folder in export settings."
-            )
+            self._show_warning("Folder Not Found", "Please select a valid folder in export settings.")
             return
 
         # Get the user-specified filenames
@@ -1369,9 +1317,7 @@ class ResultsTabHandler:
             # Write the rows of data
             writer.writerows(rows)
 
-        self._show_warning(
-            "Results Saved", f"Results have been saved successfully to {folder_path}."
-        )
+        self._show_warning("Results Saved", f"Results have been saved successfully to {folder_path}.")
         return
 
     def _show_warning(self, title: str, message: str) -> None:
@@ -1432,18 +1378,12 @@ class MainHandler:
         self.toml_handler = TomlFileHandler(self.toml_file_path)
 
         self.input_file_model = InputFilesModel()
-        self.folder_tab_handler = FolderTabHandler(
-            self.input_file_model, params=self.toml_handler.params
-        )
+        self.folder_tab_handler = FolderTabHandler(self.input_file_model, params=self.toml_handler.params)
 
         self.calibration_model = CalibrationModel()
-        self.calibration_tab_handler = CalibrationTabHandler(
-            self.calibration_model, params=self.toml_handler.params
-        )
+        self.calibration_tab_handler = CalibrationTabHandler(self.calibration_model, params=self.toml_handler.params)
 
-        self.image_processing_model = ImageProcessingModel(
-            params=self.toml_handler.params
-        )
+        self.image_processing_model = ImageProcessingModel(params=self.toml_handler.params)
         self.image_processing_tab_handler = ImageProcessingTabHandler(
             self.image_processing_model, params=self.toml_handler.params
         )
@@ -1456,9 +1396,7 @@ class MainHandler:
         Establishes signal-slot connections between different handlers to enable
         proper event propagation and response to user actions.
         """
-        self.image_processing_tab_handler.batch_processing_done.connect(
-            self.start_generate_histogram
-        )
+        self.image_processing_tab_handler.batch_processing_done.connect(self.start_generate_histogram)
 
     def initialize_gui(self) -> None:
         """Initialize the main GUI application and window.
@@ -1497,9 +1435,7 @@ class MainHandler:
         Creates the export settings handler and provides it to relevant tab handlers
         that need access to export functionality.
         """
-        self.export_handler = ExportSettingsHandler(
-            parent=self.gui, params=self.toml_handler.params
-        )
+        self.export_handler = ExportSettingsHandler(parent=self.gui, params=self.toml_handler.params)
         self.image_processing_tab_handler.export_handler = self.export_handler
         self.results_tab_handler.export_handler = self.export_handler
 
@@ -1541,9 +1477,7 @@ class MainHandler:
         """
         self.folder_tab_handler.confirm_folder_selection()
         # load image path list to Processing Hanlder
-        self.image_processing_model.confirm_folder_selection(
-            self.input_file_model.image_list_full_path_in_path
-        )
+        self.image_processing_model.confirm_folder_selection(self.input_file_model.image_list_full_path_in_path)
 
     def tab2_get_px2mm_ratio(self) -> None:
         """Calculate the pixel-to-millimeter ratio in the calibration tab.
@@ -1578,9 +1512,7 @@ class MainHandler:
 
         if self.calibration_model.if_bknd:
             self.image_processing_model.if_bknd = self.calibration_model.if_bknd
-            self.image_processing_model.get_bknd_img_path(
-                self.calibration_model.bknd_img_path
-            )
+            self.image_processing_model.get_bknd_img_path(self.calibration_model.bknd_img_path)
 
     def tab3_load_parameter_table_1(self, algorithm: str) -> None:
         """Load parameters for the selected algorithm in the first parameter table.
@@ -1613,27 +1545,66 @@ class MainHandler:
         self.image_processing_tab_handler.preview_processed_images()
 
     def tab3_handle_algorithm_change(self, algorithm: str) -> None:
+        """Handle a change in the selected algorithm in the image processing tab.
+
+        Delegates the algorithm change handling to the image processing tab handler,
+        which updates parameters and UI elements accordingly.
+
+        Args:
+            algorithm (str): The name of the newly selected algorithm.
+        """
         self.image_processing_tab_handler.handle_algorithm_change(algorithm)
 
     def tab3_confirm_parameter_before_filtering(self) -> None:
+        """Confirm the parameters for the first step of image processing.
+
+        Delegates the parameter confirmation to the image processing tab handler,
+        which validates all parameters against the configuration schema before
+        proceeding with the first processing step.
+        """
         self.image_processing_tab_handler.confirm_parameter_before_filtering()
 
     def tab3_confirm_parameter_for_filtering(self) -> None:
+        """Confirm the filtering parameters and apply them to the current image.
+
+        Delegates the filtering parameter confirmation to the image processing tab handler,
+        which validates all filtering parameters against the configuration schema before
+        proceeding with the second processing step.
+        """
         self.image_processing_tab_handler.confirm_parameter_for_filtering()
 
     def tab3_ellipse_manual_adjustment(self) -> None:
+        """Enable manual adjustment of detected ellipses in the image processing tab.
+
+        Delegates the ellipse manual adjustment functionality to the image processing
+        tab handler, allowing users to modify automatically detected ellipses.
+        """
         self.image_processing_tab_handler.ellipse_manual_adjustment()
 
     def tab3_ask_if_batch(self) -> None:
+        """Ask the user if they want to perform batch processing on all images.
+
+        Delegates the batch processing confirmation dialog to the image processing
+        tab handler, which prompts the user and initiates batch processing if confirmed.
+        """
         self.image_processing_tab_handler.ask_if_batch()
 
     def start_generate_histogram(self) -> None:
-        self.results_tab_handler.load_ellipse_properties(
-            self.image_processing_model.ellipses_properties
-        )
+        """Generate histograms based on the processed ellipse properties.
+
+        Loads the ellipse properties from the image processing model into the
+        results tab handler and triggers histogram generation to visualize
+        the distribution of bubble sizes and other properties.
+        """
+        self.results_tab_handler.load_ellipse_properties(self.image_processing_model.ellipses_properties)
         self.results_tab_handler.generate_histogram()
 
     def save_results(self) -> None:
+        """Save the analysis results to disk.
+
+        Delegates the result saving functionality to the results tab handler,
+        which exports the processed data according to the configured export settings.
+        """
         self.results_tab_handler.save_results()
 
     def restart(self) -> None:

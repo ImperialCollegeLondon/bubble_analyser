@@ -35,9 +35,7 @@ class TestImagePreprocess(unittest.TestCase):
         self.assertIsNotNone(img_rgb)
 
         # Check if the output images have the correct shape
-        self.assertEqual(
-            len(img_grey.shape), 2
-        )  # Grayscale image should have 2 dimensions
+        self.assertEqual(len(img_grey.shape), 2)  # Grayscale image should have 2 dimensions
         self.assertEqual(len(img_rgb.shape), 3)  # RGB image should have 3 dimensions
 
 

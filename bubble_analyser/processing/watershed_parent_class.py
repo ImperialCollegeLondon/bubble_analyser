@@ -90,13 +90,9 @@ class WatershedSegmentation:
         print("if_bknd in watershed_parent: ", self.if_bknd_img)
         threshold_methods = ThresholdMethods()
         if self.if_bknd_img is True:
-            self.img_grey_thresholded = threshold_methods.threshold_with_background(
-                self.img_grey, self.bknd_img
-            )
+            self.img_grey_thresholded = threshold_methods.threshold_with_background(self.img_grey, self.bknd_img)
         else:
-            self.img_grey_thresholded = threshold_methods.threshold_without_background(
-                self.img_grey
-            )
+            self.img_grey_thresholded = threshold_methods.threshold_without_background(self.img_grey)
 
     def _morph_process(self) -> None:
         """Apply morphological operations to the thresholded image.
@@ -104,9 +100,7 @@ class WatershedSegmentation:
         Uses the morphological_process function to clean up the binary image by
         filling holes and removing noise.
         """
-        self.img_grey_morph = morphological_process(
-            self.img_grey_thresholded, self.element_size
-        )
+        self.img_grey_morph = morphological_process(self.img_grey_thresholded, self.element_size)
 
     def _dist_transform(self) -> None:
         """Apply distance transform to the morphologically processed image.
@@ -114,9 +108,7 @@ class WatershedSegmentation:
         Computes the distance transform using L2 (Euclidean) distance metric.
         The result is converted to uint8 type for further processing.
         """
-        self.img_grey_dt = cv2.distanceTransform(
-            self.img_grey_morph, cv2.DIST_L2, self.element_size
-        ).astype(np.uint8)  # type: ignore
+        self.img_grey_dt = cv2.distanceTransform(self.img_grey_morph, cv2.DIST_L2, self.element_size).astype(np.uint8)  # type: ignore
 
     def _initialize_labels(self, img: npt.NDArray[np.int_]) -> None:
         """Initialize label markers for watershed segmentation.

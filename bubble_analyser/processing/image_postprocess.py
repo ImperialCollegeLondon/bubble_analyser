@@ -52,12 +52,8 @@ def overlay_labels_on_rgb(
         hue = np.random.randint(0, 179)
         saturation = 255  # Max saturation
         value = 255  # Max brightness
-        color_hsv = np.array(
-            [[[hue, saturation, value]]], dtype=np.uint8
-        )  # HSV color format
-        color_bgr = cv2.cvtColor(color_hsv, cv2.COLOR_HSV2BGR)[0][
-            0
-        ]  # Convert HSV to BGR color
+        color_hsv = np.array([[[hue, saturation, value]]], dtype=np.uint8)  # HSV color format
+        color_bgr = cv2.cvtColor(color_hsv, cv2.COLOR_HSV2BGR)[0][0]  # Convert HSV to BGR color
 
         # Create a mask for the current label
         mask = labels == label
