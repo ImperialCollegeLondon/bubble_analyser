@@ -233,7 +233,7 @@ class CalibrationModel:
         Returns:
             float: The calculated pixel-to-millimeter ratio.
         """
-        __, self.px2mm = calculate_px2mm(pixel_img_path, img_resample, gui)
+        __, self.px2mm = calculate_px2mm(pixel_img_path, img_resample, gui)  # type: ignore
 
         return self.px2mm
 

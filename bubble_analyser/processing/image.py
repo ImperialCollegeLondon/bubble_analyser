@@ -1,3 +1,10 @@
+"""Image processing module for the Bubble Analyser application.
+
+This module provides classes for loading, processing, and analyzing images of bubbles.
+It includes functionality for dynamic method loading, image preprocessing, segmentation,
+filtering, and ellipse detection and measurement.
+"""
+
 import importlib.util
 import inspect
 from pathlib import Path
@@ -202,7 +209,7 @@ class Image:
         self.labels_before_filter: npt.NDArray[np.int_]
         self.labels_after_filter: npt.NDArray[np.int_]
         self.labelled_ellipses_mask: npt.NDArray[np.int_]
-        self.ellipses: list[tuple[tuple[float, float], tuple[int, int], int]] = []
+        self.ellipses: list[tuple[tuple[float, float], tuple[int, int], float]] = []
         self.ellipses_properties: list[dict[str, float]]
         self.ellipses_on_images: npt.NDArray[np.int_]
 
@@ -269,7 +276,7 @@ class Image:
                 ) in self.methods_handler.all_classes.items():
                     if name == algorithm_name:
                         self._img_preprocess(params["resample"])
-                        processing_instance
+                        # processing_instance
                         processing_instance.initialize_processing(  # type: ignore
                             params=params,
                             img_grey=self.img_grey,
@@ -321,7 +328,7 @@ class Image:
         """
         self.ellipses = self.new_circle_handler.fill_ellipse_labels()
 
-    def update_ellipses(self, ellipses: list[tuple[tuple[float, float], tuple[int, int], int]]) -> None:
+    def update_ellipses(self, ellipses: list[tuple[tuple[float, float], tuple[int, int], float]]) -> None:
         """Update the detected ellipses with a manually provided list of ellipses.
 
         This allows for manual fine-tuning of ellipse detection. The method updates both the instance's
@@ -360,6 +367,15 @@ class Image:
         self.ellipses_on_images = self.new_circle_handler.overlay_ellipses_on_image()
 
     def get_labelled_mask(self) -> None:
+        """Create a labeled mask image from the detected ellipses.
+
+        This method uses the circle handler to generate a mask where each detected ellipse
+        is represented with a unique label. The result is stored in the labelled_ellipses_mask
+        attribute for later use in visualization or analysis.
+
+        Returns:
+            None
+        """
         self.labelled_ellipses_mask = self.new_circle_handler.create_labelled_image_from_ellipses()
 
     def filtering_processing(self) -> None:

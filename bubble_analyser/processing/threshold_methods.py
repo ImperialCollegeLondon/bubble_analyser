@@ -39,6 +39,14 @@ from skimage import (
 
 
 class ThresholdMethods:
+    """A class providing various thresholding methods for image segmentation.
+
+    This class implements different thresholding algorithms to separate foreground objects
+    (bubbles) from the background in images. It includes methods for Otsu thresholding,
+    adaptive thresholding, and other specialized thresholding techniques optimized for
+    bubble detection and analysis.
+    """
+
     def otsu_threshold(self, target_img: npt.NDArray[np.int_]) -> npt.NDArray[np.bool_]:
         """Apply Otsu's thresholding to the target image and return an inverted binary mask.
 
@@ -91,7 +99,7 @@ class ThresholdMethods:
 
     def threshold_with_background(
         self, target_img: npt.NDArray[np.int_], bknd_img: npt.NDArray[np.int_]
-    ) -> npt.NDArray[np.bool]:
+    ) -> npt.NDArray[np.bool_]:
         """Applies a threshold to the target image based on the selected method.
 
         Args:
