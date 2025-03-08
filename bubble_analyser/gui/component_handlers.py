@@ -145,9 +145,7 @@ class InputFilesModel:
 
         self.sample_images_confirmed = True
 
-    def get_image_list(
-        self, folder_path: str = cast(str, None)
-    ) -> tuple[list[str], list[str]]:
+    def get_image_list(self, folder_path: str = cast(str, None)) -> tuple[list[str], list[str]]:
         """Get lists of image files from the specified folder.
 
         This method scans the specified folder for image files with supported extensions
@@ -340,9 +338,7 @@ class ImageProcessingModel:
         """
         self.px2mm = px2mm
 
-    def preview_processed_image(
-        self, index: int
-    ) -> tuple[bool, npt.NDArray[np.int_], npt.NDArray[np.int_]]:
+    def preview_processed_image(self, index: int) -> tuple[bool, npt.NDArray[np.int_], npt.NDArray[np.int_]]:
         """Retrieve the processed images for preview.
 
         Args:
@@ -510,12 +506,8 @@ class ImageProcessingModel:
                 self.ellipses_properties.append(self.img_dict[name].ellipses_properties)
 
                 if if_save:
-                    self.save_processed_images(
-                        self.img_dict[name].ellipses_on_images, name, save_path
-                    )
-                    self.save_labelled_masks(
-                        self.img_dict[name].labelled_ellipses_mask, name, save_path
-                    )
+                    self.save_processed_images(self.img_dict[name].ellipses_on_images, name, save_path)
+                    self.save_labelled_masks(self.img_dict[name].labelled_ellipses_mask, name, save_path)
                     continue
 
             self.img_dict[name].processing_image_before_filtering(self.algorithm)
@@ -524,19 +516,13 @@ class ImageProcessingModel:
             self.ellipses_properties.append(self.img_dict[name].ellipses_properties)
 
             if if_save:
-                self.save_processed_images(
-                    self.img_dict[name].ellipses_on_images, name, save_path
-                )
-                self.save_labelled_masks(
-                    self.img_dict[name].labelled_ellipses_mask, name, save_path
-                )
+                self.save_processed_images(self.img_dict[name].ellipses_on_images, name, save_path)
+                self.save_labelled_masks(self.img_dict[name].labelled_ellipses_mask, name, save_path)
 
             worker_thread.update_progress_bar(index + 1)
         worker_thread.on_processing_done()
 
-    def save_processed_images(
-        self, img: npt.NDArray[np.int_], img_name: Path, save_path: Path
-    ) -> None:
+    def save_processed_images(self, img: npt.NDArray[np.int_], img_name: Path, save_path: Path) -> None:
         """Save the processed image with detected ellipses to disk.
 
         Args:
@@ -553,9 +539,7 @@ class ImageProcessingModel:
         except Exception as e:
             print(e)
 
-    def save_labelled_masks(
-        self, img: npt.NDArray[np.int_], img_name: Path, save_path: Path
-    ) -> None:
+    def save_labelled_masks(self, img: npt.NDArray[np.int_], img_name: Path, save_path: Path) -> None:
         """Save the labelled mask image to disk.
 
         This method saves a mask image where each detected ellipse is labeled with a

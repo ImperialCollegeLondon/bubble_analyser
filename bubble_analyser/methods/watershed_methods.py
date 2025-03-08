@@ -287,18 +287,12 @@ class IterativeWatershed(WatershedSegmentation):
 
         while current_thresh >= self.min_thresh:
             # Apply binary thresholding
-            _, thresholded = cv2.threshold(
-                image, current_thresh * image.max(), 255, cv2.THRESH_BINARY
-            )
+            _, thresholded = cv2.threshold(image, current_thresh * image.max(), 255, cv2.THRESH_BINARY)
 
             # Label the thresholded image
-            num_labels, labels = cv2.connectedComponents(
-                thresholded, connectivity=self.connectivity
-            )
+            num_labels, labels = cv2.connectedComponents(thresholded, connectivity=self.connectivity)
             logging.basicConfig(level=logging.DEBUG)
-            logging.info(
-                f"Threshold {current_thresh:.2f}: {num_labels} components found."
-            )
+            logging.info(f"Threshold {current_thresh:.2f}: {num_labels} components found.")
 
             # Detect new objects by comparing with the final mask
             for label in range(1, num_labels):  # Skip label 0 (background)
@@ -318,9 +312,7 @@ class IterativeWatershed(WatershedSegmentation):
         self.output_mask_for_labels = output_mask  # type: ignore
 
         self.final_label_count, _ = cv2.connectedComponents(self.output_mask_for_labels)
-        logging.info(
-            f"Total unique labels in output_mask_for_labels: {self.final_label_count}"
-        )
+        logging.info(f"Total unique labels in output_mask_for_labels: {self.final_label_count}")
         logging.info(f"Total number of no overlap occurrences: {self.no_overlap_count}")
 
     def get_results_img(self) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]:
