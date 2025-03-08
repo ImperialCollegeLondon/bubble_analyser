@@ -105,7 +105,7 @@ if __name__ == "__main__":
 
     img_processed: npt.NDArray[np.int_]
     # Apply morphological process to the grayscale image
-    img_processed = morphological_process(img_binary, 8) # type: ignore
+    img_processed = morphological_process(img_binary, 8)  # type: ignore
 
     # Save the processed image
     cv2.imwrite(str(output_path), img_processed.astype(np.uint8) * 255)

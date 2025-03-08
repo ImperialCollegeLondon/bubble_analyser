@@ -13,21 +13,22 @@ Both classes inherit from the WatershedSegmentation parent class
 """
 
 import logging
+from typing import cast
 
 import cv2
 import numpy as np
 from numpy import typing as npt
-from typing import cast
+
 from bubble_analyser.processing.watershed_parent_class import WatershedSegmentation
 
 
 class NormalWatershed(WatershedSegmentation):
     """Standard watershed segmentation implementation.
-    
+
     This class implements the standard watershed algorithm for image segmentation.
     It uses a single threshold value to separate foreground and background regions,
     followed by watershed segmentation to identify individual objects.
-    
+
     Attributes:
         name (str): Name identifier for this watershed method.
         img_grey_dt_thresh (npt.NDArray[np.int_]): Thresholded distance transform image.
@@ -38,10 +39,10 @@ class NormalWatershed(WatershedSegmentation):
         resample (float): Resampling factor for image processing.
         if_bknd_img (bool): Flag indicating if background image is used.
     """
-    
+
     def __init__(self, params: dict[str, float | int]) -> None:
         """Initialize the NormalWatershed segmentation method.
-        
+
         Args:
             params (dict[str, float | int]): Dictionary containing parameters for the watershed method.
                 Must include 'resample', 'element_size', 'connectivity', and 'threshold_value'.
@@ -58,7 +59,7 @@ class NormalWatershed(WatershedSegmentation):
 
     def get_needed_params(self) -> dict[str, float | int]:
         """Get the parameters required for this watershed method.
-        
+
         Returns:
             dict[str, float | int]: Dictionary containing the required parameters and their current values.
         """
@@ -74,11 +75,11 @@ class NormalWatershed(WatershedSegmentation):
         params: dict[str, float | int],
         img_grey: npt.NDArray[np.int_],
         img_rgb: npt.NDArray[np.int_],
-        if_bknd_img: bool, 
+        if_bknd_img: bool,
         bknd_img: npt.NDArray[np.int_] = cast(npt.NDArray[np.int_], None),
-    ) -> None: 
+    ) -> None:
         """Initialize the processing with input images and parameters.
-        
+
         Args:
             params (dict[str, float | int]): Dictionary containing parameters for the watershed method.
             img_grey (npt.NDArray[np.int_]): Grayscale input image.
@@ -103,32 +104,32 @@ class NormalWatershed(WatershedSegmentation):
 
     def update_params(self, params: dict[str, float | int]) -> None:
         """Update the parameters for the watershed method.
-        
+
         Args:
             params (dict[str, float | int]): Dictionary containing parameters to update.
                 Must include 'resample', 'element_size', 'connectivity', and 'threshold_value'.
         """
         self.resample = params["resample"]
-        self.element_size = params["element_size"] # type: ignore
-        self.connectivity = params["connectivity"] # type: ignore
+        self.element_size = params["element_size"]  # type: ignore
+        self.connectivity = params["connectivity"]  # type: ignore
         self.threshold_value = params["threshold_value"]
 
     def __threshold_dt_image(self) -> None:
         """Apply threshold to the distance transform image.
-        
+
         Uses the threshold_value parameter to create a binary image from the distance transform.
         The threshold is calculated as a fraction of the maximum value in the distance transform.
         """
-        _, self.img_grey_dt_thresh = cv2.threshold( # type: ignore
+        _, self.img_grey_dt_thresh = cv2.threshold(  # type: ignore
             self.img_grey_dt,
             self.threshold_value * self.img_grey_dt.max(),
             255,
             cv2.THRESH_BINARY,
-        ) 
+        )
 
     def __get_sure_fg_bg(self) -> None:
         """Determine sure foreground and background regions.
-        
+
         Creates masks for sure foreground (from thresholded distance transform),
         sure background (from dilated original image), and unknown regions (the difference
         between sure background and sure foreground).
@@ -137,18 +138,18 @@ class NormalWatershed(WatershedSegmentation):
 
         self.sure_bg = np.array(
             cv2.dilate(self.img_grey, np.ones((3, 3), np.uint8), iterations=1),
-            dtype=np.uint8
-        ) # type: ignore
-        self.sure_fg = np.array(sure_fg_initial, dtype=np.uint8) # type: ignore
-        self.unknown = cv2.subtract(self.sure_bg, self.sure_fg) # type: ignore
+            dtype=np.uint8,
+        )  # type: ignore
+        self.sure_fg = np.array(sure_fg_initial, dtype=np.uint8)  # type: ignore
+        self.unknown = cv2.subtract(self.sure_bg, self.sure_fg)  # type: ignore
 
     def get_results_img(self) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]:
         """Execute the complete watershed segmentation process and return results.
-        
+
         Performs the full sequence of operations for watershed segmentation:
         thresholding, morphological processing, distance transform, determining foreground/background,
         initializing labels, watershed segmentation, and overlaying results on the RGB image.
-        
+
         Returns:
             tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]: A tuple containing:
                 - The RGB image with segmentation labels overlaid
@@ -168,11 +169,11 @@ class NormalWatershed(WatershedSegmentation):
 
 class IterativeWatershed(WatershedSegmentation):
     """Iterative watershed segmentation implementation.
-    
+
     This class implements an advanced watershed algorithm that iteratively applies
     thresholds to detect objects at different intensity levels. It is particularly
     useful for images with objects of varying intensities or sizes.
-    
+
     Attributes:
         name (str): Name identifier for this watershed method.
         max_thresh (float): Maximum threshold value for iterative process.
@@ -182,10 +183,10 @@ class IterativeWatershed(WatershedSegmentation):
         no_overlap_count (int): Counter for non-overlapping objects detected.
         final_label_count (int): Total number of labels in the final segmentation.
     """
-    
+
     def __init__(self, params: dict[str, float | int]) -> None:
         """Initialize the IterativeWatershed segmentation method.
-        
+
         Args:
             params (dict[str, float | int]): Dictionary containing parameters for the watershed method.
                 Must include 'resample', 'element_size', 'connectivity', 'max_thresh', 'min_thresh',
@@ -202,7 +203,7 @@ class IterativeWatershed(WatershedSegmentation):
 
     def get_needed_params(self) -> dict[str, float | int]:
         """Get the parameters required for this watershed method.
-        
+
         Returns:
             dict[str, float | int]: Dictionary containing the required parameters and their current values.
         """
@@ -224,7 +225,7 @@ class IterativeWatershed(WatershedSegmentation):
         bknd_img: npt.NDArray[np.int_] = cast(npt.NDArray[np.int_], None),
     ) -> None:
         """Initialize the processing with input images and parameters.
-        
+
         Args:
             params (dict[str, float | int]): Dictionary containing parameters for the watershed method.
             img_grey (npt.NDArray[np.int_]): Grayscale input image.
@@ -248,28 +249,28 @@ class IterativeWatershed(WatershedSegmentation):
 
     def update_params(self, params: dict[str, float | int]) -> None:
         """Update the parameters for the watershed method.
-        
+
         Args:
             params (dict[str, float | int]): Dictionary containing parameters to update.
                 Must include 'resample', 'element_size', 'connectivity', 'max_thresh',
                 'min_thresh', and 'step_size'.
         """
         self.resample = params["resample"]
-        self.element_size = params["element_size"] # type: ignore
-        self.connectivity = params["connectivity"] # type: ignore
+        self.element_size = params["element_size"]  # type: ignore
+        self.connectivity = params["connectivity"]  # type: ignore
         self.max_thresh = params["max_thresh"]
         self.min_thresh = params["min_thresh"]
         self.step_size = params["step_size"]
 
     def __iterative_threshold(self) -> None:
         """Apply iterative thresholding to detect objects at different intensity levels.
-        
+
         This method iteratively applies decreasing thresholds to the distance transform image,
         detecting objects at each threshold level. It accumulates non-overlapping objects into
         a final mask, which is then used for watershed segmentation. This approach is effective
         for detecting objects with varying intensities or sizes that might be missed by a single
         threshold approach.
-        
+
         The method starts at max_thresh and decreases by step_size until reaching min_thresh,
         keeping track of unique objects detected along the way.
         """
@@ -310,11 +311,11 @@ class IterativeWatershed(WatershedSegmentation):
 
                 if not np.any(overlap):  # If no overlap, it's a new object
                     self.no_overlap_count += 1
-                    output_mask = cv2.bitwise_or(output_mask, component_mask * 255) # type: ignore
+                    output_mask = cv2.bitwise_or(output_mask, component_mask * 255)  # type: ignore
 
             # Decrease the threshold for the next iteration
             current_thresh -= self.step_size
-        self.output_mask_for_labels = output_mask # type: ignore
+        self.output_mask_for_labels = output_mask  # type: ignore
 
         self.final_label_count, _ = cv2.connectedComponents(self.output_mask_for_labels)
         logging.info(
@@ -323,12 +324,12 @@ class IterativeWatershed(WatershedSegmentation):
         logging.info(f"Total number of no overlap occurrences: {self.no_overlap_count}")
 
     def get_results_img(self) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]:
-        """Execute the complete iterative watershed segmentation process and return results.
-        
+        """Execute the complete iterative method process and return results.
+
         Performs the full sequence of operations for iterative watershed segmentation:
         thresholding, morphological processing, distance transform, iterative thresholding,
         initializing labels, watershed segmentation, and overlaying results on the RGB image.
-        
+
         Returns:
             tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]: A tuple containing:
                 - The RGB image with segmentation labels overlaid
@@ -349,7 +350,8 @@ class IterativeWatershed(WatershedSegmentation):
 #     # Define paths
 #     img_grey_path = "../../tests/test_image_grey.JPG"
 #     img_rgb_path = "../../tests/test_image_rgb.JPG"
-#     output_path = "../../tests/test_image_segmented.JPG"   # Change to your desired output location
+#     output_path = "../../tests/test_image_segmented.JPG"
+#       # Change to your desired output location
 #     background_path = None  # Change if you have a background image
 
 #     # Load images
@@ -360,7 +362,8 @@ class IterativeWatershed(WatershedSegmentation):
 #     img_grey = cv2.imread(img_grey_path, cv2.IMREAD_GRAYSCALE)
 
 #     # Load optional background image
-#     bknd_img = cv2.imread(background_path, cv2.IMREAD_GRAYSCALE) if background_path else None
+#     bknd_img = cv2.imread(background_path, cv2.IMREAD_GRAYSCALE) \
+#                           if background_path else None
 
 #     # Run Iterative Watershed Segmentation
 #     iterative_watershed = IterativeWatershed(img_grey, img_rgb)

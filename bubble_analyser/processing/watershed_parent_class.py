@@ -13,10 +13,12 @@ implementations, which can customize the segmentation process while reusing the 
 functionality provided by this base class.
 """
 
+from typing import cast
+
 import cv2
 import numpy as np
 from numpy import typing as npt
-from typing import cast
+
 from bubble_analyser.processing.image_postprocess import overlay_labels_on_rgb
 from bubble_analyser.processing.morphological_process import morphological_process
 from bubble_analyser.processing.threshold_methods import ThresholdMethods
@@ -24,12 +26,12 @@ from bubble_analyser.processing.threshold_methods import ThresholdMethods
 
 class WatershedSegmentation:
     """Base class for watershed segmentation implementations.
-    
+
     This class provides common functionality for watershed segmentation algorithms,
     including image preprocessing, thresholding, morphological operations, and the
     watershed transform itself. It is designed to be extended by specific watershed
     implementations that can customize the segmentation process.
-    
+
     Attributes:
         img_grey (npt.NDArray[np.int_]): Input grayscale image.
         img_grey_thresholded (npt.NDArray[np.bool_]): Binary image after thresholding.
@@ -44,7 +46,7 @@ class WatershedSegmentation:
         if_bknd_img (bool): Flag indicating if background image is used.
         bknd_img (npt.NDArray[np.int_]): Background image for subtraction if used.
     """
-    
+
     def __init__(
         self,
         img_grey: npt.NDArray[np.int_],
@@ -55,7 +57,7 @@ class WatershedSegmentation:
         bknd_img: npt.NDArray[np.int_] = cast(npt.NDArray[np.int_], None),
     ) -> None:
         """Initialize the watershed segmentation base class.
-        
+
         Args:
             img_grey: Input grayscale image to be segmented.
             img_rgb: Input RGB image for visualization.
@@ -81,7 +83,7 @@ class WatershedSegmentation:
 
     def _threshold(self) -> None:
         """Apply thresholding to the input image.
-        
+
         Uses either background subtraction thresholding if a background image is provided,
         or standard thresholding if no background image is available.
         """
@@ -98,7 +100,7 @@ class WatershedSegmentation:
 
     def _morph_process(self) -> None:
         """Apply morphological operations to the thresholded image.
-        
+
         Uses the morphological_process function to clean up the binary image by
         filling holes and removing noise.
         """
@@ -108,17 +110,17 @@ class WatershedSegmentation:
 
     def _dist_transform(self) -> None:
         """Apply distance transform to the morphologically processed image.
-        
+
         Computes the distance transform using L2 (Euclidean) distance metric.
         The result is converted to uint8 type for further processing.
         """
         self.img_grey_dt = cv2.distanceTransform(
             self.img_grey_morph, cv2.DIST_L2, self.element_size
-        ).astype(np.uint8) # type: ignore
+        ).astype(np.uint8)  # type: ignore
 
     def _initialize_labels(self, img: npt.NDArray[np.int_]) -> None:
         """Initialize label markers for watershed segmentation.
-        
+
         Args:
             img: Binary image to be labeled using connected components analysis.
         """
@@ -126,7 +128,7 @@ class WatershedSegmentation:
 
     def _watershed_segmentation(self) -> None:
         """Apply watershed segmentation using the initialized labels.
-        
+
         Uses OpenCV's watershed algorithm to segment the image based on the
         previously computed label markers.
         """
@@ -134,7 +136,7 @@ class WatershedSegmentation:
 
     def _overlay_labels_on_rgb(self) -> None:
         """Overlay the watershed segmentation labels on the RGB image.
-        
+
         Creates a visualization of the segmentation results by overlaying
         the watershed labels on the original RGB image.
         """

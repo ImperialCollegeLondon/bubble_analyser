@@ -1,12 +1,11 @@
 import importlib.util
 import inspect
 from pathlib import Path
+from typing import cast
 
 import numpy as np
-from cv2 import RotatedRect
-from typing import cast
 from numpy import typing as npt
-from typing import Any, Sequence
+
 from ..methods.watershed_methods import IterativeWatershed, NormalWatershed
 from .circle_handler import CircleHandler
 from .config import Config
@@ -73,9 +72,9 @@ class MethodsHandler:
             module = importlib.util.module_from_spec(spec)  # type: ignore
             spec.loader.exec_module(module)  # type: ignore
             modules[module_name] = module
-        return modules # type: ignore
+        return modules  # type: ignore
 
-    def get_new_classes(self, module: object) -> dict[str, object]: # type: ignore
+    def get_new_classes(self, module: object) -> dict[str, object]:  # type: ignore
         """Retrieve classes that are defined within the provided module.
 
         This method uses the `inspect` module to iterate over members of the module, filtering out only those that are classes
@@ -93,9 +92,9 @@ class MethodsHandler:
 
         new_classes = {}
         for name, obj in inspect.getmembers(module, inspect.isclass):
-            if obj.__module__ == module.__name__: # type: ignore
+            if obj.__module__ == module.__name__:  # type: ignore
                 new_classes[name] = obj
-        return new_classes # type: ignore
+        return new_classes  # type: ignore
 
     def _get_full_dict(self) -> None:
         """Instantiate classes from loaded modules and build dictionaries of instances and their parameters.
@@ -115,10 +114,10 @@ class MethodsHandler:
                 print(f"  Class: {class_name}")
 
                 instance: IterativeWatershed | NormalWatershed = class_obj(
-                    self.params_dict 
-                ) # type: ignore
+                    self.params_dict
+                )  # type: ignore
                 self.all_classes[instance.name] = instance
-                self.full_dict[instance.name] = instance.get_needed_params() # type: ignore
+                self.full_dict[instance.name] = instance.get_needed_params()  # type: ignore
 
         print("full dict is", self.full_dict)
         print("all classes is", self.all_classes)
@@ -193,7 +192,6 @@ class Image:
             print("bknd_img_path:", bknd_img_path)
             self.if_bknd_img = True
             # self.bknd_img_path = bknd_img_path
-        
 
         self.img_rgb: npt.NDArray[np.int_]
         self.img_grey: npt.NDArray[np.int_]
@@ -272,15 +270,15 @@ class Image:
                     if name == algorithm_name:
                         self._img_preprocess(params["resample"])
                         processing_instance
-                        processing_instance.initialize_processing( # type: ignore
+                        processing_instance.initialize_processing(  # type: ignore
                             params=params,
                             img_grey=self.img_grey,
                             img_rgb=self.img_rgb,
                             if_bknd_img=self.if_bknd_img,
                             bknd_img=self.bknd_img,
-                        ) # type: ignore
+                        )  # type: ignore
                         self.labels_on_img_before_filter, self.labels_before_filter = (
-                            processing_instance.get_results_img() # type: ignore
+                            processing_instance.get_results_img()  # type: ignore
                         )
                 break
 
@@ -325,7 +323,9 @@ class Image:
         """
         self.ellipses = self.new_circle_handler.fill_ellipse_labels()
 
-    def update_ellipses(self, ellipses: list[tuple[tuple[float, float], tuple[int, int], int]]) -> None:
+    def update_ellipses(
+        self, ellipses: list[tuple[tuple[float, float], tuple[int, int], int]]
+    ) -> None:
         """Update the detected ellipses with a manually provided list of ellipses.
 
         This allows for manual fine-tuning of ellipse detection. The method updates both the instance's
@@ -350,7 +350,7 @@ class Image:
         Returns:
             None
         """
-        self.ellipses_properties = self.new_circle_handler.calculate_circle_properties() # type: ignore
+        self.ellipses_properties = self.new_circle_handler.calculate_circle_properties()  # type: ignore
 
     def overlay_ellipses_on_images(self) -> None:
         """Overlay the detected ellipses onto the RGB image.
@@ -364,8 +364,10 @@ class Image:
         self.ellipses_on_images = self.new_circle_handler.overlay_ellipses_on_image()
 
     def get_labelled_mask(self) -> None:
-        self.labelled_ellipses_mask = self.new_circle_handler.create_labelled_image_from_ellipses()
-        
+        self.labelled_ellipses_mask = (
+            self.new_circle_handler.create_labelled_image_from_ellipses()
+        )
+
     def filtering_processing(self) -> None:
         """Execute the complete filtering process on the image.
 
