@@ -138,8 +138,8 @@ class CircleHandler:
                     ellipse = cv2.fitEllipse(contour)
                     ellipses.append(ellipse)
 
-        self.ellipses = ellipses
-        return ellipses
+        self.ellipses = ellipses # type: ignore
+        return ellipses # type: ignore
 
     def overlay_ellipses_on_image(self, thickness: int = 20) -> npt.NDArray[np.int_]:
         """Overlay detected ellipses on the RGB image.
