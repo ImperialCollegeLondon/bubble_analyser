@@ -27,11 +27,11 @@ from .image_preprocess import load_image
 
 class ImageLabel(QLabel):
     """A custom QLabel widget for interactive distance measurement in images.
-    
+
     This class extends QLabel to allow users to draw lines on images by clicking and
     dragging. It's primarily used for measuring distances in calibration images to
     establish pixel-to-millimeter ratios.
-    
+
     Attributes:
         refPt (list[tuple[int, int]]): List storing the start and end points of the
             measurement line.
@@ -39,9 +39,10 @@ class ImageLabel(QLabel):
         img (npt.NDArray[np.int_]): The original image being displayed.
         img_copy (npt.NDArray[np.int_]): A copy of the image for drawing operations.
     """
+
     def __init__(self, parent: QWidget) -> None:
         """Initialize the ImageLabel widget.
-        
+
         Args:
             parent (QWidget): The parent widget for this label.
         """
@@ -53,7 +54,7 @@ class ImageLabel(QLabel):
 
     def set_image(self, img: npt.NDArray[np.int_]) -> None:
         """Set the image to be displayed in the label.
-        
+
         Args:
             img (npt.NDArray[np.int_]): The image array to display.
         """
@@ -64,48 +65,48 @@ class ImageLabel(QLabel):
         q_img = QImage(memoryview(img), width, height, bytes_per_line, QImage.Format.Format_RGB888)  # type: ignore
         self.setPixmap(QPixmap.fromImage(q_img))
 
-    def mousePressEvent(self, event: QMouseEvent) -> None:
+    def mousePressEvent(self, ev: QMouseEvent) -> None:
         """Handle mouse press events for starting line drawing.
-        
+
         Args:
-            event (QMouseEvent): The mouse event containing click coordinates.
+            ev (QMouseEvent): The mouse event containing click coordinates.
         """
-        if event.button() == Qt.MouseButton.LeftButton:
-            self.refPt.append((event.x(), event.y()))
+        if ev.button() == Qt.MouseButton.LeftButton:
+            self.refPt.append((ev.x(), ev.y()))
             self.drawing = True
 
-    def mouseMoveEvent(self, event: QMouseEvent) -> None:
+    def mouseMoveEvent(self, ev: QMouseEvent) -> None:
         """Handle mouse move events for updating the line preview.
-        
+
         Args:
-            event (QMouseEvent): The mouse event containing current coordinates.
+            ev (QMouseEvent): The mouse event containing current coordinates.
         """
         if self.drawing:
             self.img_copy[:] = self.img[:]
-            cv2.line(self.img_copy, self.refPt[0], (event.x(), event.y()), (0, 255, 0), 2)
+            cv2.line(self.img_copy, self.refPt[0], (ev.x(), ev.y()), (0, 255, 0), 2)
             self.update_image()
 
-    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+    def mouseReleaseEvent(self, ev: QMouseEvent) -> None:
         """Handle mouse release events for finalizing the drawn line.
-        
+
         Args:
-            event (QMouseEvent): The mouse event containing final coordinates.
+            ev (QMouseEvent): The mouse event containing final coordinates.
         """
-        if event.button() == Qt.MouseButton.LeftButton:
-            self.refPt.append((event.x(), event.y()))
+        if ev.button() == Qt.MouseButton.LeftButton:
+            self.refPt.append((ev.x(), ev.y()))
             self.drawing = False
             cv2.line(self.img, self.refPt[0], self.refPt[1], (0, 255, 0), 2)
             self.update_image()
 
     def update_image(self) -> None:
         """Update the displayed image with the current drawing state.
-        
+
         Converts the numpy array image to a QImage and updates the label's pixmap.
         """
         height, width, channel = self.img_copy.shape
         bytes_per_line = 3 * width
         q_img = QImage(
-            memoryview(self.img_copy), # type: ignore
+            memoryview(self.img_copy),  # type: ignore
             width,
             height,
             bytes_per_line,
@@ -116,11 +117,11 @@ class ImageLabel(QLabel):
 
 def resize_to_target_width(image: npt.NDArray[np.int_], target_width: int = 1000) -> tuple[npt.NDArray[np.int_], float]:
     """Resize an image to a target width while maintaining aspect ratio.
-    
+
     Args:
         image (npt.NDArray[np.int_]): The input image to resize.
         target_width (int, optional): The desired width in pixels. Defaults to 1000.
-    
+
     Returns:
         tuple[npt.NDArray[np.int_], float]: The resized image and the scale percentage.
     """
@@ -134,14 +135,14 @@ def resize_to_target_width(image: npt.NDArray[np.int_], target_width: int = 1000
 
 def get_pixel_distance(img: npt.NDArray[np.int_], main_window: QMainWindow) -> float:
     """Get the pixel distance between two points selected by the user.
-    
+
     Opens a dialog window allowing the user to draw a line on the image and
     returns the length of that line in pixels.
-    
+
     Args:
         img (npt.NDArray[np.int_]): The image to measure on.
         main_window (QMainWindow): The main window for displaying the dialog.
-    
+
     Returns:
         float: The measured distance in pixels.
     """
@@ -175,12 +176,12 @@ def get_pixel_distance(img: npt.NDArray[np.int_], main_window: QMainWindow) -> f
 
 def get_mm_per_pixel(pixel_distance: float, scale_percent: float, img_resample: float) -> float:
     """Calculate millimeters per pixel based on measured pixel distance.
-    
+
     Args:
         pixel_distance (float): The measured distance in pixels.
         scale_percent (float): The scale percentage used for image resizing.
         img_resample (float): Image resampling factor.
-    
+
     Returns:
         float: The calculated millimeters per pixel ratio.
     """
@@ -192,15 +193,15 @@ def get_mm_per_pixel(pixel_distance: float, scale_percent: float, img_resample: 
 
 def calculate_px2mm(image_path: Path, img_resample: float, main_window: QMainWindow) -> tuple[float, float]:
     """Calculate the pixel-to-millimeter conversion ratios for an image.
-    
+
     This function allows the user to measure a known distance in an image and
     calculates both millimeters-per-pixel and pixels-per-millimeter ratios.
-    
+
     Args:
         image_path (Path): Path to the image file.
         img_resample (float): Image resampling factor.
         main_window (QMainWindow): The main window for displaying the measurement dialog.
-    
+
     Returns:
         tuple[float, float]: A tuple containing (millimeters per pixel, pixels per millimeter).
     """

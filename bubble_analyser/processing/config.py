@@ -22,7 +22,6 @@ Methods:
 """
 
 from pathlib import Path
-from typing import cast
 
 import typing_extensions
 from pydantic import (
@@ -34,12 +33,41 @@ from pydantic import (
     model_validator,
 )
 
-from pydantic import ValidationError
-from PySide6.QtWidgets import QMessageBox
-from bubble_analyser.gui import MainWindow
-
 
 class Config(BaseModel):  # type: ignore
+    """Configuration model for the Bubble Analyser application.
+
+    This class defines and validates all configuration parameters used in the
+    image processing and analysis routines. It ensures that all parameters
+    are within acceptable ranges and logically consistent.
+
+    Attributes:
+        element_size: Size of morphological element for binary operations.
+        element_size_range: Valid range for element_size parameter.
+        connectivity: Connectivity value (4 or 8) for image processing operations.
+        connectivity_range: Valid range for connectivity parameter.
+        resample: Factor for resampling images to improve processing speed.
+        resample_range: Valid range for resample parameter.
+        max_eccentricity: Maximum eccentricity threshold for bubble filtering.
+        max_eccentricity_range: Valid range for max_eccentricity parameter.
+        min_solidity: Minimum solidity threshold for bubble filtering.
+        min_solidity_range: Valid range for min_solidity parameter.
+        min_size: Minimum bubble size threshold (in mm).
+        min_size_range: Valid range for min_size parameter.
+        px2mm: Pixel to millimeter conversion factor.
+        bknd_img_path: Path to the background image file.
+        threshold_value: Threshold value for watershed segmentation.
+        ruler_img_path: Path to the ruler image file for calibration.
+        save_path: Path for saving data results and graphs.
+        save_path_for_images: Path for saving processed images.
+        do_batch: Flag indicating whether to perform batch processing.
+        img_resample: Image resampling factor.
+        raw_img_path: Path to the raw input image.
+        max_thresh: Maximum threshold value.
+        min_thresh: Minimum threshold value.
+        step_size: Step size for threshold iteration.
+    """
+
     # Default PARAMETERS
 
     # Morphological element used for binary operations, e.g. opening, closing, etc.
@@ -96,6 +124,15 @@ class Config(BaseModel):  # type: ignore
     step_size: PositiveFloat
 
     class Config:
+        """Pydantic configuration settings for the Config model.
+
+        This nested class configures the behavior of the parent Config model.
+        It enables runtime validation of attribute assignments.
+
+        Attributes:
+            validate_assignment: When True, validates attributes when they are assigned.
+        """
+
         validate_assignment = True
 
     @model_validator(mode="after")
@@ -117,6 +154,17 @@ class Config(BaseModel):  # type: ignore
 
     @model_validator(mode="after")
     def check_morphological_element_size(self) -> typing_extensions.Self:
+        """Validates the morphological element size value.
+
+        Ensures that the element_size is one of the allowed values (0, 3, or 5).
+        If the value is not allowed, a ValueError is raised.
+
+        Returns:
+            Self: The instance itself, for method chaining.
+
+        Raises:
+            ValueError: If element_size is not 0, 3, or 5.
+        """
         if not (self.element_size == 3 or self.element_size == 5 or self.element_size == 0):
             raise ValueError("Morphological_element_size must be 3, 5 or 0")
         return self
@@ -235,87 +283,3 @@ class Config(BaseModel):  # type: ignore
             raise ValueError("Limits for the min_size_range are in the wrong order")
         # Return the instance itself for method chaining
         return self
-
-class ParamChecker:
-    def __init__(self, params: Config, gui: MainWindow) -> None:
-        self.gui: MainWindow = gui
-        self.params: Config = params
-
-    def param_checker(self, name: str, value: int | float) -> bool:
-        if name == "element_size":
-            try:
-                value = cast(PositiveInt, value)
-                self.params.element_size = value
-            except ValidationError as e:
-                self._show_warning("Invalid Element Size", str(e))
-                return False
-
-        if name == "connectivity":
-            try:
-                value = cast(PositiveInt, value)
-                self.params.connectivity = value
-            except ValidationError as e:
-                self._show_warning("Invalid Connectivity", str(e))
-                return False
-
-        if name == "threshold_value":
-            try:
-                self.params.threshold_value = value
-            except ValidationError as e:
-                self._show_warning("Invalid Threshold Value", str(e))
-                return False
-
-        if name == "resample":
-            try:
-                self.params.resample = value
-            except ValidationError as e:
-                self._show_warning("Invalid Resample Factor", str(e))
-                return False
-
-        if name == "max_thresh":
-            try:
-                self.params.max_thresh = value
-            except ValidationError as e:
-                self._show_warning("Invalid Max Threshold", str(e))
-                return False
-
-        if name == "min_thresh":
-            try:
-                self.params.min_thresh = value
-            except ValidationError as e:
-                self._show_warning("Invalid Min Threshold", str(e))
-                return False
-
-        if name == "step_size":
-            try:
-                self.params.step_size = value
-            except ValidationError as e:
-                self._show_warning("Invalid Step Size", str(e))
-                return False
-
-        if name == "max_eccentricity":
-            try:
-                self.params.max_eccentricity = value
-            except ValidationError as e:
-                self._show_warning("Invalid Max Eccentricity", str(e))
-                return False
-
-        if name == "min_solidity":
-            try:
-                self.params.min_solidity = value
-            except ValidationError as e:
-                self._show_warning("Invalid Min Solidity", str(e))
-                return False
-
-        if name == "min_size":
-            try:
-                self.params.min_size = value
-            except ValidationError as e:
-                self._show_warning("Invalid Min Size", str(e))
-                return False
-
-        return True
-
-    def _show_warning(self, title: str, message: str) -> None:
-        QMessageBox.warning(self.gui, title, message)
-

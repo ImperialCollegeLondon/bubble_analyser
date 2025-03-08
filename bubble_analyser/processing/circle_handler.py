@@ -1,3 +1,10 @@
+"""Module for handling circle detection, filtering, and property calculation in images.
+
+This module provides functionality for processing labeled image regions, filtering them based on
+geometric properties, fitting ellipses to the filtered regions, and calculating various properties
+of the detected ellipses. It is primarily used for bubble/circle analysis in scientific images.
+"""
+
 from collections.abc import Sequence
 
 import cv2
@@ -7,12 +14,37 @@ from skimage import measure
 
 
 class CircleHandler:
+    """Handles the detection, filtering, and analysis of circular regions in labeled images.
+
+    This class provides methods for filtering labeled regions based on geometric properties,
+    fitting ellipses to the filtered regions, overlaying the detected ellipses on images,
+    and calculating various properties of the detected ellipses.
+
+    Attributes:
+        filter_param_dict (dict[str, float]): Dictionary of filtering parameters.
+        img_rgb (npt.NDArray[np.int_]): The RGB image being processed.
+        labels_before_filtering (npt.NDArray[np.int_]): The labeled image before filtering.
+        labels_after_filtering (npt.NDArray[np.int_]): The labeled image after filtering.
+        labels_for_calculations (npt.NDArray[np.int_]): Labels used for calculations.
+        px2mm (float): Conversion factor from pixels to millimeters.
+        ellipses (list[tuple[tuple[float, float], tuple[int, int], int]]): List of detected ellipses.
+        ellipses_on_image (npt.NDArray[np.int_]): Image with ellipses overlaid.
+        ellipses_properties (list[dict[str, float]]): Properties of detected ellipses.
+    """
+
     def __init__(
         self,
         labels_before_filtering: npt.NDArray[np.int_],
         img_rgb: npt.NDArray[np.int_],
         px2mm: float = 90.0,
     ) -> None:
+        """Initialize the CircleHandler with labeled image data and conversion factor.
+
+        Args:
+            labels_before_filtering (npt.NDArray[np.int_]): The labeled image before filtering.
+            img_rgb (npt.NDArray[np.int_]): The RGB image corresponding to the labeled image.
+            px2mm (float, optional): Conversion factor from pixels to millimeters. Defaults to 90.0.
+        """
         self.filter_param_dict: dict[str, float] = {
             "max_eccentricity": 0.0,
             "min_solidity": 0.0,
@@ -31,6 +63,12 @@ class CircleHandler:
         self.ellipses_properties: list[dict[str, float]]
 
     def load_filter_params(self, filter_param_dict: dict[str, float]) -> None:
+        """Load filtering parameters for circle detection.
+
+        Args:
+            filter_param_dict (dict[str, float]): Dictionary containing filtering parameters
+                such as max_eccentricity, min_solidity, and min_size.
+        """
         self.filter_param_dict = filter_param_dict
 
     def filter_labels_properties(self) -> npt.NDArray[np.int_]:
@@ -104,6 +142,17 @@ class CircleHandler:
         return ellipses
 
     def overlay_ellipses_on_image(self, thickness: int = 20) -> npt.NDArray[np.int_]:
+        """Overlay detected ellipses on the RGB image.
+
+        Draws each detected ellipse on the RGB image with the specified thickness.
+        Also creates a labeled image from the ellipses.
+
+        Args:
+            thickness (int, optional): Thickness of the ellipse outlines. Defaults to 20.
+
+        Returns:
+            npt.NDArray[np.int_]: The RGB image with ellipses overlaid.
+        """
         ellipse_image = self.img_rgb
 
         for ellipse in self.ellipses:
@@ -116,6 +165,7 @@ class CircleHandler:
 
     def create_labelled_image_from_ellipses(self) -> npt.NDArray[np.int_]:
         """Creates a labelled image based on the ellipses fitted.
+
         The resulting image is a 2D array with the same height and width as self.img_rgb where:
           - Background pixels have a value of 1.
           - Each ellipse is filled with a unique label (starting from 2).
@@ -132,7 +182,7 @@ class CircleHandler:
         for ellipse in self.ellipses:
             # Create a mask for the current ellipse.
             mask = np.zeros((height, width), dtype=np.uint8)
-            cv2.ellipse(mask, ellipse, color=255, thickness=-1)
+            cv2.ellipse(mask, ellipse, color=255, thickness=-1)  # type: ignore
             # Assign the current label to all pixels inside the ellipse.
             labelled_img[mask == 255] = current_label
             current_label += 1
@@ -142,6 +192,16 @@ class CircleHandler:
         return labelled_img
 
     def calculate_circle_properties(self) -> list[dict[str, float | Sequence[float]]]:
+        """Calculate geometric properties for each detected ellipse.
+
+        Computes various properties for each ellipse including major and minor axis lengths,
+        area, perimeter, eccentricity, and equivalent diameter. All measurements are converted
+        to millimeters using the px2mm conversion factor.
+
+        Returns:
+            list[dict[str, float | Sequence[float]]]: A list of dictionaries, each containing
+                the properties of one ellipse.
+        """
         px2mm = self.px2mm
 
         ellipse_properties = []
