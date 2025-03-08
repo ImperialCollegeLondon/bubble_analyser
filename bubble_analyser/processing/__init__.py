@@ -1,3 +1,9 @@
+"""Processing package for the Bubble Analyser application.
+
+This package contains modules for image processing, analysis, and visualization of bubbles in images.
+It provides functionality for calibration, segmentation, filtering, and measurement of bubble properties.
+"""
+
 from bubble_analyser.processing.calculate_px2mm import calculate_px2mm
 from bubble_analyser.processing.circle_handler import CircleHandler
 from bubble_analyser.processing.config import Config
