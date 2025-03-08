@@ -1,5 +1,4 @@
 from collections.abc import Sequence
-from typing import Any
 
 import cv2
 import numpy as np
@@ -118,24 +117,23 @@ class CircleHandler:
         self.ellipses_on_image = ellipse_image
 
         self.create_labelled_image_from_ellipses()
-        
+
         return ellipse_image
 
     def create_labelled_image_from_ellipses(self) -> npt.NDArray[np.int_]:
-        """
-        Creates a labelled image based on the ellipses fitted.
+        """Creates a labelled image based on the ellipses fitted.
         The resulting image is a 2D array with the same height and width as self.img_rgb where:
           - Background pixels have a value of 1.
           - Each ellipse is filled with a unique label (starting from 2).
-    
+
         Returns:
             A labelled image as a numpy array of type np.int_.
         """
         height, width = self.img_rgb.shape[:2]
-        
+
         # Initialize the labelled image with background label (1)
         labelled_img = np.ones((height, width), dtype=np.int_)
-    
+
         current_label = 2  # Start labelling from 2
         for ellipse in self.ellipses:
             # Create a mask for the current ellipse.
@@ -144,11 +142,11 @@ class CircleHandler:
             # Assign the current label to all pixels inside the ellipse.
             labelled_img[mask == 255] = current_label
             current_label += 1
-            
-        cv2.imwrite("outputlabelled_img.png", labelled_img.astype(np.uint8)*255)
+
+        cv2.imwrite("outputlabelled_img.png", labelled_img.astype(np.uint8) * 255)
         print("labelled image created")
         return labelled_img
-    
+
     def calculate_circle_properties(self) -> list[dict[str, float | Sequence[float]]]:
         px2mm = self.px2mm
 
@@ -191,7 +189,7 @@ if __name__ == "__main__":
     output_filled_labels_img_path = "../../tests/test_labels_after_fill.JPG"
 
     img_path = "../../tests/test_image_rgb.JPG"
-    img_rgb: npt.NDArray[np.int_] = cv2.imread(img_path) # type: ignore
+    img_rgb: npt.NDArray[np.int_] = cv2.imread(img_path)  # type: ignore
 
     # Load the input label object
     labels_before_filtering = np.load(input_labels_path)
@@ -199,8 +197,8 @@ if __name__ == "__main__":
     # Create an instance of CircleHandler
     circle_handler = CircleHandler(labels_before_filtering, img_rgb)
     ellipse_image_path = "../../tests/test_image_rgb.JPG"
-    ellipse_image: npt.NDArray[np.int_] = cv2.imread(ellipse_image_path) # type: ignore
-    circle_handler.img_rgb = ellipse_image # type: ignore
+    ellipse_image: npt.NDArray[np.int_] = cv2.imread(ellipse_image_path)  # type: ignore
+    circle_handler.img_rgb = ellipse_image  # type: ignore
 
     # Fill ellipse labels
     _ = circle_handler.fill_ellipse_labels()
