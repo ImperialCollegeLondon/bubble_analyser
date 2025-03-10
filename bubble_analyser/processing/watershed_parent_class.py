@@ -19,6 +19,7 @@ import cv2
 import numpy as np
 from numpy import typing as npt
 from skimage.morphology import reconstruction
+
 from bubble_analyser.processing.image_postprocess import overlay_labels_on_rgb
 from bubble_analyser.processing.morphological_process import morphological_process
 from bubble_analyser.processing.threshold_methods import ThresholdMethods
@@ -64,6 +65,7 @@ class WatershedSegmentation:
             img_rgb: Input RGB image for visualization.
             element_size: Size of structuring element for morphological operations.
             connectivity: Pixel connectivity for connected components (4 or 8).
+            h_value: h_value for minima suppresion
             if_bknd_img: Flag indicating if background image should be used.
             bknd_img: Optional background image for background subtraction.
         """
@@ -112,7 +114,7 @@ class WatershedSegmentation:
         The result is converted to uint8 type for further processing.
         """
         self.img_grey_dt = cv2.distanceTransform(self.img_grey_morph, cv2.DIST_L2, self.element_size).astype(np.uint8)  # type: ignore
-        
+
         print(self.img_grey_dt.max())
         self.img_grey_dt_copy = self.img_grey_dt.copy()
 
@@ -124,7 +126,7 @@ class WatershedSegmentation:
         h = h * max_val
         image_float = image.astype(np.float32)
         marker = image_float - h
-        self.img_grey_dt_imhmin = reconstruction(marker, image, method='dilation').astype(image.dtype)
+        self.img_grey_dt_imhmin = reconstruction(marker, image, method="dilation").astype(image.dtype)
         print(self.img_grey_dt_imhmin.max())
 
     def _initialize_labels(self, img: npt.NDArray[np.int_]) -> None:

@@ -101,7 +101,7 @@ class NormalWatershed(WatershedSegmentation):
             bknd_img=bknd_img,
             element_size=self.element_size,
             connectivity=self.connectivity,
-            h_value = self.h_value,
+            h_value=self.h_value,
         )
 
     def update_params(self, params: dict[str, float | int]) -> None:
@@ -250,7 +250,7 @@ class IterativeWatershed(WatershedSegmentation):
             bknd_img=bknd_img,
             element_size=self.element_size,
             connectivity=self.connectivity,
-            h_value=self.h_value
+            h_value=self.h_value,
         )
 
     def update_params(self, params: dict[str, float | int]) -> None:
@@ -347,11 +347,12 @@ class IterativeWatershed(WatershedSegmentation):
 
 if __name__ == "__main__":
     from matplotlib import pyplot as plt
+
     # Define paths
     img_grey_path = "../../tests/test_image_grey.JPG"
     img_rgb_path = "../../tests/test_image_rgb.JPG"
     output_path = "../../tests/test_iterative_segmented_h0.2.JPG"
-      # Change to your desired output location
+    # Change to your desired output location
     background_path = None  # Change if you have a background image
 
     # Load images
@@ -362,8 +363,7 @@ if __name__ == "__main__":
     img_grey = cv2.imread(img_grey_path, cv2.IMREAD_GRAYSCALE)
 
     # Load optional background image
-    bknd_img = cv2.imread(background_path, cv2.IMREAD_GRAYSCALE) \
-                          if background_path else None
+    bknd_img = cv2.imread(background_path, cv2.IMREAD_GRAYSCALE) if background_path else None
 
     params = {
         "resample": 0.5,
@@ -379,9 +379,9 @@ if __name__ == "__main__":
 
     iterative_watershed.initialize_processing(
         params,
-        img_grey, # type: ignore
-        img_rgb, # type: ignore
-        if_bknd_img=False
+        img_grey,  # type: ignore
+        img_rgb,  # type: ignore
+        if_bknd_img=False,
     )
 
     segmented_img, labels_watershed = iterative_watershed.get_results_img()
