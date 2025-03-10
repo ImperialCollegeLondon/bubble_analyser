@@ -19,6 +19,9 @@ Marker_size_range = [2, 30]
 resample = 0.5
 resample_range = [0.1, 1.0]
 
+# h_value for minima suppresion
+h_value = 0.2
+
 # Reject abnormal bubbles from quantification. E>0.85 or S<0.9
 max_eccentricity = 0.85
 max_eccentricity_range = [0.1, 1.0]

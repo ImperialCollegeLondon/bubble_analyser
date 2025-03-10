@@ -66,6 +66,7 @@ class Config(BaseModel):  # type: ignore
         max_thresh: Maximum threshold value.
         min_thresh: Minimum threshold value.
         step_size: Step size for threshold iteration.
+        h_value: h_value for minima suppresion
     """
 
     # Default PARAMETERS
@@ -100,6 +101,9 @@ class Config(BaseModel):  # type: ignore
 
     # Threshold value for normal watershed
     threshold_value: PositiveFloat
+
+    # h_value for minima suppression
+    h_value: PositiveFloat
 
     # Path for Ruler image
     ruler_img_path: Path
