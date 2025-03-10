@@ -175,7 +175,7 @@ class MainWindow(QMainWindow):
         restart_action.triggered.connect(self.main_handler.menubar_ask_if_restart)
         setting_menu.addAction(restart_action)
 
-        setting_menu = self.menu_bar.addMenu(setting_menu) # type: ignore
+        setting_menu = self.menu_bar.addMenu(setting_menu)  # type: ignore
 
     def setup_folder_tab(self) -> None:
         """Set up the folder tab.
