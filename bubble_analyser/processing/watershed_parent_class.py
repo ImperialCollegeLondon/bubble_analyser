@@ -16,6 +16,8 @@ functionality provided by this base class.
 from typing import cast
 
 import cv2
+from cv2.typing import MatLike
+from typing import cast
 import numpy as np
 from numpy import typing as npt
 from skimage.morphology import reconstruction
@@ -72,21 +74,21 @@ class WatershedSegmentation:
         self.img_grey: npt.NDArray[np.int_] = img_grey
         self.img_grey_thresholded: npt.NDArray[np.bool_]
         self.img_grey_morph: npt.NDArray[np.int_]
-        self.img_grey_dt: npt.NDArray[np.int_]
+        self.img_grey_dt: MatLike
         self.img_grey_dt_imhmin: npt.NDArray[np.int_]
         self.img_rgb: npt.NDArray[np.int_] = img_rgb
 
         self.element_size: int = element_size
         self.connectivity: int = connectivity
         self.h_value: float = h_value
-        self.labels: npt.NDArray[np.int_]
-        self.labels_watershed: npt.NDArray[np.int_]
+        self.labels: MatLike
+        self.labels_watershed: MatLike
         self.labels_on_img: npt.NDArray[np.int_]
 
         self.if_bknd_img: bool = if_bknd_img
         self.bknd_img: npt.NDArray[np.int_] = bknd_img
 
-    def _threshold(self) -> None:
+    def _threshold(self, image: npt.NDArray[np.int_]) -> npt.NDArray[np.bool_]:
         """Apply thresholding to the input image.
 
         Uses either background subtraction thresholding if a background image is provided,
@@ -95,28 +97,32 @@ class WatershedSegmentation:
         print("if_bknd in watershed_parent: ", self.if_bknd_img)
         threshold_methods = ThresholdMethods()
         if self.if_bknd_img is True:
-            self.img_grey_thresholded = threshold_methods.threshold_with_background(self.img_grey, self.bknd_img)
+            thresholded_img = threshold_methods.threshold_with_background(image, self.bknd_img)
         else:
-            self.img_grey_thresholded = threshold_methods.threshold_without_background(self.img_grey)
+            thresholded_img = threshold_methods.threshold_without_background(image)
+        return thresholded_img
 
-    def _morph_process(self) -> None:
+    def _morph_process(self, image: npt.NDArray[np.bool_]) -> npt.NDArray[np.int_]:
         """Apply morphological operations to the thresholded image.
 
         Uses the morphological_process function to clean up the binary image by
         filling holes and removing noise.
         """
-        self.img_grey_morph = morphological_process(self.img_grey_thresholded, self.element_size)
+        morph_processed_image = morphological_process(image, self.element_size)
+        return morph_processed_image
 
-    def _dist_transform(self) -> None:
+    def _dist_transform(self, image: npt.NDArray[np.int_]) -> MatLike:
         """Apply distance transform to the morphologically processed image.
 
         Computes the distance transform using L2 (Euclidean) distance metric.
         The result is converted to uint8 type for further processing.
         """
-        self.img_grey_dt = cv2.distanceTransform(self.img_grey_morph, cv2.DIST_L2, self.element_size).astype(np.uint8)  # type: ignore
+        dt_image = cv2.distanceTransform(image, cv2.DIST_L2, self.element_size)  # type: ignore
+        # dt_image = dt_image.astype(np.int_)
 
-        print(self.img_grey_dt.max())
-        self.img_grey_dt_copy = self.img_grey_dt.copy()
+        # print(dt_image.max())
+        # self.img_grey_dt_copy = self.img_grey_dt.copy()
+        return dt_image
 
     def _imhmin(self) -> None:
         """Suppress minima with depth < h_percent% of max intensity."""
@@ -129,26 +135,57 @@ class WatershedSegmentation:
         self.img_grey_dt_imhmin = reconstruction(marker, image, method="dilation").astype(image.dtype)
         print(self.img_grey_dt_imhmin.max())
 
-    def _initialize_labels(self, img: npt.NDArray[np.int_]) -> None:
+    def _initialize_labels(self, img: MatLike) -> MatLike:
         """Initialize label markers for watershed segmentation.
 
         Args:
             img: Binary image to be labeled using connected components analysis.
         """
-        _, self.labels = cv2.connectedComponents(img, self.connectivity)  # type: ignore
+        _, labels = cv2.connectedComponents(img, self.connectivity)  # type: ignore
+        return labels
 
-    def _watershed_segmentation(self) -> None:
+    def _watershed_segmentation(self, img: MatLike, labels: MatLike) -> npt.NDArray[np.int_]:
         """Apply watershed segmentation using the initialized labels.
 
         Uses OpenCV's watershed algorithm to segment the image based on the
         previously computed label markers.
         """
-        self.labels_watershed = cv2.watershed(self.img_rgb, self.labels).astype(np.int_)
+        labels_watershed = cv2.watershed(img, labels).astype(np.int_)
+        labels_watershed = cast(npt.NDArray[np.int_], labels_watershed)
+        return labels_watershed
+    
+    def _convex_hull(self, labels: MatLike) -> MatLike:
+        height, width = labels.shape[:2]
 
-    def _overlay_labels_on_rgb(self) -> None:
+        # Initialize the labelled image with background label (1)
+        labelled_img = np.ones((height, width), dtype=np.int_)
+
+        current_label = 2  # Start labelling from 2
+
+        for label in np.unique(labels):
+            if label == 0:
+                continue  # Skip the background label
+
+            mask = np.zeros_like(labels, dtype=np.uint8)
+            mask[labels == label] = 255
+            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
+            for contour in contours:
+                if len(contour) >= 5:
+                    ellipse = cv2.fitEllipse(contour)
+                    cv2.ellipse(mask, ellipse, color=255, thickness=-1)  # type: ignore
+
+            labelled_img[mask == 255] = current_label
+            current_label += 1
+
+        return labelled_img
+
+    def _overlay_labels_on_rgb(self, img: npt.NDArray[np.int_], labels: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
         """Overlay the watershed segmentation labels on the RGB image.
 
         Creates a visualization of the segmentation results by overlaying
         the watershed labels on the original RGB image.
         """
-        self.labels_on_img = overlay_labels_on_rgb(self.img_rgb, self.labels_watershed)
+        labels = self.labels_watershed.astype(np.int_)
+        labels_on_img = overlay_labels_on_rgb(img, labels)
+        return labels_on_img
