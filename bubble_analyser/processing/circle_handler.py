@@ -187,8 +187,6 @@ class CircleHandler:
             labelled_img[mask == 255] = current_label
             current_label += 1
 
-        cv2.imwrite("outputlabelled_img.png", labelled_img.astype(np.uint8) * 255)
-        print("labelled image created")
         return labelled_img
 
     def calculate_circle_properties(self) -> list[dict[str, float | Sequence[float]]]:
