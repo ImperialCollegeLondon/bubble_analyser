@@ -1613,7 +1613,7 @@ class MainHandler:
         Creates a new detached process running the same Python executable with the same
         arguments, then closes the current application instance.
         """
-        QProcess.startDetached(sys.executable, sys.argv) # type: ignore
+        QProcess.startDetached(sys.executable, sys.argv)  # type: ignore
         QApplication.quit()
 
     # def reinitialize_main_handler(self) -> None:
