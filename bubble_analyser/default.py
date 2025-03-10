@@ -246,9 +246,9 @@ def final_circles_filtering(
     return imgRGB_overlay, labels, circle_properties
 
 
-def pre_processing() -> (
-    tuple[npt.NDArray[np.int_], npt.NDArray[np.int_], Config, float, float]
-):
+def pre_processing() -> tuple[
+    npt.NDArray[np.int_], npt.NDArray[np.int_], Config, float, float
+]:
     """Run the default image processing routine.
 
     This function loads the configuration parameters from the TOML file, calculates the
