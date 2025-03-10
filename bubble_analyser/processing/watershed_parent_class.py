@@ -18,7 +18,7 @@ from typing import cast
 import cv2
 import numpy as np
 from numpy import typing as npt
-
+from skimage.morphology import reconstruction
 from bubble_analyser.processing.image_postprocess import overlay_labels_on_rgb
 from bubble_analyser.processing.morphological_process import morphological_process
 from bubble_analyser.processing.threshold_methods import ThresholdMethods
@@ -54,6 +54,7 @@ class WatershedSegmentation:
         element_size: int = 5,
         connectivity: int = 4,
         if_bknd_img: bool = False,
+        h_value: float = 0.1,
         bknd_img: npt.NDArray[np.int_] = cast(npt.NDArray[np.int_], None),
     ) -> None:
         """Initialize the watershed segmentation base class.
@@ -70,10 +71,12 @@ class WatershedSegmentation:
         self.img_grey_thresholded: npt.NDArray[np.bool_]
         self.img_grey_morph: npt.NDArray[np.int_]
         self.img_grey_dt: npt.NDArray[np.int_]
+        self.img_grey_dt_imhmin: npt.NDArray[np.int_]
         self.img_rgb: npt.NDArray[np.int_] = img_rgb
 
         self.element_size: int = element_size
         self.connectivity: int = connectivity
+        self.h_value: float = h_value
         self.labels: npt.NDArray[np.int_]
         self.labels_watershed: npt.NDArray[np.int_]
         self.labels_on_img: npt.NDArray[np.int_]
@@ -109,6 +112,20 @@ class WatershedSegmentation:
         The result is converted to uint8 type for further processing.
         """
         self.img_grey_dt = cv2.distanceTransform(self.img_grey_morph, cv2.DIST_L2, self.element_size).astype(np.uint8)  # type: ignore
+        
+        print(self.img_grey_dt.max())
+        self.img_grey_dt_copy = self.img_grey_dt.copy()
+
+    def _imhmin(self) -> None:
+        """Suppress minima with depth < h_percent% of max intensity."""
+        image = self.img_grey_dt.copy()
+        h = self.h_value
+        max_val = np.max(image).astype(np.float32)
+        h = h * max_val
+        image_float = image.astype(np.float32)
+        marker = image_float - h
+        self.img_grey_dt_imhmin = reconstruction(marker, image, method='dilation').astype(image.dtype)
+        print(self.img_grey_dt_imhmin.max())
 
     def _initialize_labels(self, img: npt.NDArray[np.int_]) -> None:
         """Initialize label markers for watershed segmentation.

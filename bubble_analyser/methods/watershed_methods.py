@@ -65,6 +65,7 @@ class NormalWatershed(WatershedSegmentation):
         """
         return {
             "resample": self.resample,
+            "h_value": self.h_value,
             "element_size": self.element_size,
             "connectivity": self.connectivity,
             "threshold_value": self.threshold_value,
@@ -100,6 +101,7 @@ class NormalWatershed(WatershedSegmentation):
             bknd_img=bknd_img,
             element_size=self.element_size,
             connectivity=self.connectivity,
+            h_value = self.h_value,
         )
 
     def update_params(self, params: dict[str, float | int]) -> None:
@@ -113,6 +115,7 @@ class NormalWatershed(WatershedSegmentation):
         self.element_size = params["element_size"]  # type: ignore
         self.connectivity = params["connectivity"]  # type: ignore
         self.threshold_value = params["threshold_value"]
+        self.h_value = params["h_value"]
 
     def __threshold_dt_image(self) -> None:
         """Apply threshold to the distance transform image.
@@ -121,7 +124,7 @@ class NormalWatershed(WatershedSegmentation):
         The threshold is calculated as a fraction of the maximum value in the distance transform.
         """
         _, self.img_grey_dt_thresh = cv2.threshold(  # type: ignore
-            self.img_grey_dt,
+            self.img_grey_dt_imhmin,
             self.threshold_value * self.img_grey_dt.max(),
             255,
             cv2.THRESH_BINARY,
@@ -158,6 +161,7 @@ class NormalWatershed(WatershedSegmentation):
         self._threshold()
         self._morph_process()
         self._dist_transform()
+        self._imhmin()
         self.__threshold_dt_image()
         self.__get_sure_fg_bg()
         self._initialize_labels(self.sure_fg)
@@ -209,6 +213,7 @@ class IterativeWatershed(WatershedSegmentation):
         """
         return {
             "resample": self.resample,
+            "h_value": self.h_value,
             "element_size": self.element_size,
             "connectivity": self.connectivity,
             "max_thresh": self.max_thresh,
@@ -245,6 +250,7 @@ class IterativeWatershed(WatershedSegmentation):
             bknd_img=bknd_img,
             element_size=self.element_size,
             connectivity=self.connectivity,
+            h_value=self.h_value
         )
 
     def update_params(self, params: dict[str, float | int]) -> None:
@@ -261,6 +267,7 @@ class IterativeWatershed(WatershedSegmentation):
         self.max_thresh = params["max_thresh"]
         self.min_thresh = params["min_thresh"]
         self.step_size = params["step_size"]
+        self.h_value = params["h_value"]
 
     def __iterative_threshold(self) -> None:
         """Apply iterative thresholding to detect objects at different intensity levels.
@@ -276,7 +283,7 @@ class IterativeWatershed(WatershedSegmentation):
         """
         logging.basicConfig(level=logging.INFO)
 
-        image = self.img_grey_dt.astype(np.uint8)
+        image = self.img_grey_dt_imhmin.astype(np.uint8)
 
         # Initialize the final mask to accumulate all detected objects
         output_mask = np.zeros_like(image, dtype=np.uint8)
@@ -330,6 +337,7 @@ class IterativeWatershed(WatershedSegmentation):
         self._threshold()
         self._morph_process()
         self._dist_transform()
+        self._imhmin()
         self.__iterative_threshold()
         self._initialize_labels(self.output_mask_for_labels)
         self._watershed_segmentation()
@@ -337,12 +345,83 @@ class IterativeWatershed(WatershedSegmentation):
         return self.labels_on_img, self.labels_watershed
 
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
+    from matplotlib import pyplot as plt
+    # Define paths
+    img_grey_path = "../../tests/test_image_grey.JPG"
+    img_rgb_path = "../../tests/test_image_rgb.JPG"
+    output_path = "../../tests/test_iterative_segmented_h0.2.JPG"
+      # Change to your desired output location
+    background_path = None  # Change if you have a background image
 
+    # Load images
+    img_rgb = cv2.imread(img_rgb_path)
+    if img_rgb is None:
+        raise ValueError(f"Error: Could not load image at {img_rgb_path}")
+
+    img_grey = cv2.imread(img_grey_path, cv2.IMREAD_GRAYSCALE)
+
+    # Load optional background image
+    bknd_img = cv2.imread(background_path, cv2.IMREAD_GRAYSCALE) \
+                          if background_path else None
+
+    params = {
+        "resample": 0.5,
+        "h_value": 0.2,
+        "element_size": 5,
+        "connectivity": 8,
+        "max_thresh": 0.9,
+        "min_thresh": 0.05,
+        "step_size": 0.05,
+    }
+    # Run Iterative Watershed Segmentation without bknd img
+    iterative_watershed = IterativeWatershed(params)
+
+    iterative_watershed.initialize_processing(
+        params,
+        img_grey, # type: ignore
+        img_rgb, # type: ignore
+        if_bknd_img=False
+    )
+
+    segmented_img, labels_watershed = iterative_watershed.get_results_img()
+    np.save("../../tests/test_labels_watershed.npy", labels_watershed)
+    dist_transform = iterative_watershed.img_grey_dt
+    dt_imhmin = iterative_watershed.img_grey_dt_imhmin
+
+    # Save and display results
+    plt.figure(figsize=(10, 5))
+    plt.subplot(331)
+    plt.imshow(cv2.cvtColor(img_rgb, cv2.COLOR_BGR2RGB))
+    plt.title("Original Image")
+
+    plt.subplot(332)
+    plt.imshow(segmented_img, cmap="jet")
+    plt.title("Segmented Image")
+
+    plt.subplot(334)
+    plt.imshow(labels_watershed, cmap="jet")
+    plt.title("Watershed Labels")
+
+    plt.subplot(335)
+    plt.imshow(dist_transform, cmap="gray")
+    plt.title("Distance Transform")
+
+    plt.subplot(336)
+    plt.imshow(dt_imhmin, cmap="gray")
+    plt.title("Distance Transform - imhmin")
+
+    plt.savefig(output_path)
+    plt.show()
+
+    print(f"Segmentation completed! Output saved at: {output_path}")
+
+# if __name__ == "__main__":
+#     from matplotlib import pyplot as plt
 #     # Define paths
 #     img_grey_path = "../../tests/test_image_grey.JPG"
 #     img_rgb_path = "../../tests/test_image_rgb.JPG"
-#     output_path = "../../tests/test_image_segmented.JPG"
+#     output_path = "../../tests/test_image_segmented_h20_t10.JPG"
 #       # Change to your desired output location
 #     background_path = None  # Change if you have a background image
 
@@ -357,13 +436,27 @@ class IterativeWatershed(WatershedSegmentation):
 #     bknd_img = cv2.imread(background_path, cv2.IMREAD_GRAYSCALE) \
 #                           if background_path else None
 
-#     # Run Iterative Watershed Segmentation
-#     iterative_watershed = IterativeWatershed(img_grey, img_rgb)
+#     params = {
+#             "resample": 0.5,
+#             "h_value": 0.2,
+#             "element_size": 5,
+#             "connectivity": 4,
+#             "threshold_value": 0.1,
+#     }
+#     # Run Iterative Watershed Segmentation without bknd img
+#     normal_watershed = NormalWatershed(params)
 
-#     segmented_img, labels_watershed = iterative_watershed.run_segmentation()
-#     pre_watershed_labels = iterative_watershed.output_mask_for_labels
+#     normal_watershed.initialize_processing(
+#         params,
+#         img_grey, # type: ignore
+#         img_rgb, # type: ignore
+#         if_bknd_img=False
+#     )
+
+#     segmented_img, labels_watershed = normal_watershed.get_results_img()
 #     np.save("../../tests/test_labels_watershed.npy", labels_watershed)
-#     dist_transform = iterative_watershed.img_grey_dt
+#     dist_transform = normal_watershed.img_grey_dt_copy
+#     dt_imhmin = normal_watershed.img_grey_dt_imhmin
 
 #     # Save and display results
 #     plt.figure(figsize=(10, 5))
@@ -376,16 +469,16 @@ class IterativeWatershed(WatershedSegmentation):
 #     plt.title("Segmented Image")
 
 #     plt.subplot(333)
-#     plt.imshow(pre_watershed_labels, cmap="gray")
-#     plt.title("Pre Watershed Labels")
-
-#     plt.subplot(334)
 #     plt.imshow(labels_watershed, cmap="jet")
 #     plt.title("Watershed Labels")
 
-#     plt.subplot(335)
+#     plt.subplot(334)
 #     plt.imshow(dist_transform, cmap="gray")
 #     plt.title("Distance Transform")
+
+#     plt.subplot(335)
+#     plt.imshow(dt_imhmin, cmap="gray")
+#     plt.title("Distance Transform - imhmin")
 #     plt.savefig(output_path)
 #     plt.show()
 
