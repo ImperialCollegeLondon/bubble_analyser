@@ -1,0 +1,6 @@
+{
+    "python.analysis.extraPaths": ["./bubble_analyser/processing"],
+    "python.testing.pytestArgs": ["bubble_analyser"],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
+}
