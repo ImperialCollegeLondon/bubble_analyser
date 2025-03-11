@@ -179,14 +179,6 @@ class NormalWatershed(WatershedSegmentation):
         self.labels_watershed = self._watershed_segmentation(self.img_rgb,
         self.labels)
         self.labels_watershed_filled = self._fill_ellipses(self.labels_watershed)
-        self.b_mask = cast(npt.NDArray[np.int_], self.labels_watershed_filled)
-        print(self.b_mask)
-        self.b_mask = np.where(self.b_mask > 2, 255, 0)
-        # self.s2_dt = self._dist_transform(self.b_mask)
-        # self.s2_dt_thresh = self.__threshold_dt_image(self.s2_dt, self.threshold_value)
-        # self.s2_labels = self._initialize_labels(self.s2_dt_thresh)
-        # self.s2_labels_watershed = self._watershed_segmentation(self.img_rgb, self.s2_labels)
-
         self.labels_on_img = self._overlay_labels_on_rgb(self.img_rgb,
         cast(npt.NDArray[np.int_], self.labels_watershed_filled))
 
@@ -225,7 +217,7 @@ class IterativeWatershed(WatershedSegmentation):
         self.min_thresh: float
         self.step_size: float
         self.update_params(params)
-        self.output_mask_for_labels: npt.NDArray[np.int_]
+        self.output_mask_for_labels: MatLike
         self.no_overlap_count: int = 0  # Track number of "no overlap" occurrences
         self.final_label_count: int = 0  # Track final number of labels
 
@@ -237,7 +229,6 @@ class IterativeWatershed(WatershedSegmentation):
         """
         return {
             "resample": self.resample,
-            "h_value": self.h_value,
             "element_size": self.element_size,
             "connectivity": self.connectivity,
             "max_thresh": self.max_thresh,
@@ -274,7 +265,6 @@ class IterativeWatershed(WatershedSegmentation):
             bknd_img=bknd_img,
             element_size=self.element_size,
             connectivity=self.connectivity,
-            h_value=self.h_value,
         )
 
     def update_params(self, params: dict[str, float | int]) -> None:
@@ -291,9 +281,19 @@ class IterativeWatershed(WatershedSegmentation):
         self.max_thresh = params["max_thresh"]
         self.min_thresh = params["min_thresh"]
         self.step_size = params["step_size"]
-        self.h_value = params["h_value"]
 
-    def __iterative_threshold(self) -> None:
+    def _dilate_mask(self, mask: MatLike) -> MatLike:
+        """Dilate the mask to enhance object boundaries.
+
+        This method applies a morphological dilation operation to the input mask.
+        The dilation operation enlarges the foreground regions, which helps in
+        better defining the boundaries of objects.
+        """
+        kernel = np.ones((3, 3), np.uint8)
+        dilated_mask = cv2.dilate(mask, kernel, iterations=1)  # type: ignore
+        return dilated_mask
+
+    def __iterative_threshold(self, image: MatLike) -> tuple[MatLike, int]:
         """Apply iterative thresholding to detect objects at different intensity levels.
 
         This method iteratively applies decreasing thresholds to the distance transform image,
@@ -307,14 +307,13 @@ class IterativeWatershed(WatershedSegmentation):
         """
         logging.basicConfig(level=logging.INFO)
 
-        image = self.img_grey_dt_imhmin.astype(np.uint8)
-
+        image = image.astype(np.uint8)
         # Initialize the final mask to accumulate all detected objects
         output_mask = np.zeros_like(image, dtype=np.uint8)
 
         # Set the initial threshold
         current_thresh = self.max_thresh
-        self.no_overlap_count = 0  # Reset counter
+        no_overlap_count = 0  # Reset counter
 
         while current_thresh >= self.min_thresh:
             # Apply binary thresholding
@@ -335,16 +334,16 @@ class IterativeWatershed(WatershedSegmentation):
                 overlap = cv2.bitwise_and(output_mask, component_mask)
 
                 if not np.any(overlap):  # If no overlap, it's a new object
-                    self.no_overlap_count += 1
+                    no_overlap_count += 1
                     output_mask = cv2.bitwise_or(output_mask, component_mask * 255)  # type: ignore
 
             # Decrease the threshold for the next iteration
             current_thresh -= self.step_size
-        self.output_mask_for_labels = output_mask  # type: ignore
 
-        self.final_label_count, _ = cv2.connectedComponents(self.output_mask_for_labels)
-        logging.info(f"Total unique labels in output_mask_for_labels: {self.final_label_count}")
-        logging.info(f"Total number of no overlap occurrences: {self.no_overlap_count}")
+        final_label_count, _ = cv2.connectedComponents(output_mask)
+        logging.info(f"Total unique labels in output_mask_for_labels: {final_label_count}")
+        logging.info(f"Total number of no overlap occurrences: {no_overlap_count}")
+        return output_mask, final_label_count
 
     def get_results_img(self) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]:
         """Execute the complete iterative method process and return results.
@@ -359,94 +358,28 @@ class IterativeWatershed(WatershedSegmentation):
                 - The watershed segmentation labels array
         """
         self.img_grey_thresholded = self._threshold(self.img_grey)
-        self._morph_process()
-        self._dist_transform()
-        self._imhmin()
-        self.__iterative_threshold()
-        self._initialize_labels(self.output_mask_for_labels)
-        self._watershed_segmentation()
-        self._overlay_labels_on_rgb()
-        return self.labels_on_img, self.labels_watershed
+        self.img_grey_morph = self._morph_process(self.img_grey_thresholded)
+        self.img_grey_dt = self._dist_transform(self.img_grey_morph)
+        self.output_mask_for_labels, self.final_label_count = self.__iterative_threshold(self.img_grey_dt)
+        self.dilated_mask = self._dilate_mask(self.output_mask_for_labels)
+        self.labels = self._initialize_labels(self.dilated_mask)
+        img_grey_morph_rgb = cv2.cvtColor(self.img_grey_morph, cv2.COLOR_GRAY2RGB)  # type: ignore
+        self.labels_watershed = self._watershed_segmentation(img_grey_morph_rgb, self.labels)
+        # self.labels_watershed_filled = self._fill_ellipses(self.labels_watershed)
+        self.labels_on_img = self._overlay_labels_on_rgb(self.img_rgb,
+        cast(npt.NDArray[np.int_], self.labels_watershed))
+        return cast(npt.NDArray[np.int_], self.labels_on_img), \
+            cast(npt.NDArray[np.int_], self.labels_watershed)
 
-
-# if __name__ == "__main__":
-#     from matplotlib import pyplot as plt
-
-#     # Define paths
-#     img_grey_path = "../../tests/test_image_grey.JPG"
-#     img_rgb_path = "../../tests/test_image_rgb.JPG"
-#     output_path = "../../tests/test_iterative_segmented_h0.2.JPG"
-#     # Change to your desired output location
-#     background_path = None  # Change if you have a background image
-
-#     # Load images
-#     img_rgb = cv2.imread(img_rgb_path)
-#     if img_rgb is None:
-#         raise ValueError(f"Error: Could not load image at {img_rgb_path}")
-
-#     img_grey = cv2.imread(img_grey_path, cv2.IMREAD_GRAYSCALE)
-
-#     # Load optional background image
-#     bknd_img = cv2.imread(background_path, cv2.IMREAD_GRAYSCALE) if background_path else None
-
-#     params = {
-#         "resample": 0.5,
-#         "h_value": 0.2,
-#         "element_size": 5,
-#         "connectivity": 8,
-#         "max_thresh": 0.9,
-#         "min_thresh": 0.05,
-#         "step_size": 0.05,
-#     }
-#     # Run Iterative Watershed Segmentation without bknd img
-#     iterative_watershed = IterativeWatershed(params)
-
-#     iterative_watershed.initialize_processing(
-#         params,
-#         img_grey,  # type: ignore
-#         img_rgb,  # type: ignore
-#         if_bknd_img=False,
-#     )
-
-#     segmented_img, labels_watershed = iterative_watershed.get_results_img()
-#     np.save("../../tests/test_labels_watershed.npy", labels_watershed)
-#     dist_transform = iterative_watershed.img_grey_dt
-#     dt_imhmin = iterative_watershed.img_grey_dt_imhmin
-
-#     # Save and display results
-#     plt.figure(figsize=(10, 5))
-#     plt.subplot(331)
-#     plt.imshow(cv2.cvtColor(img_rgb, cv2.COLOR_BGR2RGB))
-#     plt.title("Original Image")
-
-#     plt.subplot(332)
-#     plt.imshow(segmented_img, cmap="jet")
-#     plt.title("Segmented Image")
-
-#     plt.subplot(334)
-#     plt.imshow(labels_watershed, cmap="jet")
-#     plt.title("Watershed Labels")
-
-#     plt.subplot(335)
-#     plt.imshow(dist_transform, cmap="gray")
-#     plt.title("Distance Transform")
-
-#     plt.subplot(336)
-#     plt.imshow(dt_imhmin, cmap="gray")
-#     plt.title("Distance Transform - imhmin")
-
-#     plt.savefig(output_path)
-#     plt.show()
-
-#     print(f"Segmentation completed! Output saved at: {output_path}")
 
 if __name__ == "__main__":
     from matplotlib import pyplot as plt
+
     # Define paths
     img_grey_path = "../../tests/test_image_grey.JPG"
     img_rgb_path = "../../tests/test_image_rgb.JPG"
-    output_path = "../../tests/test_image_segmented_h20_t10_double_wts.JPG"
-      # Change to your desired output location
+    output_path = "../../tests/test_iterative_segmented_with_mt_as_watershed.JPG"
+    # Change to your desired output location
     background_path = None  # Change if you have a background image
 
     # Load images
@@ -457,31 +390,29 @@ if __name__ == "__main__":
     img_grey = cv2.imread(img_grey_path, cv2.IMREAD_GRAYSCALE)
 
     # Load optional background image
-    bknd_img = cv2.imread(background_path, cv2.IMREAD_GRAYSCALE) \
-                          if background_path else None
+    bknd_img = cv2.imread(background_path, cv2.IMREAD_GRAYSCALE) if background_path else None
 
     params = {
-            "resample": 0.5,
-            "h_value": 0.5,
-            "element_size": 5,
-            "connectivity": 4,
-            "threshold_value": 0.1,
+        "resample": 0.5,
+        "element_size": 5,
+        "connectivity": 8,
+        "max_thresh": 0.9,
+        "min_thresh": 0.05,
+        "step_size": 0.05,
     }
-    # Run Iterative Watershed Segmentation without bknd img
-    normal_watershed = NormalWatershed(params)
 
-    normal_watershed.initialize_processing(
+    # Run Iterative Watershed Segmentation without bknd img
+    iterative_watershed = IterativeWatershed(params)
+    iterative_watershed.initialize_processing(
         params,
-        img_grey, # type: ignore
-        img_rgb, # type: ignore
-        if_bknd_img=False
+        img_grey,  # type: ignore
+        img_rgb,  # type: ignore
+        if_bknd_img=False,
     )
 
-    segmented_img, labels_watershed = normal_watershed.get_results_img()
+    segmented_img, labels_watershed = iterative_watershed.get_results_img()
     np.save("../../tests/test_labels_watershed.npy", labels_watershed)
-    dist_transform = normal_watershed.img_grey_dt
-    # dt_imhmin = normal_watershed.img_grey_dt_imhmin
-    ch_labels = normal_watershed.labels_watershed_filled
+    dist_transform = iterative_watershed.img_grey_dt
 
     # Save and display results
     plt.figure(figsize=(10, 5))
@@ -493,22 +424,96 @@ if __name__ == "__main__":
     plt.imshow(segmented_img, cmap="jet")
     plt.title("Segmented Image")
 
-    plt.subplot(333)
-    plt.imshow(normal_watershed.labels_watershed_filled, cmap="jet")
-    plt.title("Watershed Labels Filled")
-
     plt.subplot(334)
+    plt.imshow(labels_watershed, cmap="jet")
+    plt.title("Watershed Labels")
+
+    plt.subplot(335)
     plt.imshow(dist_transform, cmap="gray")
     plt.title("Distance Transform")
 
-    plt.subplot(335)
-    plt.imshow(ch_labels, cmap="gray")
-    plt.title("ch_labels")
+    plt.subplot(333)
+    plt.imshow(iterative_watershed.output_mask_for_labels, cmap="gray")
+    plt.title("Output Mask")
 
     plt.subplot(336)
-    plt.imshow(normal_watershed.b_mask, cmap="gray")
-    plt.title("s2_watershed")
+    plt.imshow(iterative_watershed.dilated_mask, cmap="gray")
+    plt.title("Dilated Mask")
+
     plt.savefig(output_path)
     plt.show()
 
     print(f"Segmentation completed! Output saved at: {output_path}")
+
+# if __name__ == "__main__":
+#     from matplotlib import pyplot as plt
+#     # Define paths
+#     img_grey_path = "../../tests/test_image_grey.JPG"
+#     img_rgb_path = "../../tests/test_image_rgb.JPG"
+#     output_path = "../../tests/test_image_segmented_h20_t10_double_wts.JPG"
+#       # Change to your desired output location
+#     background_path = None  # Change if you have a background image
+
+#     # Load images
+#     img_rgb = cv2.imread(img_rgb_path)
+#     if img_rgb is None:
+#         raise ValueError(f"Error: Could not load image at {img_rgb_path}")
+
+#     img_grey = cv2.imread(img_grey_path, cv2.IMREAD_GRAYSCALE)
+
+#     # Load optional background image
+#     bknd_img = cv2.imread(background_path, cv2.IMREAD_GRAYSCALE) \
+#                           if background_path else None
+
+#     params = {
+#             "resample": 0.5,
+#             "h_value": 0.5,
+#             "element_size": 5,
+#             "connectivity": 4,
+#             "threshold_value": 0.1,
+#     }
+#     # Run Iterative Watershed Segmentation without bknd img
+#     normal_watershed = NormalWatershed(params)
+
+#     normal_watershed.initialize_processing(
+#         params,
+#         img_grey, # type: ignore
+#         img_rgb, # type: ignore
+#         if_bknd_img=False
+#     )
+
+#     segmented_img, labels_watershed = normal_watershed.get_results_img()
+#     np.save("../../tests/test_labels_watershed.npy", labels_watershed)
+#     dist_transform = normal_watershed.img_grey_dt
+#     # dt_imhmin = normal_watershed.img_grey_dt_imhmin
+#     ch_labels = normal_watershed.labels_watershed_filled
+
+#     # Save and display results
+#     plt.figure(figsize=(10, 5))
+#     plt.subplot(331)
+#     plt.imshow(cv2.cvtColor(img_rgb, cv2.COLOR_BGR2RGB))
+#     plt.title("Original Image")
+
+#     plt.subplot(332)
+#     plt.imshow(segmented_img, cmap="jet")
+#     plt.title("Segmented Image")
+
+#     plt.subplot(333)
+#     plt.imshow(normal_watershed.labels_watershed_filled, cmap="jet")
+#     plt.title("Watershed Labels Filled")
+
+#     plt.subplot(334)
+#     plt.imshow(dist_transform, cmap="gray")
+#     plt.title("Distance Transform")
+
+#     plt.subplot(335)
+#     plt.imshow(ch_labels, cmap="gray")
+#     plt.title("ch_labels")
+
+#     plt.subplot(336)
+#     plt.imshow(normal_watershed.b_mask, cmap="gray")
+#     plt.title("s2_watershed")
+#     plt.savefig(output_path)
+#     plt.show()
+
+#     print(f"Segmentation completed! Output saved at: {output_path}")
