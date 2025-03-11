@@ -170,23 +170,31 @@ class NormalWatershed(WatershedSegmentation):
         self.img_grey_thresholded = self._threshold(self.img_grey)
         self.img_grey_morph = self._morph_process(self.img_grey_thresholded)
         self.img_grey_dt = self._dist_transform(self.img_grey_morph)
-        # self._imhmin()
+        # self.img_grey_dt_imhmin = self._imhmin(self.img_grey_dt)
         self.img_grey_dt_thresh = self.__threshold_dt_image(self.img_grey_dt,
         self.threshold_value)
         self.sure_fg, self.sure_bg, self.unknown = \
             self.__get_sure_fg_bg(self.img_grey, self.img_grey_dt_thresh)
-
         self.labels = self._initialize_labels(self.sure_fg)
         self.labels_watershed = self._watershed_segmentation(self.img_rgb,
         self.labels)
-        self.labels_convex_hull = self._convex_hull(self.labels_watershed)
+        self.labels_watershed_filled = self._fill_ellipses(self.labels_watershed)
+        self.b_mask = cast(npt.NDArray[np.int_], self.labels_watershed_filled)
+        print(self.b_mask)
+        self.b_mask = np.where(self.b_mask > 2, 255, 0)
+        # self.s2_dt = self._dist_transform(self.b_mask)
+        # self.s2_dt_thresh = self.__threshold_dt_image(self.s2_dt, self.threshold_value)
+        # self.s2_labels = self._initialize_labels(self.s2_dt_thresh)
+        # self.s2_labels_watershed = self._watershed_segmentation(self.img_rgb, self.s2_labels)
+
         self.labels_on_img = self._overlay_labels_on_rgb(self.img_rgb,
-        cast(npt.NDArray[np.int_], self.labels_watershed))
+        cast(npt.NDArray[np.int_], self.labels_watershed_filled))
 
         return cast(npt.NDArray[np.int_], self.labels_on_img), \
             cast(npt.NDArray[np.int_], self.labels_watershed)
-
-
+# Default
+# 3 cuts threshold
+# Executable version
 class IterativeWatershed(WatershedSegmentation):
     """Iterative watershed segmentation implementation.
 
@@ -454,7 +462,7 @@ if __name__ == "__main__":
 
     params = {
             "resample": 0.5,
-            "h_value": 0.2,
+            "h_value": 0.5,
             "element_size": 5,
             "connectivity": 4,
             "threshold_value": 0.1,
@@ -473,7 +481,7 @@ if __name__ == "__main__":
     np.save("../../tests/test_labels_watershed.npy", labels_watershed)
     dist_transform = normal_watershed.img_grey_dt
     # dt_imhmin = normal_watershed.img_grey_dt_imhmin
-    ch_labels = normal_watershed.labels_convex_hull
+    ch_labels = normal_watershed.labels_watershed_filled
 
     # Save and display results
     plt.figure(figsize=(10, 5))
@@ -486,8 +494,8 @@ if __name__ == "__main__":
     plt.title("Segmented Image")
 
     plt.subplot(333)
-    plt.imshow(labels_watershed, cmap="jet")
-    plt.title("Watershed Labels")
+    plt.imshow(normal_watershed.labels_watershed_filled, cmap="jet")
+    plt.title("Watershed Labels Filled")
 
     plt.subplot(334)
     plt.imshow(dist_transform, cmap="gray")
@@ -496,6 +504,10 @@ if __name__ == "__main__":
     plt.subplot(335)
     plt.imshow(ch_labels, cmap="gray")
     plt.title("ch_labels")
+
+    plt.subplot(336)
+    plt.imshow(normal_watershed.b_mask, cmap="gray")
+    plt.title("s2_watershed")
     plt.savefig(output_path)
     plt.show()
 
