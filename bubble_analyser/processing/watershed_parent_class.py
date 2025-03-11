@@ -20,8 +20,7 @@ from cv2.typing import MatLike
 from typing import cast
 import numpy as np
 from numpy import typing as npt
-from skimage.morphology import reconstruction
-
+from skimage.morphology import reconstruction, h_minima
 from bubble_analyser.processing.image_postprocess import overlay_labels_on_rgb
 from bubble_analyser.processing.morphological_process import morphological_process
 from bubble_analyser.processing.threshold_methods import ThresholdMethods
@@ -84,7 +83,8 @@ class WatershedSegmentation:
         self.labels: MatLike
         self.labels_watershed: MatLike
         self.labels_on_img: npt.NDArray[np.int_]
-
+        self.ellipses: list[tuple[tuple[float, float], tuple[int, int], float]]
+        
         self.if_bknd_img: bool = if_bknd_img
         self.bknd_img: npt.NDArray[np.int_] = bknd_img
 
@@ -124,16 +124,14 @@ class WatershedSegmentation:
         # self.img_grey_dt_copy = self.img_grey_dt.copy()
         return dt_image
 
-    def _imhmin(self) -> None:
+    def _imhmin(self, image: npt.NDArray[np.int_]) -> MatLike:
         """Suppress minima with depth < h_percent% of max intensity."""
-        image = self.img_grey_dt.copy()
         h = self.h_value
         max_val = np.max(image).astype(np.float32)
         h = h * max_val
         image_float = image.astype(np.float32)
-        marker = image_float - h
-        self.img_grey_dt_imhmin = reconstruction(marker, image, method="dilation").astype(image.dtype)
-        print(self.img_grey_dt_imhmin.max())
+        result = h_minima(image_float, h)
+        return result
 
     def _initialize_labels(self, img: MatLike) -> MatLike:
         """Initialize label markers for watershed segmentation.
@@ -150,18 +148,18 @@ class WatershedSegmentation:
         Uses OpenCV's watershed algorithm to segment the image based on the
         previously computed label markers.
         """
-        labels_watershed = cv2.watershed(img, labels).astype(np.int_)
+        labels_watershed = cv2.watershed(img, labels)
         labels_watershed = cast(npt.NDArray[np.int_], labels_watershed)
         return labels_watershed
     
-    def _convex_hull(self, labels: MatLike) -> MatLike:
+    def _fill_ellipses(self, labels: MatLike) -> MatLike:
         height, width = labels.shape[:2]
 
         # Initialize the labelled image with background label (1)
         labelled_img = np.ones((height, width), dtype=np.int_)
 
         current_label = 2  # Start labelling from 2
-
+        ellipses = []
         for label in np.unique(labels):
             if label == 0:
                 continue  # Skip the background label
@@ -174,10 +172,12 @@ class WatershedSegmentation:
                 if len(contour) >= 5:
                     ellipse = cv2.fitEllipse(contour)
                     cv2.ellipse(mask, ellipse, color=255, thickness=-1)  # type: ignore
+                    ellipses.append(ellipse)
 
             labelled_img[mask == 255] = current_label
             current_label += 1
 
+        self.ellipses = ellipses
         return labelled_img
 
     def _overlay_labels_on_rgb(self, img: npt.NDArray[np.int_], labels: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
@@ -186,6 +186,5 @@ class WatershedSegmentation:
         Creates a visualization of the segmentation results by overlaying
         the watershed labels on the original RGB image.
         """
-        labels = self.labels_watershed.astype(np.int_)
         labels_on_img = overlay_labels_on_rgb(img, labels)
         return labels_on_img
