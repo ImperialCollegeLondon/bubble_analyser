@@ -79,7 +79,6 @@ class WatershedSegmentation:
 
         self.element_size: int = element_size
         self.connectivity: int = connectivity
-        self.h_value: float = h_value
         self.labels: MatLike
         self.labels_watershed: MatLike
         self.labels_on_img: npt.NDArray[np.int_]
@@ -123,15 +122,6 @@ class WatershedSegmentation:
         # print(dt_image.max())
         # self.img_grey_dt_copy = self.img_grey_dt.copy()
         return dt_image
-
-    def _imhmin(self, image: npt.NDArray[np.int_]) -> MatLike:
-        """Suppress minima with depth < h_percent% of max intensity."""
-        h = self.h_value
-        max_val = np.max(image).astype(np.float32)
-        h = h * max_val
-        image_float = image.astype(np.float32)
-        result = h_minima(image_float, h)
-        return result
 
     def _initialize_labels(self, img: MatLike) -> MatLike:
         """Initialize label markers for watershed segmentation.
