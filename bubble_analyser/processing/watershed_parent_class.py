@@ -73,6 +73,7 @@ class WatershedSegmentation:
         self.img_grey: npt.NDArray[np.int_] = img_grey
         self.img_grey_thresholded: npt.NDArray[np.bool_]
         self.img_grey_morph: npt.NDArray[np.int_]
+        self.img_grey_eroded: MatLike
         self.img_grey_dt: MatLike
         self.img_grey_dt_imhmin: npt.NDArray[np.int_]
         self.img_rgb: npt.NDArray[np.int_] = img_rgb
@@ -101,14 +102,14 @@ class WatershedSegmentation:
             thresholded_img = threshold_methods.threshold_without_background(image)
         return thresholded_img
 
-    def _morph_process(self, image: npt.NDArray[np.bool_]) -> npt.NDArray[np.int_]:
+    def _morph_process(self, image: npt.NDArray[np.bool_]) -> tuple[npt.NDArray[np.int_], MatLike]:
         """Apply morphological operations to the thresholded image.
 
         Uses the morphological_process function to clean up the binary image by
         filling holes and removing noise.
         """
-        morph_processed_image = morphological_process(image, self.element_size)
-        return morph_processed_image
+        morph_processed_image, eroded = morphological_process(image, self.element_size)
+        return morph_processed_image, eroded
 
     def _dist_transform(self, image: npt.NDArray[np.int_]) -> MatLike:
         """Apply distance transform to the morphologically processed image.
@@ -141,7 +142,7 @@ class WatershedSegmentation:
         labels_watershed = cv2.watershed(img, labels)
         labels_watershed = cast(npt.NDArray[np.int_], labels_watershed)
         return labels_watershed
-    
+
     def _fill_ellipses(self, labels: MatLike) -> MatLike:
         height, width = labels.shape[:2]
 

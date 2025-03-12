@@ -19,10 +19,11 @@ analysis.
 
 import time
 from pathlib import Path
-
+from typing import cast
 # import matplotlib
 # matplotlib.use('TkAgg')
 import cv2
+from cv2.typing import MatLike
 import numpy as np
 from numpy import typing as npt
 from scipy import ndimage
@@ -32,7 +33,7 @@ from skimage import (
 )
 
 
-def morphological_process(target_img: npt.NDArray[np.bool_], element_size: int = 8) -> npt.NDArray[np.int_]:
+def morphological_process(target_img: npt.NDArray[np.bool_], element_size: int = 8) -> tuple[npt.NDArray[np.int_], MatLike]:
     """Apply morphological operations to process the target image.
 
     This function performs a series of morphological operations on the input image,
@@ -56,7 +57,7 @@ def morphological_process(target_img: npt.NDArray[np.bool_], element_size: int =
     kernel = np.array(morphology.disk(element_size), dtype=np.uint8)
     dilated = cv2.dilate(target_img.astype(np.uint8), kernel, iterations=1)
     image_processed_closed = cv2.morphologyEx(dilated, cv2.MORPH_CLOSE, kernel)
-
+    # image_processed_closed = cv2.morphologyEx(target_img.astype(np.uint8), cv2.MORPH_CLOSE, kernel)
     # image_processed_closed = cv2.morphologyEx(
     #     target_img.astype(np.uint8), cv2.MORPH_CLOSE, element_size
     # )  # type: ignore
@@ -71,14 +72,20 @@ def morphological_process(target_img: npt.NDArray[np.bool_], element_size: int =
 
     image_processed_cleared = image_processed_cleared.astype(np.uint8)
     # opening = cv2.morphologyEx(B,cv2.MORPH_OPEN,kernel, iterations = 2)
+    reverse_dilation = True
+    image_processed_cleard_eroded = cast(MatLike, None)
+    if reverse_dilation:
+        start_time = time.perf_counter()
+        image_processed_cleard_eroded = cv2.erode(image_processed_cleared, kernel, iterations=1)
+        print("Time consumed for erosion: ", time.perf_counter() - start_time)
 
-    return image_processed_cleared
+    return image_processed_cleared, image_processed_cleard_eroded
 
 
 if __name__ == "__main__":
     # Define the image path
     img_path = Path("../../tests/test_image_thresholded_otsu.JPG")
-    output_path = Path("../../tests/test_image_mt.JPG")
+    output_path = Path("../../tests/test_image_mt_eroded.JPG")
 
     # Load the image
     img = cv2.imread(str(img_path))

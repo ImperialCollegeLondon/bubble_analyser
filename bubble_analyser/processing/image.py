@@ -50,7 +50,7 @@ class MethodsHandler:
             - Loads modules and prints module and class information to the console.
         """
         self.params_dict = params.model_dump()
-        self.folder_path: Path = "/mnt/c/new_sizer/bubble_analyser/bubble_analyser/methods"  # type: ignore
+        self.folder_path: Path = cast(Path, "/mnt/c/new_sizer/bubble_analyser/bubble_analyser/methods") 
 
         self.modules: dict[str, object] = {}
         self.modules = self.load_modules_from_folder()
@@ -77,10 +77,12 @@ class MethodsHandler:
         for file in folder.glob("*.py"):
             module_name = file.stem
             spec = importlib.util.spec_from_file_location(module_name, file)
-            module = importlib.util.module_from_spec(spec)  # type: ignore
-            spec.loader.exec_module(module)  # type: ignore
-            modules[module_name] = module
-        return modules  # type: ignore
+            if spec is not None:  # Check if spec exists before using it
+                module = importlib.util.module_from_spec(spec)
+                if spec.loader is not None:  # Check if loader exists
+                    spec.loader.exec_module(module)
+                    modules[module_name] = module
+        return modules  
 
     def get_new_classes(self, module: object) -> dict[str, object]:  # type: ignore
         """Retrieve classes that are defined within the provided module.
@@ -102,8 +104,11 @@ class MethodsHandler:
 
         new_classes = {}
         for name, obj in inspect.getmembers(module, inspect.isclass):
-            if obj.__module__ == module.__name__:  # type: ignore
-                new_classes[name] = obj
+            # Check if the class is defined in the current module by comparing module names
+            if isinstance(module, type(importlib)):
+                module_name = module.__spec__.name  # type: ignore
+                if hasattr(obj, '__module__') and obj.__module__ == module_name:
+                    new_classes[name] = obj
         return new_classes  # type: ignore
 
     def _get_full_dict(self) -> None:
@@ -128,9 +133,13 @@ class MethodsHandler:
                 self.all_classes[instance.name] = instance
                 self.full_dict[instance.name] = instance.get_needed_params()  # type: ignore
 
-        print("full dict is", self.full_dict)
-        print("all classes is", self.all_classes)
+        # Reorder dictionary to put "Default" method first if it exists
+        if "Default" in self.full_dict:
+            default_value = self.full_dict["Default"]
+            del self.full_dict["Default"]
+            self.full_dict = {"Default": default_value, **self.full_dict}
 
+        print("All methods achieved and their needed params:", self.full_dict)
 
 class Image:
     """A class representing an image and its associated processing routines.
@@ -267,6 +276,7 @@ class Image:
             None
         """
         for algorithm_name, params in self.all_methods_n_params.items():
+            print("------------------------------Processing Step 1------------------------------")
             print("algorithm name:", algorithm_name)
 
             if algorithm_name == algorithm:
