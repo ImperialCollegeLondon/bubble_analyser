@@ -490,13 +490,6 @@ class ImageProcessingTabHandler(QThread):
         self.export_handler: ExportSettingsHandler
         self.if_save_processed_images = False
 
-        self.temp_param_dict: dict[str, int | float] = {}
-        self.temp_filter_param_dict = {
-            "max_eccentricity": params.max_eccentricity,
-            "min_solidity": params.min_solidity,
-            "min_size": params.min_size,
-        }
-
         self.save_path: Path = cast(Path, None)
 
     def load_gui(self, gui) -> None:  # type: ignore
@@ -507,7 +500,7 @@ class ImageProcessingTabHandler(QThread):
         """
         self.gui = gui
 
-    def pass_filter_params(self, filter_param_dict: dict[str, int | float]) -> None:
+    def pass_filter_params(self, filter_param_dict: dict[str, str | float]) -> None:
         """Pass filter parameters to the processing model.
 
         Args:
@@ -533,7 +526,7 @@ class ImageProcessingTabHandler(QThread):
             )
         )
 
-    def check_params(self, name: str, value: int | float) -> bool:
+    def check_params(self, name: str, value: int | float | str) -> bool:
         """Validate a parameter value against the configuration schema.
 
         Args:
@@ -685,7 +678,7 @@ class ImageProcessingTabHandler(QThread):
                 ) in enumerate(params.items()):
                     self.gui.param_sandbox1.setItem(row, 0, QTableWidgetItem(name))
                     self.gui.param_sandbox1.setItem(row, 1, QTableWidgetItem(str(value)))
-                    self.temp_param_dict[name] = value
+                    # self.temp_param_dict[name] = value
 
                 break
 
@@ -735,6 +728,7 @@ class ImageProcessingTabHandler(QThread):
         Validates all parameters against the configuration schema before
         proceeding with the first processing step.
         """
+        print("------------------------------Validating Segment Parameters------------------------------")
         # Update the model parameters
         for algorithm_name, params in self.model.all_methods_n_params.items():
             if algorithm_name == self.model.algorithm:
@@ -822,6 +816,8 @@ class ImageProcessingTabHandler(QThread):
         # Extract parameters from the table
         params = self.extract_parameters_from_table(self.gui.param_sandbox1)
 
+        print("------------------------------Updating Parameters------------------------------")
+
         # Update the model's dictionary for the selected algorithm
         for algorithm_name, params_in_dict in self.model.all_methods_n_params.items():
             if algorithm_name == self.model.algorithm:
@@ -857,19 +853,18 @@ class ImageProcessingTabHandler(QThread):
         Populates the filtering parameters table with the current values from
         the temporary filter parameter dictionary.
         """
-        params = [
-            ("max_eccentricity", self.temp_filter_param_dict["max_eccentricity"]),
-            ("min_solidity", self.temp_filter_param_dict["min_solidity"]),
-            ("min_size", self.temp_filter_param_dict["min_size"]),
-        ]
 
-        print("filter param dict---------------------:", self.temp_filter_param_dict)
+        param_dict = self.model.filter_param_dict
 
-        self.gui.param_sandbox2.setRowCount(len(params))
-
-        for row, (name, value) in enumerate(params):
-            self.gui.param_sandbox2.setItem(row, 0, QTableWidgetItem(name))
+        self.gui.param_sandbox2.setRowCount(len(param_dict))
+        row = 0
+        for property, value in param_dict.items():
+            print("Filter param name:", property, ", value:", value)
+            self.gui.param_sandbox2.setItem(row, 0, QTableWidgetItem(property))
             self.gui.param_sandbox2.setItem(row, 1, QTableWidgetItem(str(value)))
+            row += 1
+
+        self.filter_param_dict: dict[str, float | str] = param_dict
 
     def confirm_parameter_for_filtering(self) -> None:
         """Confirm the filtering parameters and apply them to the current image.
@@ -877,13 +872,20 @@ class ImageProcessingTabHandler(QThread):
         Validates all filtering parameters against the configuration schema before
         proceeding with the second processing step.
         """
-        for name, value in self.temp_filter_param_dict.items():
+        self.store_filter_params()
+        print("------------------------------Validating Filter Parameters------------------------------")
+
+        for name, value in self.filter_param_dict.items():
+            print(
+                "Checking steps in confirm_parameter_before_filtering: ",
+                name,
+                value,
+            )
             if_valid = self.check_params(name, value)
             if not if_valid:
                 return
 
-        self.store_filter_params()
-        self.pass_filter_params(self.temp_filter_param_dict)
+        self.pass_filter_params(self.filter_param_dict)
         self._process_step_2()
 
     def store_filter_params(self) -> None:
@@ -893,16 +895,23 @@ class ImageProcessingTabHandler(QThread):
         temporary filter parameter dictionary with the new values.
         """
         params = {}
-
+        print("------------------------------Updating Filtering Parameters------------------------------")
         for row in range(self.gui.param_sandbox2.rowCount()):
             name_item = self.gui.param_sandbox2.item(row, 0)
             value_item = self.gui.param_sandbox2.item(row, 1)
             if name_item and value_item:
-                params[name_item.text()] = float(value_item.text())
+                if name_item.text() == "find_circles(Y/N)":
+                    params[name_item.text()] = str(value_item.text())
+                    self.filter_param_dict[name_item.text()] = str(value_item.text())
+                    print(name_item.text(),value_item.text())
+                else:
+                    params[name_item.text()] = float(value_item.text())
+                    self.filter_param_dict[name_item.text()] = float(value_item.text())
+                print("Updating", name_item.text(), "to", value_item.text())
 
-        self.temp_filter_param_dict["max_eccentricity"] = params.get("max_eccentricity", 1.0)
-        self.temp_filter_param_dict["min_solidity"] = params.get("min_solidity", 0.0)
-        self.temp_filter_param_dict["min_size"] = params.get("min_size", 0)
+        # self.filter_param_dict["max_eccentricity"] = params.get("max_eccentricity", 1.0)
+        # self.filter_param_dict["min_solidity"] = params.get("min_solidity", 0.0)
+        # self.filter_param_dict["min_size"] = params.get("min_size", 0)
 
     def _process_step_2(self) -> None:
         """Execute the second step of image processing (filtering).
