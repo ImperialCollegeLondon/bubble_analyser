@@ -14,10 +14,10 @@ Both classes inherit from the WatershedSegmentation parent class
 
 import logging
 from typing import cast
-from cv2.typing import MatLike
+
 import cv2
-from cv2.typing import MatLike
 import numpy as np
+from cv2.typing import MatLike
 from numpy import typing as npt
 
 from bubble_analyser.processing.watershed_parent_class import WatershedSegmentation
@@ -209,10 +209,11 @@ class IterativeWatershed(WatershedSegmentation):
         # img_grey_morph_rgb = cv2.cvtColor(self.img_grey_morph_eroded, cv2.COLOR_GRAY2RGB)  # type: ignore
         self.labels_watershed = self._watershed_segmentation(self.img_rgb, self.labels)
         self.labels_watershed_filled = self._fill_ellipses(self.labels_watershed)
-        self.labels_on_img = self._overlay_labels_on_rgb(self.img_rgb,
-        cast(npt.NDArray[np.int_], self.labels_watershed_filled))
-        return cast(npt.NDArray[np.int_], self.labels_on_img), \
-            cast(npt.NDArray[np.int_], self.labels_watershed_filled)
+        self.labels_on_img = self._overlay_labels_on_rgb(
+            self.img_rgb, cast(npt.NDArray[np.int_], self.labels_watershed_filled)
+        )
+        return cast(npt.NDArray[np.int_], self.labels_on_img), cast(npt.NDArray[np.int_], self.labels_watershed_filled)
+
 
 class NormalWatershed(WatershedSegmentation):
     """Standard watershed segmentation implementation.
@@ -261,7 +262,7 @@ class NormalWatershed(WatershedSegmentation):
             "mid_thresh": self.mid_thresh,
             "low_thresh": self.low_thresh,
             "element_size": self.element_size,
-            "connectivity": self.connectivity
+            "connectivity": self.connectivity,
         }
 
     def initialize_processing(
@@ -293,7 +294,7 @@ class NormalWatershed(WatershedSegmentation):
             if_bknd_img=if_bknd_img,
             bknd_img=bknd_img,
             element_size=self.element_size,
-            connectivity=self.connectivity
+            connectivity=self.connectivity,
         )
 
     def update_params(self, params: dict[str, float | int]) -> None:
@@ -310,9 +311,9 @@ class NormalWatershed(WatershedSegmentation):
         self.element_size = params["element_size"]  # type: ignore
         self.connectivity = params["connectivity"]  # type: ignore
 
-    def __get_sure_fg_bg(self, 
-                        target_image: npt.NDArray[np.int_],
-                        dt_thresh_image: MatLike) -> tuple[npt.NDArray[np.uint8], npt.NDArray[np.uint8], MatLike]:
+    def __get_sure_fg_bg(
+        self, target_image: npt.NDArray[np.int_], dt_thresh_image: MatLike
+    ) -> tuple[npt.NDArray[np.uint8], npt.NDArray[np.uint8], MatLike]:
         """Determine sure foreground and background regions.
 
         Creates masks for sure foreground (from thresholded distance transform),
@@ -330,11 +331,9 @@ class NormalWatershed(WatershedSegmentation):
 
         return sure_fg, sure_bg, unknown
 
-    def _three_way_threshold(self, 
-    target_image: MatLike,
-    high_thresh: float,
-    mid_thresh: float,
-    low_thresh: float):
+    def _three_way_threshold(
+        self, target_image: MatLike, high_thresh: float, mid_thresh: float, low_thresh: float
+    ) -> tuple[MatLike, int]:
         logging.basicConfig(level=logging.INFO)
 
         image = target_image.astype(np.uint8)
@@ -371,13 +370,11 @@ class NormalWatershed(WatershedSegmentation):
                     output_mask = cv2.bitwise_or(output_mask, component_mask * 255)  # type: ignore
 
             # Decrease the threshold for the next iteration
-                
 
         final_label_count, _ = cv2.connectedComponents(output_mask)
         logging.info(f"Total unique labels in output_mask_for_labels: {final_label_count}")
         logging.info(f"Total number of no overlap occurrences: {no_overlap_count}")
         return output_mask, final_label_count
-
 
     def get_results_img(self) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]:
         """Execute the complete watershed segmentation process and return results.
@@ -400,17 +397,16 @@ class NormalWatershed(WatershedSegmentation):
             self.mid_thresh,
             self.low_thresh,
         )
-        self.sure_fg, self.sure_bg, self.unknown = \
-            self.__get_sure_fg_bg(self.img_grey, self.img_grey_dt_thresh)
+        self.sure_fg, self.sure_bg, self.unknown = self.__get_sure_fg_bg(self.img_grey, self.img_grey_dt_thresh)
         self.labels = self._initialize_labels(self.sure_fg)
-        self.labels_watershed = self._watershed_segmentation(self.img_rgb,
-        self.labels)
+        self.labels_watershed = self._watershed_segmentation(self.img_rgb, self.labels)
         # self.labels_watershed_filled = self._fill_ellipses(self.labels_watershed)
-        self.labels_on_img = self._overlay_labels_on_rgb(self.img_rgb,
-        cast(npt.NDArray[np.int_], self.labels_watershed))
+        self.labels_on_img = self._overlay_labels_on_rgb(
+            self.img_rgb, cast(npt.NDArray[np.int_], self.labels_watershed)
+        )
 
-        return cast(npt.NDArray[np.int_], self.labels_on_img), \
-            cast(npt.NDArray[np.int_], self.labels_watershed)
+        return cast(npt.NDArray[np.int_], self.labels_on_img), cast(npt.NDArray[np.int_], self.labels_watershed)
+
 
 # if __name__ == "__main__":
 #     from matplotlib import pyplot as plt
@@ -489,11 +485,12 @@ class NormalWatershed(WatershedSegmentation):
 
 if __name__ == "__main__":
     from matplotlib import pyplot as plt
+
     # Define paths
     img_grey_path = "../../tests/test_image_grey.JPG"
     img_rgb_path = "../../tests/test_image_rgb.JPG"
     output_path = "../../tests/test_image_segmented_h20_t10_double_wts.JPG"
-      # Change to your desired output location
+    # Change to your desired output location
     background_path = None  # Change if you have a background image
 
     # Load images
@@ -504,27 +501,26 @@ if __name__ == "__main__":
     img_grey = cv2.imread(img_grey_path, cv2.IMREAD_GRAYSCALE)
 
     # Load optional background image
-    bknd_img = cv2.imread(background_path, cv2.IMREAD_GRAYSCALE) \
-                          if background_path else None
+    bknd_img = cv2.imread(background_path, cv2.IMREAD_GRAYSCALE) if background_path else None
 
     params = {
-            "resample": 0.5,
-            "high_thresh": 0.9,
-            "mid_thresh": 0.5,
-            "low_thresh": 0.2,
-            "h_value": 0.5,
-            "element_size": 5,
-            "connectivity": 4,
-            "threshold_value": 0.1,
+        "resample": 0.5,
+        "high_thresh": 0.9,
+        "mid_thresh": 0.5,
+        "low_thresh": 0.2,
+        "h_value": 0.5,
+        "element_size": 5,
+        "connectivity": 4,
+        "threshold_value": 0.1,
     }
     # Run Iterative Watershed Segmentation without bknd img
     normal_watershed = NormalWatershed(params)
 
     normal_watershed.initialize_processing(
         params,
-        img_grey, # type: ignore
-        img_rgb, # type: ignore
-        if_bknd_img=False
+        img_grey,  # type: ignore
+        img_rgb,  # type: ignore
+        if_bknd_img=False,
     )
 
     segmented_img, labels_watershed = normal_watershed.get_results_img()

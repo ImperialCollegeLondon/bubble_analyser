@@ -130,7 +130,7 @@ class Config(BaseModel):  # type: ignore
     high_thresh: PositiveFloat
     mid_thresh: PositiveFloat
     low_thresh: PositiveFloat
-    
+
     class Config:
         """Pydantic configuration settings for the Config model.
 

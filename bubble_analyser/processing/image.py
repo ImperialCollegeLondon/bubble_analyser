@@ -7,6 +7,7 @@ filtering, and ellipse detection and measurement.
 
 import importlib.util
 import inspect
+import types
 from pathlib import Path
 from typing import cast
 
@@ -50,9 +51,9 @@ class MethodsHandler:
             - Loads modules and prints module and class information to the console.
         """
         self.params_dict = params.model_dump()
-        self.folder_path: Path = cast(Path, "/mnt/c/new_sizer/bubble_analyser/bubble_analyser/methods") 
+        self.folder_path: Path = cast(Path, "/mnt/c/new_sizer/bubble_analyser/bubble_analyser/methods")
 
-        self.modules: dict[str, object] = {}
+        self.modules: dict[str, "types.ModuleType"] = {}
         self.modules = self.load_modules_from_folder()
 
         self.all_classes: dict[str, object] = {}
@@ -60,7 +61,7 @@ class MethodsHandler:
         self.full_dict: dict[str, dict[str, float | int]] = {}
         self._get_full_dict()
 
-    def load_modules_from_folder(self) -> dict[str, object]:
+    def load_modules_from_folder(self) -> dict[str, "types.ModuleType"]:
         """Load Python modules from the folder specified by the `folder_path` attribute.
 
         Scans the designated folder for Python files (with a .py extension), dynamically imports each file as a module,
@@ -82,7 +83,7 @@ class MethodsHandler:
                 if spec.loader is not None:  # Check if loader exists
                     spec.loader.exec_module(module)
                     modules[module_name] = module
-        return modules  
+        return modules
 
     def get_new_classes(self, module: object) -> dict[str, object]:  # type: ignore
         """Retrieve classes that are defined within the provided module.
@@ -107,7 +108,7 @@ class MethodsHandler:
             # Check if the class is defined in the current module by comparing module names
             if isinstance(module, type(importlib)):
                 module_name = module.__spec__.name  # type: ignore
-                if hasattr(obj, '__module__') and obj.__module__ == module_name:
+                if hasattr(obj, "__module__") and obj.__module__ == module_name:
                     new_classes[name] = obj
         return new_classes  # type: ignore
 
@@ -140,6 +141,7 @@ class MethodsHandler:
             self.full_dict = {"Default": default_value, **self.full_dict}
 
         print("All methods achieved and their needed params:", self.full_dict)
+
 
 class Image:
     """A class representing an image and its associated processing routines.

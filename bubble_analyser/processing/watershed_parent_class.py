@@ -16,11 +16,10 @@ functionality provided by this base class.
 from typing import cast
 
 import cv2
-from cv2.typing import MatLike
-from typing import cast
 import numpy as np
+from cv2.typing import MatLike
 from numpy import typing as npt
-from skimage.morphology import reconstruction, h_minima
+
 from bubble_analyser.processing.image_postprocess import overlay_labels_on_rgb
 from bubble_analyser.processing.morphological_process import morphological_process
 from bubble_analyser.processing.threshold_methods import ThresholdMethods
@@ -84,7 +83,7 @@ class WatershedSegmentation:
         self.labels_watershed: MatLike
         self.labels_on_img: npt.NDArray[np.int_]
         self.ellipses: list[tuple[tuple[float, float], tuple[int, int], float]]
-        
+
         self.if_bknd_img: bool = if_bknd_img
         self.bknd_img: npt.NDArray[np.int_] = bknd_img
 
@@ -158,7 +157,7 @@ class WatershedSegmentation:
             mask = np.zeros_like(labels, dtype=np.uint8)
             mask[labels == label] = 255
             contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            
+
             for contour in contours:
                 if len(contour) >= 5:
                     ellipse = cv2.fitEllipse(contour)
