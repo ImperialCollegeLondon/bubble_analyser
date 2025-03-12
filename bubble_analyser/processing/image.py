@@ -196,11 +196,7 @@ class Image:
             methods_handler (MethodsHandler): An instance of MethodsHandler to access processing routines.
             bknd_img_path (Path, optional): File path to the background image. Defaults to None.
         """
-        self.filter_param_dict: dict[str, float] = {
-            "max_eccentricity": 0.0,
-            "min_solidity": 0.0,
-            "min_size": 0.0,
-        }
+        self.filter_param_dict: dict[str, float | str]
 
         self.px2mm: float = px2mm
         self.raw_img_path = raw_img_path
@@ -233,7 +229,7 @@ class Image:
         self.new_circle_handler: CircleHandler = None  # type: ignore
         self.if_fine_tuned: bool = False
 
-    def load_filter_params(self, dict_params: dict[str, float]) -> None:
+    def load_filter_params(self, dict_params: dict[str, float | str]) -> None:
         """Load and update filtering parameters for the image.
 
         Args:
