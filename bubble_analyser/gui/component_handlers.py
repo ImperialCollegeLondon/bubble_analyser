@@ -27,9 +27,9 @@ from PySide6.QtCore import QEventLoop, QThread, Signal
 from bubble_analyser.processing import (
     Config,
     EllipseAdjuster,
+    FilterParamHandler,
     Image,
     MethodsHandler,
-    FilterParamHandler,
     calculate_px2mm,
 )
 
@@ -285,7 +285,7 @@ class ImageProcessingModel:
         self.algorithm: str = ""
         self.params_config: Config = params
 
-        self.filter_param_dict: dict[str, float | str] 
+        self.filter_param_dict: dict[str, float | str]
 
         self.px2mm: float
         self.if_bknd: bool
@@ -315,7 +315,17 @@ class ImageProcessingModel:
         print("All methods and their parameters:", self.all_methods_n_params)
 
     def initialize_filter_param_handler(self) -> None:
-        self.filter_param_handler: FilterParamHandler = FilterParamHandler(self.params_config)
+        """Initialize the filter parameter handler and retrieve filtering parameters.
+
+        This method creates a new FilterParamHandler instance using the current
+        configuration parameters and retrieves the dictionary of needed filtering
+        parameters. The filter parameters are used to control various aspects of
+        the image processing pipeline such as thresholds, sizes, and other
+        filtering criteria.
+
+        The parameters are also printed to the console for debugging purposes.
+        """
+        self.filter_param_handler = FilterParamHandler(self.params_config.model_dump())
         self.filter_param_dict = self.filter_param_handler.get_needed_params()
         print("All filter parameters:", self.filter_param_dict)
 

@@ -853,7 +853,6 @@ class ImageProcessingTabHandler(QThread):
         Populates the filtering parameters table with the current values from
         the temporary filter parameter dictionary.
         """
-
         param_dict = self.model.filter_param_dict
 
         self.gui.param_sandbox2.setRowCount(len(param_dict))
@@ -894,20 +893,27 @@ class ImageProcessingTabHandler(QThread):
         Extracts the filtering parameters from the table widget and updates the
         temporary filter parameter dictionary with the new values.
         """
-        params = {}
+        params: dict[str, float | str] = {}
         print("------------------------------Updating Filtering Parameters------------------------------")
         for row in range(self.gui.param_sandbox2.rowCount()):
             name_item = self.gui.param_sandbox2.item(row, 0)
             value_item = self.gui.param_sandbox2.item(row, 1)
             if name_item and value_item:
-                if name_item.text() == "find_circles(Y/N)":
-                    params[name_item.text()] = str(value_item.text())
-                    self.filter_param_dict[name_item.text()] = str(value_item.text())
-                    print(name_item.text(),value_item.text())
+                param_name = name_item.text()
+                param_value = value_item.text()
+
+                if param_name == "find_circles(Y/N)":
+                    # Handle string parameter
+                    params[param_name] = str(param_value)
+                    self.filter_param_dict[param_name] = str(param_value)
+                    print(param_name, param_value)
                 else:
-                    params[name_item.text()] = float(value_item.text())
-                    self.filter_param_dict[name_item.text()] = float(value_item.text())
-                print("Updating", name_item.text(), "to", value_item.text())
+                    # Handle numeric parameter
+                    float_value = cast(float, param_value)
+                    params[param_name] = float_value
+                    self.filter_param_dict[param_name] = float_value
+
+                print("Updating", param_name, "to", param_value)
 
         # self.filter_param_dict["max_eccentricity"] = params.get("max_eccentricity", 1.0)
         # self.filter_param_dict["min_solidity"] = params.get("min_solidity", 0.0)
