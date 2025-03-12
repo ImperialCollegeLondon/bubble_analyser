@@ -20,11 +20,12 @@ analysis.
 import time
 from pathlib import Path
 from typing import cast
+
 # import matplotlib
 # matplotlib.use('TkAgg')
 import cv2
-from cv2.typing import MatLike
 import numpy as np
+from cv2.typing import MatLike
 from numpy import typing as npt
 from scipy import ndimage
 from skimage import (
@@ -33,7 +34,9 @@ from skimage import (
 )
 
 
-def morphological_process(target_img: npt.NDArray[np.bool_], element_size: int = 8) -> tuple[npt.NDArray[np.int_], MatLike]:
+def morphological_process(
+    target_img: npt.NDArray[np.bool_], element_size: int = 8
+) -> tuple[npt.NDArray[np.int_], MatLike]:
     """Apply morphological operations to process the target image.
 
     This function performs a series of morphological operations on the input image,
