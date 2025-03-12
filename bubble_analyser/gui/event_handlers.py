@@ -642,6 +642,7 @@ class ImageProcessingTabHandler(QThread):
                 self.gui.image_list.setCurrentRow(current_row)
 
         self.current_index = current_row
+        print("(event_handlers/update_sample_img)current index: ", self.current_index)
         self.preview_image()
 
     # -------Second Column Functions-------------------------

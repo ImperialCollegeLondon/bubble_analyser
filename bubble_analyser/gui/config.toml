@@ -60,6 +60,11 @@ do_batch = false
 # Img resample factors
 img_resample = 0.5
 
+# Default threeway threshold for default method
+high_thresh = 0.9
+mid_thresh = 0.5
+low_thresh = 0.2
+
 # Default setting values for iterative methods
 max_thresh = 0.95
 min_thresh = 0.05
