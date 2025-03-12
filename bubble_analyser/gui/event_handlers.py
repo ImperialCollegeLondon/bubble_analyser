@@ -41,16 +41,12 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
     QVBoxLayout,
 )
-
 from bubble_analyser.gui import (
     CalibrationModel,
     ImageProcessingModel,
     InputFilesModel,
     WorkerThread,
 )
-
-# from . import component_handlers as ch
-# from bubble_analyser.gui.component_handlers import *
 from bubble_analyser.processing import Config
 
 
@@ -550,58 +546,51 @@ class ImageProcessingTabHandler(QThread):
                 self._show_warning("Invalid Connectivity", str(e))
                 return False
 
-        if name == "threshold_value":
-            try:
-                self.params.threshold_value = value
-            except ValidationError as e:
-                self._show_warning("Invalid Threshold Value", str(e))
-                return False
-
         if name == "resample":
             try:
-                self.params.resample = value
+                self.params.resample = cast(float, value)
             except ValidationError as e:
                 self._show_warning("Invalid Resample Factor", str(e))
                 return False
 
         if name == "max_thresh":
             try:
-                self.params.max_thresh = value
+                self.params.max_thresh = cast(float, value)
             except ValidationError as e:
                 self._show_warning("Invalid Max Threshold", str(e))
                 return False
 
         if name == "min_thresh":
             try:
-                self.params.min_thresh = value
+                self.params.min_thresh = cast(float, value)
             except ValidationError as e:
                 self._show_warning("Invalid Min Threshold", str(e))
                 return False
 
         if name == "step_size":
             try:
-                self.params.step_size = value
+                self.params.step_size = cast(float, value)
             except ValidationError as e:
                 self._show_warning("Invalid Step Size", str(e))
                 return False
 
         if name == "max_eccentricity":
             try:
-                self.params.max_eccentricity = value
+                self.params.max_eccentricity = cast(float, value)
             except ValidationError as e:
                 self._show_warning("Invalid Max Eccentricity", str(e))
                 return False
 
         if name == "min_solidity":
             try:
-                self.params.min_solidity = value
+                self.params.min_solidity = cast(float, value)
             except ValidationError as e:
                 self._show_warning("Invalid Min Solidity", str(e))
                 return False
 
         if name == "min_size":
             try:
-                self.params.min_size = value
+                self.params.min_size = cast(float, value)
             except ValidationError as e:
                 self._show_warning("Invalid Min Size", str(e))
                 return False
@@ -728,6 +717,7 @@ class ImageProcessingTabHandler(QThread):
         Validates all parameters against the configuration schema before
         proceeding with the first processing step.
         """
+        self.update_segment_parameters()
         print("------------------------------Validating Segment Parameters------------------------------")
         # Update the model parameters
         for algorithm_name, params in self.model.all_methods_n_params.items():
@@ -871,9 +861,10 @@ class ImageProcessingTabHandler(QThread):
         Validates all filtering parameters against the configuration schema before
         proceeding with the second processing step.
         """
+        print("------------------------------Updating Filtering Parameters------------------------------")
         self.store_filter_params()
-        print("------------------------------Validating Filter Parameters------------------------------")
 
+        print("------------------------------Validating Filter Parameters------------------------------")
         for name, value in self.filter_param_dict.items():
             print(
                 "Checking steps in confirm_parameter_before_filtering: ",
@@ -883,7 +874,7 @@ class ImageProcessingTabHandler(QThread):
             if_valid = self.check_params(name, value)
             if not if_valid:
                 return
-
+        
         self.pass_filter_params(self.filter_param_dict)
         self._process_step_2()
 
@@ -894,7 +885,7 @@ class ImageProcessingTabHandler(QThread):
         temporary filter parameter dictionary with the new values.
         """
         params: dict[str, float | str] = {}
-        print("------------------------------Updating Filtering Parameters------------------------------")
+        
         for row in range(self.gui.param_sandbox2.rowCount()):
             name_item = self.gui.param_sandbox2.item(row, 0)
             value_item = self.gui.param_sandbox2.item(row, 1)
@@ -914,10 +905,6 @@ class ImageProcessingTabHandler(QThread):
                     self.filter_param_dict[param_name] = float_value
 
                 print("Updating", param_name, "to", param_value)
-
-        # self.filter_param_dict["max_eccentricity"] = params.get("max_eccentricity", 1.0)
-        # self.filter_param_dict["min_solidity"] = params.get("min_solidity", 0.0)
-        # self.filter_param_dict["min_size"] = params.get("min_size", 0)
 
     def _process_step_2(self) -> None:
         """Execute the second step of image processing (filtering).
@@ -1008,18 +995,27 @@ class ImageProcessingTabHandler(QThread):
         the worker thread to process all images. If saving is enabled, verifies
         that the save path exists before proceeding.
         """
-        for name, value in self.temp_param_dict.items():
-            if_valid = self.check_params(name, value)
-            if not if_valid:
-                return
+        print("------------------------------Validating Segment Parameters------------------------------")
+        # Update the model parameters
+        for algorithm_name, params in self.model.all_methods_n_params.items():
+            if algorithm_name == self.model.algorithm:
+                for (
+                    row,
+                    (name, value),
+                ) in enumerate(params.items()):
+                    print(
+                        "Checking steps in confirm_parameter_before_filtering: ",
+                        name,
+                        value,
+                    )
+                    if_valid = self.check_params(name, value)
+                    if not if_valid:
+                        return
 
-        for name, value in self.temp_filter_param_dict.items():
-            if_valid = self.check_params(name, value)
-            if not if_valid:
-                return
-
+        print("------------------------------Validating Filter Parameters------------------------------")
+        self.store_filter_params()
         self.update_segment_parameters()
-        self.pass_filter_params(self.temp_filter_param_dict)
+        self.pass_filter_params(self.filter_param_dict)
         self.show_progress_window(len(self.model.img_path_list))
 
         if self.if_save_processed_images:
@@ -1034,7 +1030,6 @@ class ImageProcessingTabHandler(QThread):
                 return
 
         self.worker_thread = WorkerThread(self.model, self.if_save_processed_images, self.export_handler.save_path)
-
         self.worker_thread.update_progress.connect(self.update_progress_bar)
         self.worker_thread.processing_done.connect(self.on_processing_done)
         self.worker_thread.start()

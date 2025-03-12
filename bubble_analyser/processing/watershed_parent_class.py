@@ -167,7 +167,7 @@ class WatershedSegmentation:
             labelled_img[mask == 255] = current_label
             current_label += 1
 
-        self.ellipses = ellipses
+        self.ellipses = ellipses  # type: ignore
         return labelled_img
 
     def _overlay_labels_on_rgb(self, img: npt.NDArray[np.int_], labels: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
