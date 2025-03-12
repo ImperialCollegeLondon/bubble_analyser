@@ -7,11 +7,33 @@ of the detected ellipses. It is primarily used for bubble/circle analysis in sci
 
 from collections.abc import Sequence
 
+import importlib.util
 import cv2
 import numpy as np
+# from bubble_analyser.processing import Config
 from numpy import typing as npt
 from skimage import measure
 
+class FilterParamHandler:
+    def __init__(self, params):
+        params_dict = params.model_dump()
+
+        self.filter_param_dict: dict[str, float | str] = {
+            "max_eccentricity": params_dict["max_eccentricity"],
+            "min_solidity": params_dict["min_solidity"],
+            "min_size": params_dict["min_size"],
+            "find_circles(Y/N)": params_dict["if_find_circles"],
+            "L_maxA_mm2": params_dict["L_maxA_mm2"],
+            "L_minA_mm2": params_dict["L_minA_mm2"],
+            "s_maxA_mm2": params_dict["s_maxA_mm2"],
+            "s_minA_mm2": params_dict["s_minA_mm2"]
+        }
+
+    def get_needed_params(self) -> dict[str, float | str]:
+        return self.filter_param_dict
+    
+    def update_params(self, params: dict[str, float | str]) -> None:
+        self.filter_param_dict = params
 
 class CircleHandler:
     """Handles the detection, filtering, and analysis of circular regions in labeled images.
@@ -34,8 +56,8 @@ class CircleHandler:
 
     def __init__(
         self,
-        labels_before_filtering: npt.NDArray[np.int_],
-        img_rgb: npt.NDArray[np.int_],
+        labels_before_filtering: npt.NDArray[np.int_] | None = None,
+        img_rgb: npt.NDArray[np.int_] | None = None,
         px2mm: float = 90.0,
     ) -> None:
         """Initialize the CircleHandler with labeled image data and conversion factor.
@@ -50,9 +72,8 @@ class CircleHandler:
             "min_solidity": 0.0,
             "min_size": 0.0,
         }
-
-        self.img_rgb: npt.NDArray[np.int_] = img_rgb
-        self.labels_before_filtering: npt.NDArray[np.int_] = labels_before_filtering
+        self.img_rgb: npt.NDArray[np.int_] | None = img_rgb
+        self.labels_before_filtering: npt.NDArray[np.int_] | None = labels_before_filtering
         self.labels_after_filtering: npt.NDArray[np.int_]
         self.labels_for_calculations: npt.NDArray[np.int_]
 
@@ -61,6 +82,15 @@ class CircleHandler:
         self.ellipses: list[tuple[tuple[float, float], tuple[int, int], float]]
         self.ellipses_on_image: npt.NDArray[np.int_]
         self.ellipses_properties: list[dict[str, float]]
+
+    def update_params(self, params: dict[str, float]) -> None:
+        """Update the filtering parameters for circle detection.
+        Args:
+            params (dict[str, float]): Dictionary containing updated filtering parameters.
+        """
+        self.max_eccentricity = params["max_eccentricity"]
+        self.min_solidity = params["min_solidity"]
+        self.min_size = params["min_size"]
 
     def load_filter_params(self, filter_param_dict: dict[str, float]) -> None:
         """Load filtering parameters for circle detection.
@@ -89,12 +119,24 @@ class CircleHandler:
         px2mm = self.px2mm
 
         properties = measure.regionprops(labels)
-        new_labels = np.copy(labels)
+        new_labels = np.copy(labels) if labels is not None else np.array([])
         mm2px = 1 / px2mm
 
         max_eccentricity = self.filter_param_dict["max_eccentricity"]
         min_solidity = self.filter_param_dict["min_solidity"]
         min_size = self.filter_param_dict["min_size"]
+        if_find_circles_str = self.filter_param_dict.get("find_circles(Y/N)")
+        print("if_find_circles:", if_find_circles_str)
+        print(type(if_find_circles_str))
+        L_min = self.filter_param_dict["L_minA_mm2"] 
+        L_max = self.filter_param_dict["L_maxA_mm2"]
+        s_max = self.filter_param_dict["s_maxA_mm2"] 
+        s_min = self.filter_param_dict["s_minA_mm2"] 
+
+        if if_find_circles_str == "Y":
+            if_find_circles = True
+        else:
+            if_find_circles = False
 
         for prop in properties:
             if prop.label == 1:  # Ignore the background
@@ -106,12 +148,36 @@ class CircleHandler:
             solidity = prop.solidity
 
             # Check if the circle properties meet the thresholds
-            if not (eccentricity <= max_eccentricity and min_solidity <= solidity and area >= min_size):
+            
+            if not (eccentricity <= max_eccentricity 
+            and solidity >= min_solidity
+            and area >= min_size):
                 # Remove the region by setting it to 1 (background)
                 new_labels[new_labels == prop.label] = 1
+                print("A circle is being filtered out because one or more of the following parameters are not qualified:")
+                if eccentricity > max_eccentricity:
+                    print("Eccentricity (too large):", eccentricity)
+                if solidity < min_solidity:
+                    print("Solidity (too small):", solidity)
+                if area < min_size:
+                    print("Area (too small):", area)
+
+            else:
+                if if_find_circles:
+                    print("Find Circles activated.")
+                    if not ((L_min <= area <= L_max) or (s_min <= area <= s_max)):
+                        print("A circle is being filtered out because one or more of the following parameters are not qualified:")
+                        print("Value of the circle's area:", area)
+                        print("Value of the L_min:", L_min)
+                        print("Value of the L_max:", L_max)
+                        print("Value of the s_min:", s_min)
+                        print("Value of the s_max:", s_max)
+                        new_labels[new_labels == prop.label] = 1
+                        continue
 
         self.labels_after_filtering = new_labels
         return new_labels
+
 
     def fill_ellipse_labels(
         self,

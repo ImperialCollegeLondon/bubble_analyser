@@ -29,6 +29,7 @@ from bubble_analyser.processing import (
     EllipseAdjuster,
     Image,
     MethodsHandler,
+    FilterParamHandler,
     calculate_px2mm,
 )
 
@@ -282,13 +283,9 @@ class ImageProcessingModel:
         super().__init__()
 
         self.algorithm: str = ""
-        self.params: Config = params
+        self.params_config: Config = params
 
-        self.filter_param_dict: dict[str, float] = {
-            "max_eccentricity": 0.0,
-            "min_solidity": 0.0,
-            "min_size": 0.0,
-        }
+        self.filter_param_dict: dict[str, float | str] 
 
         self.px2mm: float
         self.if_bknd: bool
@@ -300,8 +297,11 @@ class ImageProcessingModel:
         self.adjuster: EllipseAdjuster
         self.ellipses_properties: list[list[dict[str, float]]] = []
 
+        print("------------------------------Intialize parameters in GUI------------------------------")
         self.methods_handler: MethodsHandler
+        self.filter_param_handler: FilterParamHandler
         self.initialize_methods_handlers()
+        self.initialize_filter_param_handler()
 
     def initialize_methods_handlers(self) -> None:
         """Initialize the methods handler and retrieve available processing methods.
@@ -310,9 +310,14 @@ class ImageProcessingModel:
         configuration and retrieves the dictionary of available processing methods
         and their parameters.
         """
-        self.methods_handler = MethodsHandler(self.params)
+        self.methods_handler = MethodsHandler(self.params_config)
         self.all_methods_n_params = self.methods_handler.full_dict
-        print("all_methods_n_params", self.all_methods_n_params)
+        print("All methods and their parameters:", self.all_methods_n_params)
+
+    def initialize_filter_param_handler(self) -> None:
+        self.filter_param_handler: FilterParamHandler = FilterParamHandler(self.params_config)
+        self.filter_param_dict = self.filter_param_handler.get_needed_params()
+        print("All filter parameters:", self.filter_param_dict)
 
     def confirm_folder_selection(self, folder_path_list: list[Path]) -> None:
         """Set the list of image paths to be processed.
@@ -371,7 +376,7 @@ class ImageProcessingModel:
 
         return if_img, img_before_filter, img_after_filter
 
-    def load_filter_params(self, dict_params: dict[str, float]) -> None:
+    def load_filter_params(self, dict_params: dict[str, float | str]) -> None:
         """Load filtering parameters into the model.
 
         Args:
