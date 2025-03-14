@@ -5,7 +5,7 @@ It provides functionality for calibration, segmentation, filtering, and measurem
 """
 
 from bubble_analyser.processing.calculate_px2mm import calculate_px2mm
-from bubble_analyser.processing.circle_handler import CircleHandler
+from bubble_analyser.processing.circle_handler import CircleHandler, FilterParamHandler
 from bubble_analyser.processing.config import Config
 from bubble_analyser.processing.fit_ellipse import EllipseAdjuster
 from bubble_analyser.processing.image import Image, MethodsHandler
@@ -18,6 +18,7 @@ from bubble_analyser.processing.watershed_parent_class import WatershedSegmentat
 __all__ = [
     "calculate_px2mm",
     "CircleHandler",
+    "FilterParamHandler",
     "Config",
     "EllipseAdjuster",
     "image_preprocess",
