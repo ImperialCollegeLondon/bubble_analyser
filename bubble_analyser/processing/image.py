@@ -5,8 +5,10 @@ It includes functionality for dynamic method loading, image preprocessing, segme
 filtering, and ellipse detection and measurement.
 """
 
+import importlib.resources
 import importlib.util
 import inspect
+import sys
 import types
 from pathlib import Path
 from typing import cast
@@ -39,7 +41,7 @@ class MethodsHandler:
     def __init__(self, params: Config) -> None:
         """Initialize a MethodsHandler instance with the provided configuration.
 
-        This method sets up the internal parameters, loads the modules from a designated folder,
+        This method sets up the internal parameters, loads the modules from the methods package,
         instantiates classes from those modules, and collects the necessary parameters from each instance.
 
         Args:
@@ -51,38 +53,63 @@ class MethodsHandler:
             - Loads modules and prints module and class information to the console.
         """
         self.params_dict = params.model_dump()
-        self.folder_path: Path = cast(Path, "/mnt/c/new_sizer/bubble_analyser/bubble_analyser/methods")
 
         self.modules: dict[str, "types.ModuleType"] = {}
-        self.modules = self.load_modules_from_folder()
+        self.modules = self.load_modules_from_package()
 
         self.all_classes: dict[str, object] = {}
 
         self.full_dict: dict[str, dict[str, float | int]] = {}
         self._get_full_dict()
 
-    def load_modules_from_folder(self) -> dict[str, "types.ModuleType"]:
-        """Load Python modules from the folder specified by the `folder_path` attribute.
+    def load_modules_from_package(self) -> dict[str, "types.ModuleType"]:
+        """Load Python modules from the methods package using importlib.resources.
 
-        Scans the designated folder for Python files (with a .py extension), dynamically imports each file as a module,
-        and stores the module objects in a dictionary keyed by the module name (derived from the file name).
+        Uses importlib.resources to access the methods package, identifies Python files,
+        dynamically imports each file as a module, and stores the module objects in a dictionary
+        keyed by the module name (derived from the file name).
 
         Returns:
             dict[str, object]: A dictionary where each key is a module name and each value is the corresponding module
                 object.
         """
-        folder_path = self.folder_path
         modules = {}
-        folder = Path(folder_path)
+        package_name = "bubble_analyser.methods"
 
-        for file in folder.glob("*.py"):
-            module_name = file.stem
-            spec = importlib.util.spec_from_file_location(module_name, file)
-            if spec is not None:  # Check if spec exists before using it
-                module = importlib.util.module_from_spec(spec)
-                if spec.loader is not None:  # Check if loader exists
-                    spec.loader.exec_module(module)
-                    modules[module_name] = module
+        try:
+            # For Python 3.9+
+            if sys.version_info >= (3, 9):  # type: ignore # noqa: UP036
+                from importlib.resources import files
+
+                package_path = files(package_name)
+                for file_path in package_path.glob("*.py"):  # type: ignore
+                    if file_path.name != "__init__.py":
+                        module_name = file_path.stem
+                        spec = importlib.util.spec_from_file_location(module_name, file_path)
+                        if spec is not None:
+                            module = importlib.util.module_from_spec(spec)
+                            if spec.loader is not None:
+                                spec.loader.exec_module(module)
+                                modules[module_name] = module
+            # For Python 3.8 and below
+            # else:
+            #     import importlib_resources
+
+            #     for resource in importlib_resources.contents(package_name):
+            #         if resource.endswith(".py") and resource != "__init__.py":
+            #             module_name = resource[:-3]  # Remove .py extension
+            #             module_path = f"{package_name}.{module_name}"
+            #             modules[module_name] = importlib.import_module(module_path)
+        except Exception as e:
+            print(f"Error loading modules: {e}")
+            # Fallback to direct import of watershed_methods
+            try:
+                from ..methods import watershed_methods
+
+                modules["watershed_methods"] = watershed_methods
+            except Exception as inner_e:
+                print(f"Fallback import failed: {inner_e}")
+
         return modules
 
     def get_new_classes(self, module: object) -> dict[str, object]:  # type: ignore
