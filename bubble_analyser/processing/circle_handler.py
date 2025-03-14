@@ -8,6 +8,7 @@ settings. It is primarily used for bubble/circle analysis in scientific images.
 """
 
 from collections.abc import Sequence
+from typing import cast
 
 import cv2
 import numpy as np
@@ -143,16 +144,18 @@ class CircleHandler:
         new_labels = np.copy(labels) if labels is not None else np.array([])
         mm2px = 1 / px2mm
 
-        max_eccentricity = self.filter_param_dict["max_eccentricity"]
-        min_solidity = self.filter_param_dict["min_solidity"]
-        min_size = self.filter_param_dict["min_size"]
+        cast(float, self.filter_param_dict["max_eccentricity"])
+        max_eccentricity = float(self.filter_param_dict["max_eccentricity"])
+        cast(float, self.filter_param_dict["min_solidity"])
+        min_solidity = float(self.filter_param_dict["min_solidity"])
+        cast(float, self.filter_param_dict["min_size"])
+        min_size = float(self.filter_param_dict["min_size"])
         if_find_circles_str = self.filter_param_dict.get("find_circles(Y/N)")
         print("if_find_circles:", if_find_circles_str)
-        print(type(if_find_circles_str))
-        L_min = self.filter_param_dict["L_minA_mm2"]
-        L_max = self.filter_param_dict["L_maxA_mm2"]
-        s_max = self.filter_param_dict["s_maxA_mm2"]
-        s_min = self.filter_param_dict["s_minA_mm2"]
+        L_min = cast(float, self.filter_param_dict["L_minA_mm2"])
+        L_max = cast(float, self.filter_param_dict["L_maxA_mm2"])
+        s_max = cast(float, self.filter_param_dict["s_maxA_mm2"])
+        s_min = cast(float, self.filter_param_dict["s_minA_mm2"])
 
         if if_find_circles_str == "Y":
             if_find_circles = True
@@ -169,7 +172,6 @@ class CircleHandler:
             solidity = prop.solidity
 
             # Check if the circle properties meet the thresholds
-
             if not (eccentricity <= max_eccentricity and solidity >= min_solidity and area >= min_size):
                 # Remove the region by setting it to 1 (background)
                 new_labels[new_labels == prop.label] = 1

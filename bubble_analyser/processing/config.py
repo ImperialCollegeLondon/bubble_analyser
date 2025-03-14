@@ -121,7 +121,7 @@ class Config(BaseModel):  # type: ignore
     min_solidity_range: tuple[PositiveFloat, PositiveFloat]
 
     # Also ignore too small bubbles (equivalent diameter in mm)
-    min_size: StrictFloat
+    min_size: PositiveFloat
     min_size_range: tuple[StrictFloat, StrictFloat]
 
     # Parameters for finding big and small bubbles

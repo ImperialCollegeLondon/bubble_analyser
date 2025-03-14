@@ -41,6 +41,7 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
     QVBoxLayout,
 )
+
 from bubble_analyser.gui import (
     CalibrationModel,
     ImageProcessingModel,
@@ -874,7 +875,7 @@ class ImageProcessingTabHandler(QThread):
             if_valid = self.check_params(name, value)
             if not if_valid:
                 return
-        
+
         self.pass_filter_params(self.filter_param_dict)
         self._process_step_2()
 
@@ -885,7 +886,7 @@ class ImageProcessingTabHandler(QThread):
         temporary filter parameter dictionary with the new values.
         """
         params: dict[str, float | str] = {}
-        
+
         for row in range(self.gui.param_sandbox2.rowCount()):
             name_item = self.gui.param_sandbox2.item(row, 0)
             value_item = self.gui.param_sandbox2.item(row, 1)
@@ -1369,7 +1370,25 @@ class MainHandler:
         Sets up all models, handlers, and GUI components, and establishes connections
         between them to enable proper application functionality.
         """
-        self.toml_file_path = Path("bubble_analyser/gui/config.toml")
+        # First try to find config.toml relative to the executable when packaged
+        import os
+        import sys
+
+        # Get the base directory for the application
+        if getattr(sys, "frozen", False):
+            # If the application is run as a bundle (PyInstaller)
+            base_dir = os.path.dirname(sys.executable)
+            # Try to find config.toml in the same directory as the executable
+            config_path = os.path.join(base_dir, "config.toml")
+            if os.path.exists(config_path):
+                self.toml_file_path = Path(config_path)
+            else:
+                # Fall back to the bundled path
+                base_dir = os.path.dirname(sys.executable)
+                self.toml_file_path = Path(os.path.join(base_dir, "bubble_analyser", "gui", "config.toml"))
+        else:
+            # If running in development mode
+            self.toml_file_path = Path("bubble_analyser/gui/config.toml")
 
         self.initialize_handlers()
         self.initialize_handlers_signals()
