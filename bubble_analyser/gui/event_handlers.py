@@ -20,7 +20,7 @@ import csv
 import os
 import sys
 from pathlib import Path
-from typing import cast
+from typing import cast, Any
 
 import numpy as np
 import toml as tomllib  # type: ignore
@@ -161,12 +161,12 @@ class TomlFileHandler:
         self.params: Config
         self.load_toml()
 
-    def load_gui(self) -> None:
+    def load_gui(self, gui) -> None:  # type: ignore
         """Load a reference to the GUI instance for displaying warnings.
 
         This method should be called after the GUI has been initialized.
         """
-        self.gui = gui  # type: ignore # noqa: F821
+        self.gui = gui
 
     def load_toml(self) -> None:
         """Load and validate the TOML configuration file.
