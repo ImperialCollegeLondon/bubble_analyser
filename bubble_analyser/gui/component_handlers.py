@@ -435,10 +435,11 @@ class ImageProcessingModel:
         """
         name = self.img_path_list[index]
         self.img_dict[name].load_filter_params(self.filter_param_dict)
-        self.img_dict[name].initialize_circle_handler()
-        self.img_dict[name].labels_filtering()
-        self.img_dict[name].fill_ellipses()
-        self.img_dict[name].overlay_ellipses_on_images()
+        self.img_dict[name].filtering_processing()
+        # self.img_dict[name].initialize_circle_handler()
+        # self.img_dict[name].labels_filtering()
+        # self.img_dict[name].fill_ellipses()
+        # self.img_dict[name].overlay_ellipses_on_images()
 
         return self.img_dict[name].ellipses_on_images
 
