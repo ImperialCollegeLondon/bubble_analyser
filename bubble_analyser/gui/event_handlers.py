@@ -48,9 +48,6 @@ from bubble_analyser.gui import (
     InputFilesModel,
     WorkerThread,
 )
-
-# from . import component_handlers as ch
-# from bubble_analyser.gui.component_handlers import *
 from bubble_analyser.processing import Config
 
 
@@ -164,12 +161,12 @@ class TomlFileHandler:
         self.params: Config
         self.load_toml()
 
-    def load_gui(self) -> None:
+    def load_gui(self, gui) -> None:  # type: ignore
         """Load a reference to the GUI instance for displaying warnings.
 
         This method should be called after the GUI has been initialized.
         """
-        self.gui = gui  # type: ignore # noqa: F821
+        self.gui = gui
 
     def load_toml(self) -> None:
         """Load and validate the TOML configuration file.
@@ -490,13 +487,6 @@ class ImageProcessingTabHandler(QThread):
         self.export_handler: ExportSettingsHandler
         self.if_save_processed_images = False
 
-        self.temp_param_dict: dict[str, int | float] = {}
-        self.temp_filter_param_dict = {
-            "max_eccentricity": params.max_eccentricity,
-            "min_solidity": params.min_solidity,
-            "min_size": params.min_size,
-        }
-
         self.save_path: Path = cast(Path, None)
 
     def load_gui(self, gui) -> None:  # type: ignore
@@ -507,7 +497,7 @@ class ImageProcessingTabHandler(QThread):
         """
         self.gui = gui
 
-    def pass_filter_params(self, filter_param_dict: dict[str, int | float]) -> None:
+    def pass_filter_params(self, filter_param_dict: dict[str, str | float]) -> None:
         """Pass filter parameters to the processing model.
 
         Args:
@@ -533,7 +523,7 @@ class ImageProcessingTabHandler(QThread):
             )
         )
 
-    def check_params(self, name: str, value: int | float) -> bool:
+    def check_params(self, name: str, value: int | float | str) -> bool:
         """Validate a parameter value against the configuration schema.
 
         Args:
@@ -557,58 +547,51 @@ class ImageProcessingTabHandler(QThread):
                 self._show_warning("Invalid Connectivity", str(e))
                 return False
 
-        if name == "threshold_value":
-            try:
-                self.params.threshold_value = value
-            except ValidationError as e:
-                self._show_warning("Invalid Threshold Value", str(e))
-                return False
-
         if name == "resample":
             try:
-                self.params.resample = value
+                self.params.resample = cast(float, value)
             except ValidationError as e:
                 self._show_warning("Invalid Resample Factor", str(e))
                 return False
 
         if name == "max_thresh":
             try:
-                self.params.max_thresh = value
+                self.params.max_thresh = cast(float, value)
             except ValidationError as e:
                 self._show_warning("Invalid Max Threshold", str(e))
                 return False
 
         if name == "min_thresh":
             try:
-                self.params.min_thresh = value
+                self.params.min_thresh = cast(float, value)
             except ValidationError as e:
                 self._show_warning("Invalid Min Threshold", str(e))
                 return False
 
         if name == "step_size":
             try:
-                self.params.step_size = value
+                self.params.step_size = cast(float, value)
             except ValidationError as e:
                 self._show_warning("Invalid Step Size", str(e))
                 return False
 
         if name == "max_eccentricity":
             try:
-                self.params.max_eccentricity = value
+                self.params.max_eccentricity = cast(float, value)
             except ValidationError as e:
                 self._show_warning("Invalid Max Eccentricity", str(e))
                 return False
 
         if name == "min_solidity":
             try:
-                self.params.min_solidity = value
+                self.params.min_solidity = cast(float, value)
             except ValidationError as e:
                 self._show_warning("Invalid Min Solidity", str(e))
                 return False
 
         if name == "min_size":
             try:
-                self.params.min_size = value
+                self.params.min_size = cast(float, value)
             except ValidationError as e:
                 self._show_warning("Invalid Min Size", str(e))
                 return False
@@ -642,6 +625,7 @@ class ImageProcessingTabHandler(QThread):
                 self.gui.image_list.setCurrentRow(current_row)
 
         self.current_index = current_row
+        print("(event_handlers/update_sample_img)current index: ", self.current_index)
         self.preview_image()
 
     # -------Second Column Functions-------------------------
@@ -684,7 +668,7 @@ class ImageProcessingTabHandler(QThread):
                 ) in enumerate(params.items()):
                     self.gui.param_sandbox1.setItem(row, 0, QTableWidgetItem(name))
                     self.gui.param_sandbox1.setItem(row, 1, QTableWidgetItem(str(value)))
-                    self.temp_param_dict[name] = value
+                    # self.temp_param_dict[name] = value
 
                 break
 
@@ -734,6 +718,8 @@ class ImageProcessingTabHandler(QThread):
         Validates all parameters against the configuration schema before
         proceeding with the first processing step.
         """
+        self.update_segment_parameters()
+        print("------------------------------Validating Segment Parameters------------------------------")
         # Update the model parameters
         for algorithm_name, params in self.model.all_methods_n_params.items():
             if algorithm_name == self.model.algorithm:
@@ -821,6 +807,8 @@ class ImageProcessingTabHandler(QThread):
         # Extract parameters from the table
         params = self.extract_parameters_from_table(self.gui.param_sandbox1)
 
+        print("------------------------------Updating Parameters------------------------------")
+
         # Update the model's dictionary for the selected algorithm
         for algorithm_name, params_in_dict in self.model.all_methods_n_params.items():
             if algorithm_name == self.model.algorithm:
@@ -856,19 +844,17 @@ class ImageProcessingTabHandler(QThread):
         Populates the filtering parameters table with the current values from
         the temporary filter parameter dictionary.
         """
-        params = [
-            ("max_eccentricity", self.temp_filter_param_dict["max_eccentricity"]),
-            ("min_solidity", self.temp_filter_param_dict["min_solidity"]),
-            ("min_size", self.temp_filter_param_dict["min_size"]),
-        ]
+        param_dict = self.model.filter_param_dict
 
-        print("filter param dict---------------------:", self.temp_filter_param_dict)
-
-        self.gui.param_sandbox2.setRowCount(len(params))
-
-        for row, (name, value) in enumerate(params):
-            self.gui.param_sandbox2.setItem(row, 0, QTableWidgetItem(name))
+        self.gui.param_sandbox2.setRowCount(len(param_dict))
+        row = 0
+        for property, value in param_dict.items():
+            print("Filter param name:", property, ", value:", value)
+            self.gui.param_sandbox2.setItem(row, 0, QTableWidgetItem(property))
             self.gui.param_sandbox2.setItem(row, 1, QTableWidgetItem(str(value)))
+            row += 1
+
+        self.filter_param_dict: dict[str, float | str] = param_dict
 
     def confirm_parameter_for_filtering(self) -> None:
         """Confirm the filtering parameters and apply them to the current image.
@@ -876,13 +862,21 @@ class ImageProcessingTabHandler(QThread):
         Validates all filtering parameters against the configuration schema before
         proceeding with the second processing step.
         """
-        for name, value in self.temp_filter_param_dict.items():
+        print("------------------------------Updating Filtering Parameters------------------------------")
+        self.store_filter_params()
+
+        print("------------------------------Validating Filter Parameters------------------------------")
+        for name, value in self.filter_param_dict.items():
+            print(
+                "Checking steps in confirm_parameter_before_filtering: ",
+                name,
+                value,
+            )
             if_valid = self.check_params(name, value)
             if not if_valid:
                 return
 
-        self.store_filter_params()
-        self.pass_filter_params(self.temp_filter_param_dict)
+        self.pass_filter_params(self.filter_param_dict)
         self._process_step_2()
 
     def store_filter_params(self) -> None:
@@ -891,17 +885,27 @@ class ImageProcessingTabHandler(QThread):
         Extracts the filtering parameters from the table widget and updates the
         temporary filter parameter dictionary with the new values.
         """
-        params = {}
+        params: dict[str, float | str] = {}
 
         for row in range(self.gui.param_sandbox2.rowCount()):
             name_item = self.gui.param_sandbox2.item(row, 0)
             value_item = self.gui.param_sandbox2.item(row, 1)
             if name_item and value_item:
-                params[name_item.text()] = float(value_item.text())
+                param_name = name_item.text()
+                param_value = value_item.text()
 
-        self.temp_filter_param_dict["max_eccentricity"] = params.get("max_eccentricity", 1.0)
-        self.temp_filter_param_dict["min_solidity"] = params.get("min_solidity", 0.0)
-        self.temp_filter_param_dict["min_size"] = params.get("min_size", 0)
+                if param_name == "find_circles(Y/N)":
+                    # Handle string parameter
+                    params[param_name] = str(param_value)
+                    self.filter_param_dict[param_name] = str(param_value)
+                    print(param_name, param_value)
+                else:
+                    # Handle numeric parameter
+                    float_value = cast(float, param_value)
+                    params[param_name] = float_value
+                    self.filter_param_dict[param_name] = float_value
+
+                print("Updating", param_name, "to", param_value)
 
     def _process_step_2(self) -> None:
         """Execute the second step of image processing (filtering).
@@ -992,18 +996,27 @@ class ImageProcessingTabHandler(QThread):
         the worker thread to process all images. If saving is enabled, verifies
         that the save path exists before proceeding.
         """
-        for name, value in self.temp_param_dict.items():
-            if_valid = self.check_params(name, value)
-            if not if_valid:
-                return
+        print("------------------------------Validating Segment Parameters------------------------------")
+        # Update the model parameters
+        for algorithm_name, params in self.model.all_methods_n_params.items():
+            if algorithm_name == self.model.algorithm:
+                for (
+                    row,
+                    (name, value),
+                ) in enumerate(params.items()):
+                    print(
+                        "Checking steps in confirm_parameter_before_filtering: ",
+                        name,
+                        value,
+                    )
+                    if_valid = self.check_params(name, value)
+                    if not if_valid:
+                        return
 
-        for name, value in self.temp_filter_param_dict.items():
-            if_valid = self.check_params(name, value)
-            if not if_valid:
-                return
-
+        print("------------------------------Validating Filter Parameters------------------------------")
+        self.store_filter_params()
         self.update_segment_parameters()
-        self.pass_filter_params(self.temp_filter_param_dict)
+        self.pass_filter_params(self.filter_param_dict)
         self.show_progress_window(len(self.model.img_path_list))
 
         if self.if_save_processed_images:
@@ -1018,7 +1031,6 @@ class ImageProcessingTabHandler(QThread):
                 return
 
         self.worker_thread = WorkerThread(self.model, self.if_save_processed_images, self.export_handler.save_path)
-
         self.worker_thread.update_progress.connect(self.update_progress_bar)
         self.worker_thread.processing_done.connect(self.on_processing_done)
         self.worker_thread.start()
@@ -1358,7 +1370,25 @@ class MainHandler:
         Sets up all models, handlers, and GUI components, and establishes connections
         between them to enable proper application functionality.
         """
-        self.toml_file_path = Path("bubble_analyser/gui/config.toml")
+        # First try to find config.toml relative to the executable when packaged
+        import os
+        import sys
+
+        # Get the base directory for the application
+        if getattr(sys, "frozen", False):
+            # If the application is run as a bundle (PyInstaller)
+            base_dir = os.path.dirname(sys.executable)
+            # Try to find config.toml in the same directory as the executable
+            config_path = os.path.join(base_dir, "config.toml")
+            if os.path.exists(config_path):
+                self.toml_file_path = Path(config_path)
+            else:
+                # Fall back to the bundled path
+                base_dir = os.path.dirname(sys.executable)
+                self.toml_file_path = Path(os.path.join(base_dir, "bubble_analyser", "gui", "config.toml"))
+        else:
+            # If running in development mode
+            self.toml_file_path = Path("bubble_analyser/gui/config.toml")
 
         self.initialize_handlers()
         self.initialize_handlers_signals()

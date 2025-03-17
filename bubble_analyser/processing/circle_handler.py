@@ -1,16 +1,73 @@
-"""Module for handling circle detection, filtering, and property calculation in images.
+"""Module for handling circle detection, filtering parameter management, and property calculation in images.
 
-This module provides functionality for processing labeled image regions, filtering them based on
-geometric properties, fitting ellipses to the filtered regions, and calculating various properties
-of the detected ellipses. It is primarily used for bubble/circle analysis in scientific images.
+This module provides functionality for managing filtering parameters through the FilterParamHandler class,
+processing labeled image regions, filtering them based on geometric properties, fitting ellipses to the
+filtered regions, and calculating various properties of the detected ellipses. The filtering parameters
+can be dynamically configured to control circle detection thresholds, size constraints, and analysis
+settings. It is primarily used for bubble/circle analysis in scientific images.
 """
 
 from collections.abc import Sequence
+from typing import cast
 
 import cv2
 import numpy as np
 from numpy import typing as npt
 from skimage import measure
+
+
+class FilterParamHandler:
+    """Handles filtering parameters for circle detection and analysis.
+
+    This class manages a set of parameters used to filter and analyze circular regions in images.
+    It provides functionality to store, retrieve, and update filtering parameters such as
+    eccentricity, solidity, size thresholds, and area bounds for large and small circles.
+
+    Attributes:
+        filter_param_dict (dict[str, float | str]): Dictionary containing filtering parameters:
+            - max_eccentricity: Maximum allowed eccentricity for valid circles
+            - min_solidity: Minimum required solidity for valid circles
+            - min_size: Minimum required size for valid circles
+            - find_circles(Y/N): Flag to enable/disable circle finding ("Y" or "N")
+            - L_maxA_mm2: Maximum area threshold for large circles in mm²
+            - L_minA_mm2: Minimum area threshold for large circles in mm²
+            - s_maxA_mm2: Maximum area threshold for small circles in mm²
+            - s_minA_mm2: Minimum area threshold for small circles in mm²
+    """
+
+    def __init__(self, params_dict: dict[str, float | str]):
+        """Initialize FilterParamHandler with configuration parameters.
+
+        Args:
+            params_dict: Dictionary containing filter parameters for circle detection
+                        and analysis.
+        """
+        self.filter_param_dict: dict[str, float | str] = {
+            "max_eccentricity": params_dict["max_eccentricity"],
+            "min_solidity": params_dict["min_solidity"],
+            "min_size": params_dict["min_size"],
+            "find_circles(Y/N)": params_dict["if_find_circles"],
+            "L_maxA_mm2": params_dict["L_maxA_mm2"],
+            "L_minA_mm2": params_dict["L_minA_mm2"],
+            "s_maxA_mm2": params_dict["s_maxA_mm2"],
+            "s_minA_mm2": params_dict["s_minA_mm2"],
+        }
+
+    def get_needed_params(self) -> dict[str, float | str]:
+        """Retrieve the current filter parameters.
+
+        Returns:
+            Dictionary containing the current filter parameters.
+        """
+        return self.filter_param_dict
+
+    def update_params(self, params: dict[str, float | str]) -> None:
+        """Update the filter parameters with new values.
+
+        Args:
+            params: Dictionary containing new filter parameter values to update.
+        """
+        self.filter_param_dict = params
 
 
 class CircleHandler:
@@ -34,8 +91,8 @@ class CircleHandler:
 
     def __init__(
         self,
-        labels_before_filtering: npt.NDArray[np.int_],
-        img_rgb: npt.NDArray[np.int_],
+        labels_before_filtering: npt.NDArray[np.int_] | None = None,
+        img_rgb: npt.NDArray[np.int_] | None = None,
         px2mm: float = 90.0,
     ) -> None:
         """Initialize the CircleHandler with labeled image data and conversion factor.
@@ -45,14 +102,9 @@ class CircleHandler:
             img_rgb (npt.NDArray[np.int_]): The RGB image corresponding to the labeled image.
             px2mm (float, optional): Conversion factor from pixels to millimeters. Defaults to 90.0.
         """
-        self.filter_param_dict: dict[str, float] = {
-            "max_eccentricity": 0.0,
-            "min_solidity": 0.0,
-            "min_size": 0.0,
-        }
-
-        self.img_rgb: npt.NDArray[np.int_] = img_rgb
-        self.labels_before_filtering: npt.NDArray[np.int_] = labels_before_filtering
+        self.filter_param_dict: dict[str, float | str]
+        self.img_rgb: npt.NDArray[np.int_] | None = img_rgb
+        self.labels_before_filtering: npt.NDArray[np.int_] | None = labels_before_filtering
         self.labels_after_filtering: npt.NDArray[np.int_]
         self.labels_for_calculations: npt.NDArray[np.int_]
 
@@ -62,7 +114,7 @@ class CircleHandler:
         self.ellipses_on_image: npt.NDArray[np.int_]
         self.ellipses_properties: list[dict[str, float]]
 
-    def load_filter_params(self, filter_param_dict: dict[str, float]) -> None:
+    def load_filter_params(self, filter_param_dict: dict[str, float | str]) -> None:
         """Load filtering parameters for circle detection.
 
         Args:
@@ -89,12 +141,26 @@ class CircleHandler:
         px2mm = self.px2mm
 
         properties = measure.regionprops(labels)
-        new_labels = np.copy(labels)
+        new_labels = np.copy(labels) if labels is not None else np.array([])
         mm2px = 1 / px2mm
 
-        max_eccentricity = self.filter_param_dict["max_eccentricity"]
-        min_solidity = self.filter_param_dict["min_solidity"]
-        min_size = self.filter_param_dict["min_size"]
+        cast(float, self.filter_param_dict["max_eccentricity"])
+        max_eccentricity = float(self.filter_param_dict["max_eccentricity"])
+        cast(float, self.filter_param_dict["min_solidity"])
+        min_solidity = float(self.filter_param_dict["min_solidity"])
+        cast(float, self.filter_param_dict["min_size"])
+        min_size = float(self.filter_param_dict["min_size"])
+        if_find_circles_str = self.filter_param_dict.get("find_circles(Y/N)")
+        print("if_find_circles:", if_find_circles_str)
+        L_min = cast(float, self.filter_param_dict["L_minA_mm2"])
+        L_max = cast(float, self.filter_param_dict["L_maxA_mm2"])
+        s_max = cast(float, self.filter_param_dict["s_maxA_mm2"])
+        s_min = cast(float, self.filter_param_dict["s_minA_mm2"])
+
+        if if_find_circles_str == "Y":
+            if_find_circles = True
+        else:
+            if_find_circles = False
 
         for prop in properties:
             if prop.label == 1:  # Ignore the background
@@ -106,9 +172,29 @@ class CircleHandler:
             solidity = prop.solidity
 
             # Check if the circle properties meet the thresholds
-            if not (eccentricity <= max_eccentricity and min_solidity <= solidity and area >= min_size):
+            if not (eccentricity <= max_eccentricity and solidity >= min_solidity and area >= min_size):
                 # Remove the region by setting it to 1 (background)
                 new_labels[new_labels == prop.label] = 1
+                print("A circle is being filtered out because the following parameter(s) are not qualified:")
+                if eccentricity > max_eccentricity:
+                    print("Eccentricity (too large):", eccentricity)
+                if solidity < min_solidity:
+                    print("Solidity (too small):", solidity)
+                if area < min_size:
+                    print("Area (too small):", area)
+
+            else:
+                if if_find_circles:
+                    print("Find Circles activated.")
+                    if not ((L_min <= area <= L_max) or (s_min <= area <= s_max)):
+                        print("A circle is being filtered out because the following parameter(s) are not qualified:")
+                        print("Value of the circle's area:", area)
+                        print("Value of the L_min:", L_min)
+                        print("Value of the L_max:", L_max)
+                        print("Value of the s_min:", s_min)
+                        print("Value of the s_max:", s_max)
+                        new_labels[new_labels == prop.label] = 1
+                        continue
 
         self.labels_after_filtering = new_labels
         return new_labels
@@ -153,10 +239,12 @@ class CircleHandler:
         Returns:
             npt.NDArray[np.int_]: The RGB image with ellipses overlaid.
         """
-        ellipse_image = self.img_rgb
+        if self.img_rgb is None:
+            raise ValueError("img_rgb is not initialized")
+        ellipse_image = self.img_rgb.copy()
 
         for ellipse in self.ellipses:
-            cv2.ellipse(ellipse_image, ellipse, (0, 0, 255), thickness)
+            cv2.ellipse(ellipse_image, ellipse, (0, 0, 255), thickness)  # type: ignore
         self.ellipses_on_image = ellipse_image
 
         self.create_labelled_image_from_ellipses()
@@ -173,6 +261,8 @@ class CircleHandler:
         Returns:
             A labelled image as a numpy array of type np.int_.
         """
+        if self.img_rgb is None:
+            raise ValueError("img_rgb is not initialized")
         height, width = self.img_rgb.shape[:2]
 
         # Initialize the labelled image with background label (1)
@@ -187,8 +277,6 @@ class CircleHandler:
             labelled_img[mask == 255] = current_label
             current_label += 1
 
-        cv2.imwrite("outputlabelled_img.png", labelled_img.astype(np.uint8) * 255)
-        print("labelled image created")
         return labelled_img
 
     def calculate_circle_properties(self) -> list[dict[str, float | Sequence[float]]]:

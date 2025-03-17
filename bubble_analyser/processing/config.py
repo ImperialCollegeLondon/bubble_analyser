@@ -30,6 +30,7 @@ from pydantic import (
     PositiveInt,
     StrictBool,
     StrictFloat,
+    StrictStr,
     model_validator,
 )
 
@@ -66,10 +67,11 @@ class Config(BaseModel):  # type: ignore
         max_thresh: Maximum threshold value.
         min_thresh: Minimum threshold value.
         step_size: Step size for threshold iteration.
+        h_value: h_value for minima suppresion
     """
 
     # Default PARAMETERS
-
+    # ------------------------------Segment Parameters-------------------------------
     # Morphological element used for binary operations, e.g. opening, closing, etc.
     element_size: PositiveInt
     element_size_range: tuple[PositiveInt, PositiveInt]
@@ -82,24 +84,23 @@ class Config(BaseModel):  # type: ignore
     resample: PositiveFloat
     resample_range: tuple[PositiveFloat, PositiveFloat]
 
-    # Reject abnormal bubbles from quantification. E>0.85 or S<0.9
-    max_eccentricity: PositiveFloat
-    max_eccentricity_range: tuple[PositiveFloat, PositiveFloat]
-    min_solidity: PositiveFloat
-    min_solidity_range: tuple[PositiveFloat, PositiveFloat]
+    max_thresh: PositiveFloat
+    min_thresh: PositiveFloat
+    step_size: PositiveFloat
 
-    # Also ignore too small bubbles (equivalent diameter in mm)
-    min_size: StrictFloat
-    min_size_range: tuple[StrictFloat, StrictFloat]
+    high_thresh: PositiveFloat
+    mid_thresh: PositiveFloat
+    low_thresh: PositiveFloat
 
     # User input Image resolution
     px2mm: PositiveFloat
 
+    # Batch processing flag
+    do_batch: StrictBool
+
+    # ------------------------------Default Input and Output Settings------------------------------
     # Path for Background image
     bknd_img_path: Path
-
-    # Threshold value for normal watershed
-    threshold_value: PositiveFloat
 
     # Path for Ruler image
     ruler_img_path: Path
@@ -110,18 +111,25 @@ class Config(BaseModel):  # type: ignore
     # Path for saving images
     save_path_for_images: Path
 
-    # Batch processing flag
-    do_batch: StrictBool
-
-    # Resample factor
-    img_resample: StrictFloat
-
     # Path for raw image
     raw_img_path: Path
+    # ------------------------------Filtering Parameters------------------------------
+    # Reject abnormal bubbles from quantification. E>0.85 or S<0.9
+    max_eccentricity: PositiveFloat
+    max_eccentricity_range: tuple[PositiveFloat, PositiveFloat]
+    min_solidity: PositiveFloat
+    min_solidity_range: tuple[PositiveFloat, PositiveFloat]
 
-    max_thresh: PositiveFloat
-    min_thresh: PositiveFloat
-    step_size: PositiveFloat
+    # Also ignore too small bubbles (equivalent diameter in mm)
+    min_size: PositiveFloat
+    min_size_range: tuple[StrictFloat, StrictFloat]
+
+    # Parameters for finding big and small bubbles
+    if_find_circles: StrictStr
+    L_maxA_mm2: PositiveFloat
+    L_minA_mm2: PositiveFloat
+    s_maxA_mm2: PositiveFloat
+    s_minA_mm2: PositiveFloat
 
     class Config:
         """Pydantic configuration settings for the Config model.
