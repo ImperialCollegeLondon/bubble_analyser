@@ -24,7 +24,7 @@ Bubble Analyser is a Python application for detecting, measuring, and analyzing 
 
 For Windows users, a standalone executable is available in the release:
 
-v0.1.0 https://github.com/ImperialCollegeLondon/bubble_analyser/releases/tag/v0.1.0
+v0.1.0 <https://github.com/ImperialCollegeLondon/bubble_analyser/releases/tag/v0.1.0>
 
 ### From Source
 
@@ -68,15 +68,16 @@ To get started:
    ```bash
    poetry shell
    ```
+
    alternatively, ensure any Python-related command is preceded by `poetry run'.
-   
-6. Install the git hooks:
+
+5. Install the git hooks:
 
    ```bash
    pre-commit install
    ```
 
-7. Run the main app:
+6. Run the main app:
 
    ```bash
    python -m bubble_analyser

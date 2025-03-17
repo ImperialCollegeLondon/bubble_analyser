@@ -20,7 +20,7 @@ import csv
 import os
 import sys
 from pathlib import Path
-from typing import cast, Any
+from typing import cast
 
 import numpy as np
 import toml as tomllib  # type: ignore

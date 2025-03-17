@@ -629,4 +629,3 @@ class MainWindow(QMainWindow):
         # Add a label to display the descriptive sizes
         self.descriptive_size_label = QLabel("")
         layout.addWidget(self.descriptive_size_label, 2, 0, 1, 2)
-        
