@@ -16,9 +16,9 @@ from bubble_analyser.gui.event_handlers import MainHandler
 from bubble_analyser.gui.gui import MainWindow
 
 __all__ = [
-    "InputFilesModel",
     "CalibrationModel",
     "ImageProcessingModel",
+    "InputFilesModel",
     "MainHandler",
     "MainWindow",
     "WorkerThread",
