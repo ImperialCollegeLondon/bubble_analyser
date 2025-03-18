@@ -23,16 +23,16 @@ numba = "^0.60.0"
 opencv-python = "^4.11.0.86"
 
 [tool.poetry.group.docs.dependencies]
-mkdocs = "^1.6.0"
+mkdocs = "^1.6.1"
 mkdocs-material = "^9.5.40"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.3"
+pytest = "^8.3.3"
 pytest-cov = "^5.0.0"
 pytest-mypy = "^0.10.0"
 pytest-mock = "^3.7.0"
 pre-commit = "^3.0.4"
-ruff = "^0.5.2"
+ruff = "^0.6.9"
 types-toml = "^0.10.8.20240310"
 
 [build-system]
