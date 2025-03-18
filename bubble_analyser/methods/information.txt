@@ -1,0 +1,37 @@
+If you want to contribute any processing method class, please make sure it has following format:
+
+class <method_name>():
+    def __init__(self, params: dict): () the dict is for passing the required parameters for your methods
+        self.name = "<method_name>"
+        XXXXXXXX
+
+    def get_needed_params(self):
+        return {
+            "param1": self.param1,
+            "param2": self.param2,
+            "param3": self.param3,
+            ......
+        }
+
+    def update_params(self, params: dict):
+        self.param1 = params["param1"]
+        self.param2 = params["param2"]
+        self.param3 = params["param3"]
+        ......
+
+    def initialize_processing(self,
+                              params: dict,
+                              img_grey: npt.NDArray[np.int_],
+                              img_rgb: npt.NDArray[np.int_],
+                              bknd_img: npt.NDArray[np.int_] = None):
+        self.img_grey = img_grey  # the target image in grey channel
+        self.img_rgb = img_rgb    # the target image in rgb channel
+        self.bknd_img = bknd_img
+        self.update_params(params)
+        # the bknd_img is optional, if not provided, it will be None
+
+    .......
+
+    def get_results_img(self):
+        ......
+        return self.labels_on_img, self.labels (labels_on_img is the overlayed image with the masks of the bubbles, labels_watershed is just the masks of the bubbles)

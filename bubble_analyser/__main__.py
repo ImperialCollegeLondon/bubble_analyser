@@ -1,6 +1,6 @@
 """The entry point for the Bubble Analyser program."""
 
-from .default import default
-
 if __name__ == "__main__":
-    default()
+    from bubble_analyser.gui.event_handlers import MainHandler
+
+    MainHandler()
