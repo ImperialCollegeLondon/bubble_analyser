@@ -24,6 +24,7 @@ from datetime import datetime
 import matplotlib
 
 import bubble_analyser.gui.event_handlers as hd
+
 # Try to change orders
 
 matplotlib.use("Agg")  # Force backend to Agg for CI
