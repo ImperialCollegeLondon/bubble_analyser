@@ -54,7 +54,7 @@ class MethodsHandler:
         """
         self.params_dict = params.model_dump()
 
-        self.modules: dict[str, "types.ModuleType"] = {}
+        self.modules: dict[str, types.ModuleType] = {}
         self.modules = self.load_modules_from_package()
 
         self.all_classes: dict[str, object] = {}
