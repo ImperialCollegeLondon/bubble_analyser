@@ -9,8 +9,14 @@ __pycache__/
 # Distribution / packaging
 .Python
 build/
+dist/*.exe
+dist/*.msi
 develop-eggs/
 dist/
+data/
+datafile/
+data/
+datafile/
 downloads/
 eggs/
 .eggs/
