@@ -16,16 +16,16 @@ from bubble_analyser.processing.threshold_methods import ThresholdMethods
 from bubble_analyser.processing.watershed_parent_class import WatershedSegmentation
 
 __all__ = [
-    "calculate_px2mm",
     "CircleHandler",
-    "FilterParamHandler",
     "Config",
     "EllipseAdjuster",
-    "image_preprocess",
+    "FilterParamHandler",
     "Image",
     "MethodsHandler",
-    "morphological_process",
-    "overlay_labels_on_rgb",
     "ThresholdMethods",
     "WatershedSegmentation",
+    "calculate_px2mm",
+    "image_preprocess",
+    "morphological_process",
+    "overlay_labels_on_rgb",
 ]
