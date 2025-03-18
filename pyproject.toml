@@ -24,7 +24,7 @@ opencv-python = "^4.11.0.86"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.6.0"
-mkdocs-material = "^9.5.29"
+mkdocs-material = "^9.5.40"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2"
