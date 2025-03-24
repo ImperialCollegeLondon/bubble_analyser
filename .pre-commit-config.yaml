@@ -18,7 +18,7 @@ repos:
         # https://prettier.io for list). Add other types here.
         types_or: [yaml, json]
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: "v0.11.0"
+    rev: "v0.11.2"
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
