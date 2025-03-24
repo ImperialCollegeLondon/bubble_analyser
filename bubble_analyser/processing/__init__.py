@@ -7,6 +7,7 @@ It provides functionality for calibration, segmentation, filtering, and measurem
 from bubble_analyser.processing.calculate_px2mm import calculate_px2mm
 from bubble_analyser.processing.circle_handler import CircleHandler, FilterParamHandler
 from bubble_analyser.processing.config import Config
+from bubble_analyser.processing.cv2_to_qpixmap import cv2_to_qpixmap
 from bubble_analyser.processing.fit_ellipse import EllipseAdjuster
 from bubble_analyser.processing.image import Image, MethodsHandler
 from bubble_analyser.processing.image_postprocess import overlay_labels_on_rgb
@@ -25,6 +26,7 @@ __all__ = [
     "ThresholdMethods",
     "WatershedSegmentation",
     "calculate_px2mm",
+    "cv2_to_qpixmap",
     "image_preprocess",
     "morphological_process",
     "overlay_labels_on_rgb",

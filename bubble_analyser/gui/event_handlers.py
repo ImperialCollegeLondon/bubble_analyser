@@ -48,7 +48,7 @@ from bubble_analyser.gui import (
     InputFilesModel,
     WorkerThread,
 )
-from bubble_analyser.processing import Config
+from bubble_analyser.processing import Config, cv2_to_qpixmap
 
 
 class ExportSettingsHandler(QDialog):
@@ -344,6 +344,11 @@ class CalibrationTabHandler:
         """
         self.gui = gui
 
+    def select_ruler_button(self) -> None:
+        """Handle the process of resolution calibration with ruler image selecion and pixel-to-mm conversion."""
+        self.select_px_mm_image()
+        self.get_px2mm_ratio()
+
     def select_px_mm_image(self) -> None:
         """Handle the selection of a ruler image for pixel-to-millimeter calibration.
 
@@ -383,10 +388,18 @@ class CalibrationTabHandler:
 
         img_path: Path = cast(Path, self.gui.pixel_img_name.text())
         if os.path.exists(img_path):
-            px2mm = self.calibration_model.get_px2mm_ratio(
+            px2mm, img_drawed_line = self.calibration_model.get_px2mm_ratio(
                 pixel_img_path=img_path, img_resample=self.img_resample, gui=self.gui
             )
             self.gui.manual_px_mm_input.setText(f"{px2mm:.3f}")
+
+            pixmap = cv2_to_qpixmap(img_drawed_line)
+            self.gui.pixel_img_preview.setPixmap(
+                pixmap.scaled(
+                    self.gui.pixel_img_preview.size(),
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                )
+            )
         else:
             self.gui.statusBar().showMessage("Image file does not exist or not selected.", 5000)
 
@@ -1516,12 +1529,12 @@ class MainHandler:
         """
         self.calibration_tab_handler.get_px2mm_ratio()
 
-    def tab2_select_px_mm_image(self) -> None:
+    def tab2_select_ruler_button(self) -> None:
         """Select a ruler image for pixel-to-millimeter calibration.
 
         Delegates the ruler image selection to the calibration tab handler.
         """
-        self.calibration_tab_handler.select_px_mm_image()
+        self.calibration_tab_handler.select_ruler_button()
 
     def tab2_select_bg_corr_image(self) -> None:
         """Select a background correction image in the calibration tab.
