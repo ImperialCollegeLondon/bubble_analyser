@@ -167,15 +167,15 @@ def get_pixel_distance(img: npt.NDArray[np.int_], main_window: QMainWindow) -> t
         QApplication.processEvents()
 
     dialog.close()
-    image_final = label.img_final
+
     if len(label.refPt) == 2:
         pixel_distance: float = np.sqrt(
             (label.refPt[1][0] - label.refPt[0][0]) ** 2 + (label.refPt[1][1] - label.refPt[0][1]) ** 2
         )
-        return pixel_distance, image_final
+        return pixel_distance, label.img_final
     else:
         print("Line was not drawn correctly.")
-        return 0.0, image_final
+        return 0.0, label.img_final
 
 
 def get_mm_per_pixel(pixel_distance: float, scale_percent: float, img_resample: float) -> float:
