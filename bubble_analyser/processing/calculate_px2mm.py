@@ -11,6 +11,7 @@ from typing import cast
 import cv2
 import numpy as np
 import numpy.typing as npt
+from cv2.typing import MatLike
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QImage, QMouseEvent, QPixmap
 from PySide6.QtWidgets import (
@@ -38,6 +39,7 @@ class ImageLabel(QLabel):
         drawing (bool): Flag indicating whether the user is currently drawing a line.
         img (npt.NDArray[np.int_]): The original image being displayed.
         img_copy (npt.NDArray[np.int_]): A copy of the image for drawing operations.
+        img_final (MatLike): The final image with the drawn line.
     """
 
     def __init__(self, parent: QWidget) -> None:
@@ -51,6 +53,7 @@ class ImageLabel(QLabel):
         self.drawing = False
         self.img: npt.NDArray[np.int_]
         self.img_copy: npt.NDArray[np.int_]
+        self.img_final: MatLike
 
     def set_image(self, img: npt.NDArray[np.int_]) -> None:
         """Set the image to be displayed in the label.
@@ -95,7 +98,7 @@ class ImageLabel(QLabel):
         if ev.button() == Qt.MouseButton.LeftButton:
             self.refPt.append((ev.x(), ev.y()))
             self.drawing = False
-            cv2.line(self.img, self.refPt[0], self.refPt[1], (0, 255, 0), 2)
+            self.img_final = cv2.line(self.img, self.refPt[0], self.refPt[1], (0, 255, 0), 2)
             self.update_image()
 
     def update_image(self) -> None:
@@ -133,7 +136,7 @@ def resize_to_target_width(image: npt.NDArray[np.int_], target_width: int = 1000
     return cast(npt.NDArray[np.int_], image_resized), scale_percent
 
 
-def get_pixel_distance(img: npt.NDArray[np.int_], main_window: QMainWindow) -> float:
+def get_pixel_distance(img: npt.NDArray[np.int_], main_window: QMainWindow) -> tuple[float, MatLike]:
     """Get the pixel distance between two points selected by the user.
 
     Opens a dialog window allowing the user to draw a line on the image and
@@ -145,6 +148,7 @@ def get_pixel_distance(img: npt.NDArray[np.int_], main_window: QMainWindow) -> f
 
     Returns:
         float: The measured distance in pixels.
+        Matlike: The image with the drawn line.
     """
     dialog = QDialog(main_window)
     dialog.setWindowTitle("Draw Line for Measurement")
@@ -168,10 +172,10 @@ def get_pixel_distance(img: npt.NDArray[np.int_], main_window: QMainWindow) -> f
         pixel_distance: float = np.sqrt(
             (label.refPt[1][0] - label.refPt[0][0]) ** 2 + (label.refPt[1][1] - label.refPt[0][1]) ** 2
         )
-        return pixel_distance
+        return pixel_distance, label.img_final
     else:
         print("Line was not drawn correctly.")
-        return 0.0
+        return 0.0, label.img_final
 
 
 def get_mm_per_pixel(pixel_distance: float, scale_percent: float, img_resample: float) -> float:
@@ -191,7 +195,7 @@ def get_mm_per_pixel(pixel_distance: float, scale_percent: float, img_resample: 
     return mm_per_pixel
 
 
-def calculate_px2mm(image_path: Path, img_resample: float, main_window: QMainWindow) -> tuple[float, float]:
+def calculate_px2mm(image_path: Path, img_resample: float, main_window: QMainWindow) -> tuple[float, float, MatLike]:
     """Calculate the pixel-to-millimeter conversion ratios for an image.
 
     This function allows the user to measure a known distance in an image and
@@ -203,11 +207,14 @@ def calculate_px2mm(image_path: Path, img_resample: float, main_window: QMainWin
         main_window (QMainWindow): The main window for displaying the measurement dialog.
 
     Returns:
-        tuple[float, float]: A tuple containing (millimeters per pixel, pixels per millimeter).
+        tuple[float, float, Umat]: A tuple containing (millimeters per pixel, pixels per millimeter,
+            ruler img with drawed line).
     """
     image = load_image(image_path)
     image, scale_percent = resize_to_target_width(image)
-    pixel_distance: float = get_pixel_distance(image, main_window)
+    pixel_distance: float
+    img_final: MatLike
+    pixel_distance, img_final = get_pixel_distance(image, main_window)
 
     mm_per_pixel = 0.0
     pixel_per_mm = 0.0
@@ -218,4 +225,4 @@ def calculate_px2mm(image_path: Path, img_resample: float, main_window: QMainWin
         pixel_per_mm = 1 / mm_per_pixel
         print(f"Conversion factor: {pixel_per_mm} pixels per mm")
 
-    return mm_per_pixel, pixel_per_mm
+    return mm_per_pixel, pixel_per_mm, img_final
