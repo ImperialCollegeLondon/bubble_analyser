@@ -387,7 +387,7 @@ class MainWindow(QMainWindow):
 
         # Processed Image Before Filtering Canvas
         self.label_before_filtering = MplCanvas(self, width=5, height=4, dpi=100)
-        second_column_layout.addWidget(QLabel("Step 1:Processed Image_Before Filtering"))
+        second_column_layout.addWidget(QLabel("Step 1: Bubble Segmentation"))
         second_column_layout.addWidget(self.label_before_filtering)
 
         algorithm_label = QLabel("Select Algorithm:")
@@ -423,7 +423,7 @@ class MainWindow(QMainWindow):
 
         # Processed Image After Filtering Canvas
         self.processed_image_preview = MplCanvas(self, width=5, height=4, dpi=100)
-        third_column_layout.addWidget(QLabel("Step 2: Filtering and Selecting Circles"))
+        third_column_layout.addWidget(QLabel("Step 2: Filtering and Ellipse Fitting"))
         third_column_layout.addWidget(self.processed_image_preview)
 
         # Parameter sandbox for max_eccentricity, min_solidity, min_size
@@ -445,6 +445,7 @@ class MainWindow(QMainWindow):
         manual_adjustment_button = QPushButton("Manual adjustment")
         manual_adjustment_button.clicked.connect(self.main_handler.tab3_ellipse_manual_adjustment)
         batch_process_button = QPushButton("Batch process images")
+        batch_process_button.setStyleSheet("background-color: red; color: white;")
         preview_button2.clicked.connect(self.main_handler.tab3_confirm_parameter_for_filtering)
         batch_process_button.clicked.connect(self.main_handler.tab3_ask_if_batch)
 
