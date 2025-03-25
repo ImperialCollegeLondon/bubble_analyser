@@ -256,14 +256,13 @@ class Image:
         self.new_circle_handler: CircleHandler = None  # type: ignore
         self.if_fine_tuned: bool = False
 
-    def load_filter_params(self, 
-    dict_params_1: dict[str, float | str],
-    dict_params_2: dict[str, float | str]) -> None:
+    def load_filter_params(self, dict_params_1: dict[str, float | str], dict_params_2: dict[str, float | str]) -> None:
         """Load and update filtering parameters for the image.
 
         Args:
-            dict_params (dict[str, float]): Dictionary containing filtering parameters (e.g.,
+            dict_params_1 (dict[str, float]): Dictionary containing filtering parameters (e.g.,
                                               "max_eccentricity", "min_solidity", "min_size").
+            dict_params_2 (dict[str, float]): Dictionary containing find_circles parameters.
 
         Returns:
             None

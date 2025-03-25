@@ -127,15 +127,15 @@ class CircleHandler:
         self.ellipses_on_image: npt.NDArray[np.int_]
         self.ellipses_properties: list[dict[str, float]]
 
-    def load_filter_params(self, 
-    filter_param_dict_1: dict[str, float | str],
-    filter_param_dict_2: dict[str, float | str]) -> None:
+    def load_filter_params(
+        self, filter_param_dict_1: dict[str, float | str], filter_param_dict_2: dict[str, float | str]
+    ) -> None:
         """Load filtering parameters for circle detection.
 
         Args:
             filter_param_dict_1 (dict[str, float | str]): Dictionary containing filtering parameters
                 such as max_eccentricity, min_solidity, and min_size.
-            filter_param_dict_2 (dict[str, float | str]): Dictionary containing parameters for Find 
+            filter_param_dict_2 (dict[str, float | str]): Dictionary containing parameters for Find
                 Circles function
         """
         self.filter_param_dict_1 = filter_param_dict_1
@@ -207,7 +207,10 @@ class CircleHandler:
                 if if_find_circles:
                     print("Find Circles activated.")
                     if not ((L_min <= area <= L_max) or (s_min <= area <= s_max)):
-                        print("A circle is being filtered out because the following parameter(s) are not qualified:")
+                        print(
+                            "A circle is being filtered out because one or \
+more of the following parameter(s) are not qualified:"
+                        )
                         print("Value of the circle's area:", area)
                         print("Value of the L_min:", L_min)
                         print("Value of the L_max:", L_max)

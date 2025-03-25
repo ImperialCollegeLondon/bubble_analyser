@@ -52,7 +52,6 @@ from PySide6.QtWidgets import (
     QTabWidget,
     QVBoxLayout,
     QWidget,
-    QTableWidgetItem
 )
 
 
@@ -432,10 +431,10 @@ class MainWindow(QMainWindow):
         self.param_sandbox2 = QTableWidget(0, 2)
         self.param_sandbox2.setHorizontalHeaderLabels(["Parameter", "Value"])
         self.main_handler.tab3_initialize_parameter_table_2()  # New helper method
-        
+
         self.fc_checkbox = QCheckBox("Find Circles")
         self.fc_checkbox.stateChanged.connect(self.main_handler.tab3_handle_find_circles)
-        
+
         # Additional parameter box for circle finding (initially hidden)
         self.circle_param_box = QTableWidget(0, 2)
         self.circle_param_box.setHorizontalHeaderLabels(["Parameter", "Value (mm²)"])
