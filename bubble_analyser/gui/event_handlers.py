@@ -868,19 +868,25 @@ class ImageProcessingTabHandler(QThread):
             self.gui.param_sandbox2.setItem(row, 1, QTableWidgetItem(str(value)))
             row += 1
 
-    def handle_find_circles(self, state):
+    def handle_find_circles(self) -> None:
         """Toggle the visibility of the circle parameter box based on checkbox state.
-        
-        Args:
-            state: The state of the checkbox (checked or unchecked).
+
+        This method responds to the state of the find circles checkbox (fc_checkbox):
+        - When checked: Shows the circle parameter box, sets find_circles(Y/N) to "Y",
+          and populates the parameter table with values from filter_param_dict_2
+        - When unchecked: Hides the circle parameter box and sets find_circles(Y/N) to "N"
+
+        The circle parameter box displays all parameters from filter_param_dict_2 except
+        for the find_circles(Y/N) parameter itself. Each parameter is displayed in a row
+        with its name in the first column and its value in the second column.
         """
         state = self.gui.fc_checkbox.isChecked()
-        if state == True:
+        if state:
             print("Hanldle find circles - Yes")
             self.gui.circle_param_box.show()
             self.filter_param_dict_2["find_circles(Y/N)"] = "Y"
 
-            self.gui.circle_param_box.setRowCount(len(self.filter_param_dict_2)-1)
+            self.gui.circle_param_box.setRowCount(len(self.filter_param_dict_2) - 1)
             print("len of filter param 2 - 1 :", len(self.filter_param_dict_2) - 1)
 
             row = 0
@@ -895,7 +901,6 @@ class ImageProcessingTabHandler(QThread):
             print("Hanldle find circles - No")
             self.gui.circle_param_box.hide()
             self.filter_param_dict_2["find_circles(Y/N)"] = "N"
-
 
     def confirm_parameter_for_filtering(self) -> None:
         """Confirm the filtering parameters and apply them to the current image.
@@ -927,7 +932,7 @@ class ImageProcessingTabHandler(QThread):
         filter parameter dictionary with the new values.
         """
         print("Store fitler params______________")
-        if not hasattr(self.gui, 'circle_param_box'):
+        if not hasattr(self.gui, "circle_param_box"):
             print("No find circles.")
         else:
             print("Yes find circles")
@@ -1641,7 +1646,7 @@ class MainHandler:
         """
         self.image_processing_tab_handler.confirm_parameter_before_filtering()
 
-    def tab3_handle_find_circles(self, state) -> None:
+    def tab3_handle_find_circles(self) -> None:
         """Handle the state change of the "Find Circles" checkbox in the image processing tab.
 
         Delegates the checkbox state change handling to the image processing tab handler,
@@ -1650,7 +1655,7 @@ class MainHandler:
         Args:
             state: The new state of the checkbox.
         """
-        self.image_processing_tab_handler.handle_find_circles(state)
+        self.image_processing_tab_handler.handle_find_circles()
 
     def tab3_confirm_parameter_for_filtering(self) -> None:
         """Confirm the filtering parameters and apply them to the current image.
