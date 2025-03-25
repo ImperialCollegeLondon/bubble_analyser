@@ -21,6 +21,7 @@ from typing import cast
 
 import cv2
 import numpy as np
+from cv2.typing import MatLike
 from numpy import typing as npt
 from PySide6.QtCore import QEventLoop, QThread, Signal
 
@@ -217,7 +218,7 @@ class CalibrationModel:
         pixel_img_path: Path,
         img_resample: float = 0.5,
         gui=None,  # type: ignore
-    ) -> float:
+    ) -> tuple[float, MatLike]:
         """Calculate the pixel-to-millimeter ratio from a calibration image.
 
         This method uses the calculate_px2mm function to determine the conversion
@@ -233,10 +234,11 @@ class CalibrationModel:
 
         Returns:
             float: The calculated pixel-to-millimeter ratio.
+            img_drawed_line: The ruler image with the drawn line.
         """
-        __, self.px2mm = calculate_px2mm(pixel_img_path, img_resample, gui)  # type: ignore
+        __, self.px2mm, img_drawed_line = calculate_px2mm(pixel_img_path, img_resample, gui)  # type: ignore
 
-        return self.px2mm
+        return self.px2mm, img_drawed_line
 
     def confirm_calibration(self) -> None:
         """Mark the calibration as confirmed.
