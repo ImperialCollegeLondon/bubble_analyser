@@ -52,6 +52,7 @@ from PySide6.QtWidgets import (
     QTabWidget,
     QVBoxLayout,
     QWidget,
+    QTableWidgetItem
 )
 
 
@@ -431,6 +432,14 @@ class MainWindow(QMainWindow):
         self.param_sandbox2 = QTableWidget(0, 2)
         self.param_sandbox2.setHorizontalHeaderLabels(["Parameter", "Value"])
         self.main_handler.tab3_initialize_parameter_table_2()  # New helper method
+        
+        self.fc_checkbox = QCheckBox("Find Circles")
+        self.fc_checkbox.stateChanged.connect(self.main_handler.tab3_handle_find_circles)
+        
+        # Additional parameter box for circle finding (initially hidden)
+        self.circle_param_box = QTableWidget(0, 2)
+        self.circle_param_box.setHorizontalHeaderLabels(["Parameter", "Value (mm²)"])
+        self.circle_param_box.setVisible(False)
 
         # Confirm and Batch Process buttons for this sandbox
         preview_button2 = QPushButton("Confirm parameter and preview")
@@ -442,6 +451,8 @@ class MainWindow(QMainWindow):
 
         third_column_layout.addWidget(sandbox2_label)
         third_column_layout.addWidget(self.param_sandbox2)
+        third_column_layout.addWidget(self.fc_checkbox)
+        third_column_layout.addWidget(self.circle_param_box)
         third_column_layout.addWidget(preview_button2)
         third_column_layout.addWidget(manual_adjustment_button)
         third_column_layout.addWidget(batch_process_button)

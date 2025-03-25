@@ -256,7 +256,9 @@ class Image:
         self.new_circle_handler: CircleHandler = None  # type: ignore
         self.if_fine_tuned: bool = False
 
-    def load_filter_params(self, dict_params: dict[str, float | str]) -> None:
+    def load_filter_params(self, 
+    dict_params_1: dict[str, float | str],
+    dict_params_2: dict[str, float | str]) -> None:
         """Load and update filtering parameters for the image.
 
         Args:
@@ -266,7 +268,8 @@ class Image:
         Returns:
             None
         """
-        self.filter_param_dict = dict_params
+        self.filter_param_dict_1 = dict_params_1
+        self.filter_param_dict_2 = dict_params_2
         return
 
     def _img_preprocess(self, resample: float) -> None:
@@ -340,7 +343,7 @@ class Image:
             del self.new_circle_handler
 
         self.new_circle_handler = CircleHandler(labels_before_filter, rgb_img, self.px2mm)
-        self.new_circle_handler.load_filter_params(self.filter_param_dict)
+        self.new_circle_handler.load_filter_params(self.filter_param_dict_1, self.filter_param_dict_2)
 
     def labels_filtering(self) -> None:
         """Filter the image labels using the circle handler's filtering algorithm.

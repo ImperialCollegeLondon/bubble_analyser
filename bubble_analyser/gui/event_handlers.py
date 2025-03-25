@@ -510,13 +510,13 @@ class ImageProcessingTabHandler(QThread):
         """
         self.gui = gui
 
-    def pass_filter_params(self, filter_param_dict: dict[str, str | float]) -> None:
+    def pass_filter_params(self) -> None:
         """Pass filter parameters to the processing model.
 
         Args:
             filter_param_dict (dict[str, int | float]): Dictionary of filter parameters.
         """
-        self.model.load_filter_params(filter_param_dict)
+        self.model.load_filter_params(self.filter_param_dict_1, self.filter_param_dict_2)
 
     def preview_image(self) -> None:
         """Display a preview of the currently selected image.
@@ -857,17 +857,45 @@ class ImageProcessingTabHandler(QThread):
         Populates the filtering parameters table with the current values from
         the temporary filter parameter dictionary.
         """
-        param_dict = self.model.filter_param_dict
+        self.filter_param_dict_1 = self.model.filter_param_dict_1
+        self.filter_param_dict_2 = self.model.filter_param_dict_2
 
-        self.gui.param_sandbox2.setRowCount(len(param_dict))
+        self.gui.param_sandbox2.setRowCount(len(self.filter_param_dict_1))
         row = 0
-        for property, value in param_dict.items():
+        for property, value in self.filter_param_dict_1.items():
             print("Filter param name:", property, ", value:", value)
             self.gui.param_sandbox2.setItem(row, 0, QTableWidgetItem(property))
             self.gui.param_sandbox2.setItem(row, 1, QTableWidgetItem(str(value)))
             row += 1
 
-        self.filter_param_dict: dict[str, float | str] = param_dict
+    def handle_find_circles(self, state):
+        """Toggle the visibility of the circle parameter box based on checkbox state.
+        
+        Args:
+            state: The state of the checkbox (checked or unchecked).
+        """
+        state = self.gui.fc_checkbox.isChecked()
+        if state == True:
+            print("Hanldle find circles - Yes")
+            self.gui.circle_param_box.show()
+            self.filter_param_dict_2["find_circles(Y/N)"] = "Y"
+
+            self.gui.circle_param_box.setRowCount(len(self.filter_param_dict_2)-1)
+            print("len of filter param 2 - 1 :", len(self.filter_param_dict_2) - 1)
+
+            row = 0
+            print(self.filter_param_dict_2)
+            for property, value in self.filter_param_dict_2.items():
+                if property != "find_circles(Y/N)":
+                    print("Filter param_2 name:", property, ", value:", value)
+                    self.gui.circle_param_box.setItem(row, 0, QTableWidgetItem(property))
+                    self.gui.circle_param_box.setItem(row, 1, QTableWidgetItem(str(value)))
+                    row += 1
+        else:
+            print("Hanldle find circles - No")
+            self.gui.circle_param_box.hide()
+            self.filter_param_dict_2["find_circles(Y/N)"] = "N"
+
 
     def confirm_parameter_for_filtering(self) -> None:
         """Confirm the filtering parameters and apply them to the current image.
@@ -879,7 +907,7 @@ class ImageProcessingTabHandler(QThread):
         self.store_filter_params()
 
         print("------------------------------Validating Filter Parameters------------------------------")
-        for name, value in self.filter_param_dict.items():
+        for name, value in self.filter_param_dict_1.items():
             print(
                 "Checking steps in confirm_parameter_before_filtering: ",
                 name,
@@ -889,16 +917,29 @@ class ImageProcessingTabHandler(QThread):
             if not if_valid:
                 return
 
-        self.pass_filter_params(self.filter_param_dict)
+        self.pass_filter_params()
         self._process_step_2()
 
     def store_filter_params(self) -> None:
-        """Store the filtering parameters from the GUI table into the temporary dictionary.
+        """Store the filtering parameters from the GUI table into the filter parameter dictionary.
 
-        Extracts the filtering parameters from the table widget and updates the
-        temporary filter parameter dictionary with the new values.
+        Extracts the circle parameters from the circle parameter table widget and updates the
+        filter parameter dictionary with the new values.
         """
-        params: dict[str, float | str] = {}
+        print("Store fitler params______________")
+        if not hasattr(self.gui, 'circle_param_box'):
+            print("No find circles.")
+        else:
+            print("Yes find circles")
+            for row in range(self.gui.circle_param_box.rowCount()):
+                name_item = self.gui.circle_param_box.item(row, 0)
+                value_item = self.gui.circle_param_box.item(row, 1)
+                if name_item and value_item:
+                    param_name = name_item.text()
+                    param_value = value_item.text()
+                    self.filter_param_dict_2[param_name] = float(param_value)
+                    print("Updating", param_name, "to", param_value)
+            print("End find circles")
 
         for row in range(self.gui.param_sandbox2.rowCount()):
             name_item = self.gui.param_sandbox2.item(row, 0)
@@ -907,16 +948,9 @@ class ImageProcessingTabHandler(QThread):
                 param_name = name_item.text()
                 param_value = value_item.text()
 
-                if param_name == "find_circles(Y/N)":
-                    # Handle string parameter
-                    params[param_name] = str(param_value)
-                    self.filter_param_dict[param_name] = str(param_value)
-                    print(param_name, param_value)
-                else:
-                    # Handle numeric parameter
-                    float_value = cast(float, param_value)
-                    params[param_name] = float_value
-                    self.filter_param_dict[param_name] = float_value
+                # Handle numeric parameter
+                float_value = cast(float, param_value)
+                self.filter_param_dict_1[param_name] = float_value
 
                 print("Updating", param_name, "to", param_value)
 
@@ -1029,7 +1063,7 @@ class ImageProcessingTabHandler(QThread):
         print("------------------------------Validating Filter Parameters------------------------------")
         self.store_filter_params()
         self.update_segment_parameters()
-        self.pass_filter_params(self.filter_param_dict)
+        self.pass_filter_params()
         self.show_progress_window(len(self.model.img_path_list))
 
         if self.if_save_processed_images:
@@ -1606,6 +1640,17 @@ class MainHandler:
         proceeding with the first processing step.
         """
         self.image_processing_tab_handler.confirm_parameter_before_filtering()
+
+    def tab3_handle_find_circles(self, state) -> None:
+        """Handle the state change of the "Find Circles" checkbox in the image processing tab.
+
+        Delegates the checkbox state change handling to the image processing tab handler,
+        which updates the UI and processing state accordingly.
+
+        Args:
+            state: The new state of the checkbox.
+        """
+        self.image_processing_tab_handler.handle_find_circles(state)
 
     def tab3_confirm_parameter_for_filtering(self) -> None:
         """Confirm the filtering parameters and apply them to the current image.
