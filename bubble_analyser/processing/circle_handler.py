@@ -24,10 +24,12 @@ class FilterParamHandler:
     eccentricity, solidity, size thresholds, and area bounds for large and small circles.
 
     Attributes:
-        filter_param_dict (dict[str, float | str]): Dictionary containing filtering parameters:
+        filter_param_dict_1 (dict[str, float | str]): Dictionary containing filtering parameters:
             - max_eccentricity: Maximum allowed eccentricity for valid circles
             - min_solidity: Minimum required solidity for valid circles
             - min_size: Minimum required size for valid circles
+
+        filter_param_dict_2 (dict[str, float | str]): Dictionary containing parameters for Find Circles function:
             - find_circles(Y/N): Flag to enable/disable circle finding ("Y" or "N")
             - L_maxA_mm2: Maximum area threshold for large circles in mm²
             - L_minA_mm2: Minimum area threshold for large circles in mm²
@@ -42,32 +44,42 @@ class FilterParamHandler:
             params_dict: Dictionary containing filter parameters for circle detection
                         and analysis.
         """
-        self.filter_param_dict: dict[str, float | str] = {
+        self.filter_param_dict_1: dict[str, float | str] = {
             "max_eccentricity": params_dict["max_eccentricity"],
             "min_solidity": params_dict["min_solidity"],
             "min_size": params_dict["min_size"],
+        }
+        self.filter_param_dict_2: dict[str, float | str] = {
             "find_circles(Y/N)": params_dict["if_find_circles"],
-            "L_maxA_mm2": params_dict["L_maxA_mm2"],
-            "L_minA_mm2": params_dict["L_minA_mm2"],
-            "s_maxA_mm2": params_dict["s_maxA_mm2"],
-            "s_minA_mm2": params_dict["s_minA_mm2"],
+            "L_maxA": params_dict["L_maxA_mm2"],
+            "L_minA": params_dict["L_minA_mm2"],
+            "s_maxA": params_dict["s_maxA_mm2"],
+            "s_minA": params_dict["s_minA_mm2"],
         }
 
-    def get_needed_params(self) -> dict[str, float | str]:
+    def get_needed_params(self) -> tuple[dict[str, float | str], dict[str, float | str]]:
         """Retrieve the current filter parameters.
 
         Returns:
             Dictionary containing the current filter parameters.
         """
-        return self.filter_param_dict
+        return self.filter_param_dict_1, self.filter_param_dict_2
 
-    def update_params(self, params: dict[str, float | str]) -> None:
+    def update_params_1(self, params: dict[str, float | str]) -> None:
         """Update the filter parameters with new values.
 
         Args:
             params: Dictionary containing new filter parameter values to update.
         """
-        self.filter_param_dict = params
+        self.filter_param_dict_1 = params
+
+    def update_params_2(self, params: dict[str, float | str]) -> None:
+        """Update the filter parameters with new values.
+
+        Args:
+            params: Dictionary containing new filter parameter values to update.
+        """
+        self.filter_param_dict_2 = params
 
 
 class CircleHandler:
@@ -102,7 +114,8 @@ class CircleHandler:
             img_rgb (npt.NDArray[np.int_]): The RGB image corresponding to the labeled image.
             px2mm (float, optional): Conversion factor from pixels to millimeters. Defaults to 90.0.
         """
-        self.filter_param_dict: dict[str, float | str]
+        self.filter_param_dict_1: dict[str, float | str]
+        self.filter_param_dict_2: dict[str, float | str]
         self.img_rgb: npt.NDArray[np.int_] | None = img_rgb
         self.labels_before_filtering: npt.NDArray[np.int_] | None = labels_before_filtering
         self.labels_after_filtering: npt.NDArray[np.int_]
@@ -114,14 +127,19 @@ class CircleHandler:
         self.ellipses_on_image: npt.NDArray[np.int_]
         self.ellipses_properties: list[dict[str, float]]
 
-    def load_filter_params(self, filter_param_dict: dict[str, float | str]) -> None:
+    def load_filter_params(self, 
+    filter_param_dict_1: dict[str, float | str],
+    filter_param_dict_2: dict[str, float | str]) -> None:
         """Load filtering parameters for circle detection.
 
         Args:
-            filter_param_dict (dict[str, float]): Dictionary containing filtering parameters
+            filter_param_dict_1 (dict[str, float | str]): Dictionary containing filtering parameters
                 such as max_eccentricity, min_solidity, and min_size.
+            filter_param_dict_2 (dict[str, float | str]): Dictionary containing parameters for Find 
+                Circles function
         """
-        self.filter_param_dict = filter_param_dict
+        self.filter_param_dict_1 = filter_param_dict_1
+        self.filter_param_dict_2 = filter_param_dict_2
 
     def filter_labels_properties(self) -> npt.NDArray[np.int_]:
         """Filters out regions (circles) from the labeled image based on their properties.
@@ -144,18 +162,20 @@ class CircleHandler:
         new_labels = np.copy(labels) if labels is not None else np.array([])
         mm2px = 1 / px2mm
 
-        cast(float, self.filter_param_dict["max_eccentricity"])
-        max_eccentricity = float(self.filter_param_dict["max_eccentricity"])
-        cast(float, self.filter_param_dict["min_solidity"])
-        min_solidity = float(self.filter_param_dict["min_solidity"])
-        cast(float, self.filter_param_dict["min_size"])
-        min_size = float(self.filter_param_dict["min_size"])
-        if_find_circles_str = self.filter_param_dict.get("find_circles(Y/N)")
+        cast(float, self.filter_param_dict_1["max_eccentricity"])
+        max_eccentricity = float(self.filter_param_dict_1["max_eccentricity"])
+        cast(float, self.filter_param_dict_1["min_solidity"])
+        min_solidity = float(self.filter_param_dict_1["min_solidity"])
+        cast(float, self.filter_param_dict_1["min_size"])
+        min_size = float(self.filter_param_dict_1["min_size"])
+
+        if_find_circles_str = self.filter_param_dict_2.get("find_circles(Y/N)")
         print("if_find_circles:", if_find_circles_str)
-        L_min = cast(float, self.filter_param_dict["L_minA_mm2"])
-        L_max = cast(float, self.filter_param_dict["L_maxA_mm2"])
-        s_max = cast(float, self.filter_param_dict["s_maxA_mm2"])
-        s_min = cast(float, self.filter_param_dict["s_minA_mm2"])
+
+        L_min = cast(float, self.filter_param_dict_2["L_minA"])
+        L_max = cast(float, self.filter_param_dict_2["L_maxA"])
+        s_max = cast(float, self.filter_param_dict_2["s_maxA"])
+        s_min = cast(float, self.filter_param_dict_2["s_minA"])
 
         if if_find_circles_str == "Y":
             if_find_circles = True

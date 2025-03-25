@@ -287,7 +287,8 @@ class ImageProcessingModel:
         self.algorithm: str = ""
         self.params_config: Config = params
 
-        self.filter_param_dict: dict[str, float | str]
+        self.filter_param_dict_1: dict[str, float | str]
+        self.filter_param_dict_2: dict[str, float | str]
 
         self.px2mm: float
         self.if_bknd: bool
@@ -328,8 +329,10 @@ class ImageProcessingModel:
         The parameters are also printed to the console for debugging purposes.
         """
         self.filter_param_handler = FilterParamHandler(self.params_config.model_dump())
-        self.filter_param_dict = self.filter_param_handler.get_needed_params()
-        print("All filter parameters:", self.filter_param_dict)
+        self.filter_param_dict_1, self.filter_param_dict_2\
+             = self.filter_param_handler.get_needed_params()
+        print("Filter parameters:", self.filter_param_dict_1)
+        print("Find circles parameters:", self.filter_param_dict_2)
 
     def confirm_folder_selection(self, folder_path_list: list[Path]) -> None:
         """Set the list of image paths to be processed.
@@ -388,13 +391,17 @@ class ImageProcessingModel:
 
         return if_img, img_before_filter, img_after_filter
 
-    def load_filter_params(self, dict_params: dict[str, float | str]) -> None:
+    def load_filter_params(self, 
+    dict_params_1: dict[str, float | str],
+    dict_params_2: dict[str, float | str]) -> None:
         """Load filtering parameters into the model.
 
         Args:
-            dict_params (dict[str, float]): Dictionary containing filtering parameters.
+            dict_params_1 (dict[str, float]): Dictionary containing filtering parameters.
+            dict_params_2 (dict[str, float]): Dictionary containing find circles parameters.
         """
-        self.filter_param_dict = dict_params
+        self.filter_param_dict_1 = dict_params_1
+        self.filter_param_dict_2 = dict_params_2
 
     def initialize_image(self, name: Path) -> None:
         """Initialize an Image object for processing if it doesn't already exist.
@@ -436,12 +443,9 @@ class ImageProcessingModel:
             npt.NDArray[np.int_]: The processed image with detected ellipses overlaid.
         """
         name = self.img_path_list[index]
-        self.img_dict[name].load_filter_params(self.filter_param_dict)
+        self.img_dict[name].load_filter_params(self.filter_param_dict_1,
+        self.filter_param_dict_2)
         self.img_dict[name].filtering_processing()
-        # self.img_dict[name].initialize_circle_handler()
-        # self.img_dict[name].labels_filtering()
-        # self.img_dict[name].fill_ellipses()
-        # self.img_dict[name].overlay_ellipses_on_images()
 
         return self.img_dict[name].ellipses_on_images
 
@@ -513,7 +517,7 @@ class ImageProcessingModel:
             print("-----------------")
             print("if_save", if_save)
             self.initialize_image(name)
-            self.img_dict[name].load_filter_params(self.filter_param_dict)
+            self.img_dict[name].load_filter_params(self.filter_param_dict_1, self.filter_param_dict_2)
 
             # Check if the image has been manually fine tuned
             if self.img_dict[name].if_fine_tuned:
