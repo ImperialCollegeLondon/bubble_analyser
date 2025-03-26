@@ -451,7 +451,30 @@ class CalibrationTabHandler:
         self.calibration_model.px2mm = float(self.gui.manual_px_mm_input.text())
         self.calibration_model.confirm_calibration()
 
+        
         self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.image_processing_tab))
+        self.preview_image_intialize()
+
+    def preview_image_intialize(self) -> None:
+        """Display a preview of the first image in the image processing tab.
+
+        Loads the selected image from the list and displays it in the preview area,
+        maintaining the aspect ratio.
+        """
+        self.gui.image_list.setCurrentRow(0)
+        selected_image = self.gui.image_list.currentItem().text()
+        print("Set current image to:", selected_image)
+        folder_path = self.gui.folder_path_edit.text()
+        image_path = folder_path + "/" + selected_image
+        pixmap = QPixmap(image_path)
+
+        self.gui.sample_image_preview.setPixmap(
+            pixmap.scaled(
+                self.gui.sample_image_preview.size(),
+                Qt.AspectRatioMode.KeepAspectRatio,
+            )
+        )
+
 
     def _show_warning(self, title: str, message: str) -> None:
         """Display a warning message box to the user.
