@@ -287,7 +287,7 @@ class MainWindow(QMainWindow):
         self.bg_corr_image_name.setText("Choose your background image from local")
         # bg_corr_confirm_button = QPushButton("Confirm")
         # bg_corr_confirm_button.clicked.connect(self.confirm_bg_corr_image)
-        bg_corr_select_button = QPushButton("Select other image for background correction")
+        bg_corr_select_button = QPushButton("Select background image (optional)")
         bg_corr_select_button.clicked.connect(self.main_handler.tab2_select_bg_corr_image)
         self.bg_corr_image_preview = QLabel()
         self.bg_corr_image_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
