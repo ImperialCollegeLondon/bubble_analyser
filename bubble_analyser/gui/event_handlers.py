@@ -1436,11 +1436,10 @@ class MainHandler:
                 self.toml_file_path = Path(config_path)
             else:
                 # Fall back to the bundled path
-                base_dir = os.path.dirname(sys.executable)
-                self.toml_file_path = Path(os.path.join(base_dir, "bubble_analyser", "gui", "config.toml"))
+                self.toml_file_path = Path(__file__).parent / "config.toml"
         else:
             # If running in development mode
-            self.toml_file_path = Path("bubble_analyser/gui/config.toml")
+            self.toml_file_path = Path(__file__).parent / "config.toml"
 
         self.initialize_handlers()
         self.initialize_handlers_signals()
