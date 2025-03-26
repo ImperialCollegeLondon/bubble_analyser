@@ -451,7 +451,6 @@ class CalibrationTabHandler:
         self.calibration_model.px2mm = float(self.gui.manual_px_mm_input.text())
         self.calibration_model.confirm_calibration()
 
-        
         self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.image_processing_tab))
         self.preview_image_intialize()
 
@@ -474,7 +473,6 @@ class CalibrationTabHandler:
                 Qt.AspectRatioMode.KeepAspectRatio,
             )
         )
-
 
     def _show_warning(self, title: str, message: str) -> None:
         """Display a warning message box to the user.
