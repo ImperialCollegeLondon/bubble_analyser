@@ -42,7 +42,7 @@ To install from source, follow the developer setup instructions below.
 
 Bubble Analyser implements multiple watershed segmentation approaches:
 
-- **Normal Watershed**: Standard watershed algorithm with a single threshold
+- **Normal Watershed**: Standard watershed algorithm with triple threshold
 - **Iterative Watershed**: Advanced algorithm that iteratively applies thresholds to detect objects at different intensity levels
 
 ## For Developers
