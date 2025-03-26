@@ -1,14 +1,14 @@
 If you want to contribute any processing method class, please make sure it has following format so the program can call them properly:
 
 class <method_name>():
-    def __init__(self, params: dict): 
+    def __init__(self, params: dict):
         # the dict is for passing the required parameters for your methods
         self.name = "<method_name>"
         ......
 
-    def get_needed_params(self):  
+    def get_needed_params(self):
         # The image function will first reach what parameters does this methods needs
-        # and display them in the image processing tab for manual modification 
+        # and display them in the image processing tab for manual modification
         return {
             "param1": self.param1,
             "param2": self.param2,
