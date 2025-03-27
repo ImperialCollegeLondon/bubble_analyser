@@ -27,6 +27,7 @@ do_batch = false
 high_thresh = 0.9
 mid_thresh = 0.5
 low_thresh = 0.2
+default_range = [0.0, 1.0]
 
 # Default setting values for iterative methods
 max_thresh = 0.95
@@ -66,7 +67,7 @@ min_solidity_range = [0.1, 1.0]
 
 # Parameters for find big and small bubbles
 if_find_circles = "N"
-L_maxA_mm2 = 20.0
-L_minA_mm2 = 10.0
-s_maxA_mm2 = 5.0
-s_minA_mm2 = 1.0
+L_maxA = 20.0
+L_minA = 10.0
+s_maxA = 5.0
+s_minA = 1.0

@@ -51,10 +51,10 @@ class FilterParamHandler:
         }
         self.filter_param_dict_2: dict[str, float | str] = {
             "find_circles(Y/N)": params_dict["if_find_circles"],
-            "L_maxA": params_dict["L_maxA_mm2"],
-            "L_minA": params_dict["L_minA_mm2"],
-            "s_maxA": params_dict["s_maxA_mm2"],
-            "s_minA": params_dict["s_minA_mm2"],
+            "L_maxA": params_dict["L_maxA"],
+            "L_minA": params_dict["L_minA"],
+            "s_maxA": params_dict["s_maxA"],
+            "s_minA": params_dict["s_minA"],
         }
 
     def get_needed_params(self) -> tuple[dict[str, float | str], dict[str, float | str]]:

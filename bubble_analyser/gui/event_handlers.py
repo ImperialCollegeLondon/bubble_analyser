@@ -181,14 +181,6 @@ class TomlFileHandler:
             print(error_str)
             self._show_warning("Error in Config File Setting", error_str)
 
-    # def check_params(self, dict_params: dict) -> bool:
-    #     try:
-    #         Config(**dict_params)
-    #     except ValidationError as e:
-    #         error_str = str(e)
-    #         self._show_warning("Error in Config File Setting", error_str)
-    #     return True
-
     def _show_warning(self, title: str, message: str) -> None:
         """Display a warning message box to the user.
 
@@ -600,14 +592,14 @@ class ImageProcessingTabHandler(QThread):
             try:
                 new_checker.max_thresh = cast(float, value)
             except ValidationError as e:
-                self._show_warning("Invalid Max Threshold", str(e))
+                self._show_warning("Invalid Threshold value", str(e))
                 return False
 
         if name == "min_thresh":
             try:
                 new_checker.min_thresh = cast(float, value)
             except ValidationError as e:
-                self._show_warning("Invalid Min Threshold", str(e))
+                self._show_warning("Invalid Threshold value", str(e))
                 return False
 
         if name == "step_size":
@@ -615,6 +607,27 @@ class ImageProcessingTabHandler(QThread):
                 new_checker.step_size = cast(float, value)
             except ValidationError as e:
                 self._show_warning("Invalid Step Size", str(e))
+                return False
+
+        if name == "high_thresh":
+            try:
+                new_checker.high_thresh = cast(float, value)
+            except ValidationError as e:
+                self._show_warning("Invalid Threshold value", str(e))
+                return False
+
+        if name == "mid_thresh":
+            try:
+                new_checker.mid_thresh = cast(float, value)
+            except ValidationError as e:
+                self._show_warning("Invalid Threshold value", str(e))
+                return False
+
+        if name == "low_thresh":
+            try:
+                new_checker.low_thresh = cast(float, value)
+            except ValidationError as e:
+                self._show_warning("Invalid Thresh value", str(e))
                 return False
 
         if name == "max_eccentricity":
@@ -638,6 +651,33 @@ class ImageProcessingTabHandler(QThread):
                 self._show_warning("Invalid Min Size", str(e))
                 return False
 
+        if name == "L_maxA":
+            try:
+                new_checker.L_maxA = cast(float, value)
+            except ValidationError as e:
+                self._show_warning("Invalid Max Area for Large bubbles", str(e))
+                return False
+
+        if name == "L_minA":
+            try:
+                new_checker.L_minA = cast(float, value)
+            except ValidationError as e:
+                self._show_warning("Invalid Min Area for Large bubbles", str(e))
+                return False
+
+        if name == "s_maxA":
+            try:
+                new_checker.s_maxA = cast(float, value)
+            except ValidationError as e:
+                self._show_warning("Invalid Max Area for Small bubbles", str(e))
+                return False
+
+        if name == "s_minA":
+            try:
+                new_checker.s_minA = cast(float, value)
+            except ValidationError as e:
+                self._show_warning("Invalid Min Area for Small bubbles", str(e))
+                return False
         return True
 
     def _show_warning(self, title: str, message: str) -> None:
@@ -958,7 +998,17 @@ class ImageProcessingTabHandler(QThread):
         print("------------------------------Validating Filter Parameters------------------------------")
         for name, value in self.filter_param_dict_1.items():
             print(
-                "Checking steps in confirm_parameter_before_filtering: ",
+                "Checking parameters in step 2: ",
+                name,
+                value,
+            )
+            if_valid = self.check_params(name, value)
+            if not if_valid:
+                return
+
+        for name, value in self.filter_param_dict_2.items():
+            print(
+                "Checking parameters in step 2: ",
                 name,
                 value,
             )
@@ -977,9 +1027,9 @@ class ImageProcessingTabHandler(QThread):
         """
         print("Store fitler params______________")
         if not hasattr(self.gui, "circle_param_box"):
-            print("No find circles.")
+            print("Disable find circles.")
         else:
-            print("Yes find circles")
+            print("Enable find circles")
             for row in range(self.gui.circle_param_box.rowCount()):
                 name_item = self.gui.circle_param_box.item(row, 0)
                 value_item = self.gui.circle_param_box.item(row, 1)
@@ -988,7 +1038,6 @@ class ImageProcessingTabHandler(QThread):
                     param_value = value_item.text()
                     self.filter_param_dict_2[param_name] = float(param_value)
                     print("Updating", param_name, "to", param_value)
-            print("End find circles")
 
         for row in range(self.gui.param_sandbox2.rowCount()):
             name_item = self.gui.param_sandbox2.item(row, 0)

@@ -74,11 +74,9 @@ class Config(BaseModel):  # type: ignore
     # ------------------------------Segment Parameters-------------------------------
     # Morphological element used for binary operations, e.g. opening, closing, etc.
     element_size: PositiveInt
-    element_size_range: tuple[PositiveInt, PositiveInt]
 
     # Connectivity used, use 4 or 8
     connectivity: PositiveInt
-    connectivity_range: tuple[PositiveInt, PositiveInt]
 
     # Images can be resampled to make processing faster
     resample: PositiveFloat
@@ -91,6 +89,8 @@ class Config(BaseModel):  # type: ignore
     high_thresh: PositiveFloat
     mid_thresh: PositiveFloat
     low_thresh: PositiveFloat
+
+    default_range: tuple[StrictFloat, PositiveFloat]
 
     # User input Image resolution
     px2mm: PositiveFloat
@@ -113,8 +113,9 @@ class Config(BaseModel):  # type: ignore
 
     # Path for raw image
     raw_img_path: Path
+
     # ------------------------------Filtering Parameters------------------------------
-    # Reject abnormal bubbles from quantification. E>0.85 or S<0.9
+    # Reject abnormal bubbles from quantification. e.g. E>0.85 or S<0.9
     max_eccentricity: PositiveFloat
     max_eccentricity_range: tuple[PositiveFloat, PositiveFloat]
     min_solidity: PositiveFloat
@@ -126,10 +127,10 @@ class Config(BaseModel):  # type: ignore
 
     # Parameters for finding big and small bubbles
     if_find_circles: StrictStr
-    L_maxA_mm2: PositiveFloat
-    L_minA_mm2: PositiveFloat
-    s_maxA_mm2: PositiveFloat
-    s_minA_mm2: PositiveFloat
+    L_maxA: PositiveFloat
+    L_minA: PositiveFloat
+    s_maxA: PositiveFloat
+    s_minA: PositiveFloat
 
     class Config:
         """Pydantic configuration settings for the Config model.
@@ -144,20 +145,32 @@ class Config(BaseModel):  # type: ignore
         validate_assignment = True
 
     @model_validator(mode="after")
-    def check_morphological_element_size_range(self) -> typing_extensions.Self:
-        """Validates the morphological element size range.
+    def check_if_within_default_range(self) -> typing_extensions.Self:
+        """Validates if the chosen parameter is within default range."""
+        if not (self.default_range[0] <= self.max_thresh <= self.default_range[1]):
+            raise ValueError("Chosen max_thresh is not within valid range (0, 1)")
 
-        Ensures that the lower bound of the range is less than the upper bound.
-        If the bounds are in the wrong order, a ValueError is raised.
+        if not (self.default_range[0] <= self.min_thresh <= self.default_range[1]):
+            raise ValueError("Chosen min_threshold is not within valid range (0, 1)")
 
-        Returns:
-            Self: The instance itself, for method chaining.
-        """
-        low, high = self.element_size_range
-        # Check if the lower bound is less than the upper bound
-        if low >= high:
-            # Raise a ValueError if the bounds are in the wrong order
-            raise ValueError("Limits for the Morphological_element_size_range are in the wrong order")
+        if not (self.default_range[0] <= self.step_size <= self.default_range[1]):
+            raise ValueError("Chosen step_size is not within valid range (0, 1)")
+
+        if not (self.default_range[0] <= self.high_thresh <= self.default_range[1]):
+            raise ValueError("Chosen high_thresh is not within valid range (0, 1)")
+
+        if not (self.default_range[0] <= self.mid_thresh <= self.default_range[1]):
+            raise ValueError("Chosen mid_thresh is not within valid range (0, 1)")
+
+        if not (self.default_range[0] <= self.low_thresh <= self.default_range[1]):
+            raise ValueError("Chosen low_thresh is not within valid range (0, 1)")
+
+        if not (self.default_range[0] <= self.max_eccentricity <= self.default_range[1]):
+            raise ValueError("Chosen max_eccentricity is not within valid range (0, 1)")
+
+        if not (self.default_range[0] <= self.min_solidity <= self.default_range[1]):
+            raise ValueError("Chosen min_solidity is not within valid range (0, 1)")
+
         return self
 
     @model_validator(mode="after")
@@ -178,8 +191,22 @@ class Config(BaseModel):  # type: ignore
         return self
 
     @model_validator(mode="after")
-    def check_connectivity_range(self) -> typing_extensions.Self:
-        """Validates the connectivity range.
+    def check_connectivity(self) -> typing_extensions.Self:
+        """Validates the connectivity value.
+
+        Ensures that the connectivity is one of the allowed values (4 or 8).
+        If the value is not allowed, a ValueError is raised.
+
+        Returns:
+            Self: The instance itself, for method chaining.
+        """
+        if not (self.connectivity == 4 or self.connectivity == 8):
+            raise ValueError("Connectivity must be 4 or 8")
+        return self
+
+    @model_validator(mode="after")
+    def check_threshold_order_iterative(self) -> typing_extensions.Self:
+        """Validates the threshold order.
 
         Ensures that the lower bound of the range is less than the upper bound.
         If the bounds are in the wrong order, a ValueError is raised.
@@ -187,11 +214,38 @@ class Config(BaseModel):  # type: ignore
         Returns:
             Self: The instance itself, for method chaining.
         """
-        low, high = self.connectivity_range
-        # Check if the lower bound is less than the upper bound
-        if low >= high:
-            # Raise a ValueError if the bounds are in the wrong order
-            raise ValueError("Limits for the Connectivity_range are in the wrong order")
+        low, high = self.min_thresh, self.max_thresh
+        if not (high > low):
+            raise ValueError("Max threshold must be greater than min threshold\n")
+        return self
+
+    @model_validator(mode="after")
+    def check_threshold_order_normal(self) -> typing_extensions.Self:
+        """Validates the threshold order.
+
+        Ensures that the lower bound of the range is less than the upper bound.
+        If the bounds are in the wrong order, a ValueError is raised.
+
+        Returns:
+            Self: The instance itself, for method chaining.
+        """
+        low, mid, high = self.low_thresh, self.mid_thresh, self.high_thresh
+        if not (high > mid > low):
+            raise ValueError("Values of theshold must be in the order [low < mid < high]\n")
+        return self
+
+    @model_validator(mode="after")
+    def check_step_size(self) -> typing_extensions.Self:
+        """Validates the step size.
+
+        Ensures that the step size is smaller than the difference between max
+        thresh and min thresh.
+
+        Returns:
+            Self: The instance itself, for method chaining.
+        """
+        if not (self.step_size < (self.max_thresh - self.min_thresh)):
+            raise ValueError("Step size must be smaller than the difference between max and min threshold")
         return self
 
     @model_validator(mode="after")
@@ -289,5 +343,53 @@ class Config(BaseModel):  # type: ignore
         if low >= high:
             # Raise a ValueError if the bounds are in the wrong order
             raise ValueError("Limits for the min_size_range are in the wrong order")
+        # Return the instance itself for method chaining
+        return self
+
+    @model_validator(mode="after")
+    def check_L_area_order(self) -> typing_extensions.Self:
+        """Validates the L area order.
+
+        Ensures that the lower bound of the range is less than the upper bound.
+        If the bounds are in the wrong order (lower bound >= upper bound), a ValueError
+        is raised.
+
+        Returns:
+            Self: The instance itself, for method chaining.
+
+        Raises:
+            ValueError: If the lower bound is greater than or equal to the upper bound.
+        """
+        # Get the lower and upper bounds of the minimum size range
+        high, low = self.L_maxA, self.L_minA
+
+        # Check if the lower bound is less than the upper bound
+        if low >= high:
+            # Raise a ValueError if the bounds are in the wrong order
+            raise ValueError("Limits for the L area range are in the wrong order, should be [L_maxA > L_minA]")
+        # Return the instance itself for method chaining
+        return self
+
+    @model_validator(mode="after")
+    def check_s_area_order(self) -> typing_extensions.Self:
+        """Validates the L area order.
+
+        Ensures that the lower bound of the range is less than the upper bound.
+        If the bounds are in the wrong order (lower bound >= upper bound), a ValueError
+        is raised.
+
+        Returns:
+            Self: The instance itself, for method chaining.
+
+        Raises:
+            ValueError: If the lower bound is greater than or equal to the upper bound.
+        """
+        # Get the lower and upper bounds of the minimum size range
+        high, low = self.s_maxA, self.s_minA
+
+        # Check if the lower bound is less than the upper bound
+        if low >= high:
+            # Raise a ValueError if the bounds are in the wrong order
+            raise ValueError("Limits for the S area range are in the wrong order, should be [s_maxA > s_minA]")
         # Return the instance itself for method chaining
         return self
