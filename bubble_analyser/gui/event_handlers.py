@@ -517,6 +517,7 @@ class ImageProcessingTabHandler(QThread):
         super().__init__()
         self.model: ImageProcessingModel = image_processing_model
         self.params: Config = params
+        self.params_checker: Config = self.params.model_copy()
         self.current_index: int = 0
         self.algorithm_list: list[str] = []
         self.export_handler: ExportSettingsHandler
@@ -561,6 +562,8 @@ class ImageProcessingTabHandler(QThread):
     def check_params(self, name: str, value: int | float | str) -> bool:
         """Validate a parameter value against the configuration schema.
 
+        A new Config instance is being created so the validation error can be refreshed every time.
+
         Args:
             name (str): The name of the parameter to validate.
             value (int | float): The value to validate.
@@ -568,65 +571,69 @@ class ImageProcessingTabHandler(QThread):
         Returns:
             bool: True if the parameter is valid, False otherwise.
         """
+        new_checker: Config = self.params_checker.model_copy()
+
+        print("check_params:", name, value)
         if name == "element_size":
+            print("True")
             try:
-                self.params.element_size = cast(int, value)
+                new_checker.element_size = cast(int, value)
             except ValidationError as e:
                 self._show_warning("Invalid Element Size", str(e))
                 return False
 
         if name == "connectivity":
             try:
-                self.params.connectivity = cast(int, value)
+                new_checker.connectivity = cast(int, value)
             except ValidationError as e:
                 self._show_warning("Invalid Connectivity", str(e))
                 return False
 
         if name == "resample":
             try:
-                self.params.resample = cast(float, value)
+                new_checker.resample = cast(float, value)
             except ValidationError as e:
                 self._show_warning("Invalid Resample Factor", str(e))
                 return False
 
         if name == "max_thresh":
             try:
-                self.params.max_thresh = cast(float, value)
+                new_checker.max_thresh = cast(float, value)
             except ValidationError as e:
                 self._show_warning("Invalid Max Threshold", str(e))
                 return False
 
         if name == "min_thresh":
             try:
-                self.params.min_thresh = cast(float, value)
+                new_checker.min_thresh = cast(float, value)
             except ValidationError as e:
                 self._show_warning("Invalid Min Threshold", str(e))
                 return False
 
         if name == "step_size":
             try:
-                self.params.step_size = cast(float, value)
+                new_checker.step_size = cast(float, value)
             except ValidationError as e:
                 self._show_warning("Invalid Step Size", str(e))
                 return False
 
         if name == "max_eccentricity":
             try:
-                self.params.max_eccentricity = cast(float, value)
+                new_checker.max_eccentricity = cast(float, value)
             except ValidationError as e:
                 self._show_warning("Invalid Max Eccentricity", str(e))
                 return False
 
         if name == "min_solidity":
             try:
-                self.params.min_solidity = cast(float, value)
+                new_checker.min_solidity = cast(float, value)
             except ValidationError as e:
                 self._show_warning("Invalid Min Solidity", str(e))
                 return False
 
         if name == "min_size":
             try:
-                self.params.min_size = cast(float, value)
+                new_checker.min_size = cast(float, value)
             except ValidationError as e:
                 self._show_warning("Invalid Min Size", str(e))
                 return False
