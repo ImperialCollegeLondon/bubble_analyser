@@ -440,7 +440,8 @@ class CalibrationTabHandler:
 
         Updates the calibration model with the final values and switches to the
         image processing tab. If calibration has already been confirmed, displays
-        a warning instead.
+        a warning instead. The first image of the list will be previewed in the
+        image processing tab.
         """
         if self.calibration_model.calibration_confirmed:
             self.gui.manual_px_mm_input.setText(f"{self.calibration_model.px2mm:.3f}")
@@ -661,6 +662,35 @@ class ImageProcessingTabHandler(QThread):
         self.current_index = current_row
         print("(event_handlers/update_sample_img)current index: ", self.current_index)
         self.preview_image()
+        self.update_preview_procsd_img_button()
+
+    def update_preview_procsd_img_button(self) -> None:
+        """Check if the current image are being processed with segmentation and filtering.
+
+        If the current image has been processed, the preview processed image button is enabled.
+        """
+        if_img, img_before_filter, img_after_filter = self.model.preview_processed_image(self.current_index)
+        print("update_preview_procsd_img_button:", if_img)
+        if if_img:
+            print("Set true")
+            self.gui.preview_processed_images_button.setEnabled(True)
+
+        else:
+            self.gui.preview_processed_images_button.setEnabled(False)
+
+    def preview_processed_images(self) -> None:
+        """Preview the processed images for the current image.
+
+        Retrieves the processed images from the model and displays them in the preview areas.
+        If the image hasn't been processed yet, displays a warning.
+        """
+        if_img, img_before_filter, img_after_filter = self.model.preview_processed_image(self.current_index)
+
+        if if_img:
+            self.update_label_before_filtering(img_before_filter)
+            self.update_process_image_preview(img_after_filter)
+        else:
+            self._show_warning("Image Not Found", "Image has not been fully processed yet.")
 
     # -------Second Column Functions-------------------------
     def initialize_algorithm_combo(self) -> None:
@@ -731,20 +761,6 @@ class ImageProcessingTabHandler(QThread):
             algorithm (str): The name of the algorithm to set in the model.
         """
         self.model.algorithm = algorithm
-
-    def preview_processed_images(self) -> None:
-        """Preview the processed images for the current image.
-
-        Retrieves the processed images from the model and displays them in the preview areas.
-        If the image hasn't been processed yet, displays a warning.
-        """
-        if_img, img_before_filter, img_after_filter = self.model.preview_processed_image(self.current_index)
-
-        if if_img:
-            self.update_label_before_filtering(img_before_filter)
-            self.update_process_image_preview(img_after_filter)
-        else:
-            self._show_warning("Image Not Found", "Image has not been fully processed yet.")
 
     def confirm_parameter_before_filtering(self) -> None:
         """Confirm the parameters for the first step of image processing.

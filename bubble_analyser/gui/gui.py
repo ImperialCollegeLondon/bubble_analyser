@@ -366,8 +366,9 @@ class MainWindow(QMainWindow):
         next_button = QPushButton("Next Img >")
         prev_button.clicked.connect(lambda: self.main_handler.tab3_update_sample_image("prev"))
         next_button.clicked.connect(lambda: self.main_handler.tab3_update_sample_image("next"))
-        preview_processed_images_button = QPushButton("Preview Processed Images")
-        preview_processed_images_button.clicked.connect(self.main_handler.tab3_preview_processed_images)
+        self.preview_processed_images_button = QPushButton("Preview Processed Images")
+        self.preview_processed_images_button.setEnabled(False)
+        self.preview_processed_images_button.clicked.connect(self.main_handler.tab3_preview_processed_images)
 
         first_column_layout.addWidget(QLabel("Select image and preview"))
         first_column_layout.addWidget(self.sample_image_preview)
@@ -378,7 +379,7 @@ class MainWindow(QMainWindow):
         first_column_buttons_layout.addWidget(next_button)
 
         first_column_layout.addLayout(first_column_buttons_layout)
-        first_column_layout.addWidget(preview_processed_images_button)
+        first_column_layout.addWidget(self.preview_processed_images_button)
 
         # ----------- Second Column: Processed Image Before Filtering and Sandbox ----
 
