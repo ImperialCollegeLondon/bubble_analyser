@@ -253,10 +253,6 @@ class FolderTabHandler:
         """
         images, _ = self.model.get_image_list(folder_path)
         self.gui.image_list.clear()
-
-        for file_name in images:
-            self.gui.image_list.addItem(file_name)
-
         self.gui.image_list.addItems(images)
 
     def confirm_folder_selection(self) -> None:
