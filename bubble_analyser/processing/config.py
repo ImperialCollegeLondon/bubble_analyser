@@ -61,13 +61,11 @@ class Config(BaseModel):  # type: ignore
         ruler_img_path: Path to the ruler image file for calibration.
         save_path: Path for saving data results and graphs.
         save_path_for_images: Path for saving processed images.
-        do_batch: Flag indicating whether to perform batch processing.
         img_resample: Image resampling factor.
         raw_img_path: Path to the raw input image.
         max_thresh: Maximum threshold value.
         min_thresh: Minimum threshold value.
         step_size: Step size for threshold iteration.
-        h_value: h_value for minima suppresion
     """
 
     # Default PARAMETERS
