@@ -5,7 +5,6 @@ It includes functionality for dynamic method loading, image preprocessing, segme
 filtering, and ellipse detection and measurement.
 """
 
-import importlib.resources
 import importlib.util
 import inspect
 import sys
@@ -82,16 +81,29 @@ class MethodsHandler:
                 from importlib.resources import files
 
                 package_path = files(package_name)
-                for file_path in package_path.glob("*.py"):  # type: ignore
-                    if file_path.name != "__init__.py":
-                        module_name = file_path.stem
-                        spec = importlib.util.spec_from_file_location(module_name, file_path)
-                        if spec is not None:
-                            module = importlib.util.module_from_spec(spec)
-                            if spec.loader is not None:
-                                spec.loader.exec_module(module)
-                                modules[module_name] = module
-            # For Python 3.8 and below
+                # Use a more cross-platform approach instead of glob()
+                try:
+                    # For directories
+                    for file_path in package_path.iterdir():  # type: ignore
+                        if file_path.is_file() and file_path.name.endswith(".py") and file_path.name != "__init__.py":
+                            module_name = str(file_path).rsplit(".", 1)[0].split("/")[-1]
+                            spec = importlib.util.spec_from_file_location(module_name, str(file_path))
+                            if spec is not None:
+                                module = importlib.util.module_from_spec(spec)
+                                if spec.loader is not None:
+                                    spec.loader.exec_module(module)
+                                    modules[module_name] = module
+                except (TypeError, AttributeError):
+                    # For MultiplexedPath or other path types that don't support iterdir
+                    from importlib.resources import contents
+
+                    for resource in contents(package_name):
+                        if resource.endswith(".py") and resource != "__init__.py":
+                            module_name = resource[:-3]  # Remove .py extension
+                            module_path = f"{package_name}.{module_name}"
+                            modules[module_name] = importlib.import_module(module_path)
+
+            # # For Python 3.8 and below
             # else:
             #     import importlib_resources
 
@@ -100,6 +112,7 @@ class MethodsHandler:
             #             module_name = resource[:-3]  # Remove .py extension
             #             module_path = f"{package_name}.{module_name}"
             #             modules[module_name] = importlib.import_module(module_path)
+
         except Exception as e:
             print(f"Error loading modules: {e}")
             # Fallback to direct import of watershed_methods
