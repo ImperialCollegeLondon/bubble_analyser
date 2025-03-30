@@ -21,6 +21,8 @@ from __future__ import annotations
 import csv
 import os
 import sys
+import logging
+from datetime import datetime
 from pathlib import Path
 from typing import cast
 
@@ -51,8 +53,7 @@ from bubble_analyser.gui import (
     WorkerThread,
 )
 from bubble_analyser.gui.gui import MainWindow as MainWindow
-from bubble_analyser.processing import Config, cv2_to_qpixmap
-
+from bubble_analyser.processing import Config, cv2_to_qpixmap, LoggerWriter
 
 class ExportSettingsHandler(QDialog):
     """A dialog for configuring export settings for processed images.
@@ -117,6 +118,7 @@ class ExportSettingsHandler(QDialog):
             return None
         super().accept()
         self.save_path = cast(Path, self.default_path_edit.text())
+        logging.info(f"Export path for final graph, csv datafile, and processed images (optional) set as: {self.save_path}")
 
     def select_folder(self) -> None:
         """Open a file dialog to select a folder for saving processed images.
@@ -245,6 +247,7 @@ class FolderTabHandler:
         if folder_path:
             self._update_folder_path(folder_path)
             self._populate_image_list(folder_path)
+        logging.info(f"Raw image path set as: {folder_path}")
 
     def _update_folder_path(self, folder_path: str) -> None:
         """Update the model and GUI with the selected folder path.
@@ -281,7 +284,8 @@ class FolderTabHandler:
             self._populate_image_list(folder_path)
             self.model.confirm_folder_selection(folder_path)
             self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.calibration_tab))
-
+            logging.info("Raw image path confirmed and locked.")
+            
     def preview_image_folder_tab(self) -> None:
         """Display a preview of the selected image in the folder tab.
 
@@ -464,7 +468,6 @@ class CalibrationTabHandler:
         """
         self.gui.image_list.setCurrentRow(0)
         selected_image = self.gui.image_list.currentItem().text()
-        print("Set current image to:", selected_image)
         folder_path = self.gui.folder_path_edit.text()
         image_path = folder_path + "/" + selected_image
         pixmap = QPixmap(image_path)
@@ -577,7 +580,7 @@ class ImageProcessingTabHandler(QThread):
         """
         new_checker: Config = self.params_checker.model_copy()
 
-        print("check_params:", name, value)
+        logging.info(f"Checking parameter: {name} {value}")
         if name == "element_size":
             print("True")
             try:
@@ -719,7 +722,8 @@ class ImageProcessingTabHandler(QThread):
                 self.gui.image_list.setCurrentRow(current_row)
 
         self.current_index = current_row
-        print("(event_handlers/update_sample_img)current index: ", self.current_index)
+        logging.info(f"(event_handlers/update_sample_img)Current image index: {self.current_index}")
+
         self.preview_image()
         self.update_preview_procsd_img_button()
 
@@ -729,9 +733,8 @@ class ImageProcessingTabHandler(QThread):
         If the current image has been processed, the preview processed image button is enabled.
         """
         if_img, img_before_filter, img_after_filter = self.model.preview_processed_image(self.current_index)
-        print("update_preview_procsd_img_button:", if_img)
         if if_img:
-            print("Set true")
+            logging.info("Preview processed image enabled for current image.")
             self.gui.preview_processed_images_button.setEnabled(True)
 
         else:
@@ -761,12 +764,14 @@ class ImageProcessingTabHandler(QThread):
         # Initialize the algorithm combo box
         # And achieve all the available methods' names
 
+        logging.info("Initializing algorithm combo box...")
         for algorithm, params in self.model.all_methods_n_params.items():
-            print("initialize algorithm:", algorithm)
+            logging.info(f"Initialize algorithm: {algorithm}")
             self.algorithm_list.append(algorithm)
 
         self.gui.algorithm_combo.addItems(self.algorithm_list)
         self.update_model_algorithm(self.algorithm_list[0])
+        logging.info("Algorithm combo box initialized.")
 
     def load_parameter_table_1(self, algorithm: str) -> None:
         """Load the parameter table with values for the selected algorithm.
@@ -778,10 +783,9 @@ class ImageProcessingTabHandler(QThread):
         # This function only triggered by first initialization and algorithm change
 
         self.current_algorithm = algorithm
-        print("current algorithm:", self.current_algorithm)
+        logging.info(f"Current choosing algorithm: {self.current_algorithm}")
 
         for algorithm_name, params in self.model.all_methods_n_params.items():
-            print("algorithm name:", algorithm_name)
             if algorithm_name == self.current_algorithm:
                 self.gui.param_sandbox1.setRowCount(len(params))
 
@@ -827,8 +831,13 @@ class ImageProcessingTabHandler(QThread):
         Validates all parameters against the configuration schema before
         proceeding with the first processing step.
         """
+        logging.info("-----------------------------------------------------------------------------------------")
+        logging.info("-------------------------------Running Step 1: Segmentation------------------------------")
+        logging.info("-----------------------------------------------------------------------------------------")
         self.update_segment_parameters()
-        print("------------------------------Validating Segment Parameters------------------------------")
+
+        # Validate the parameters
+        logging.info("------------------------------Validating Segment Parameters------------------------------")
         # Update the model parameters
         for algorithm_name, params in self.model.all_methods_n_params.items():
             if algorithm_name == self.model.algorithm:
@@ -836,11 +845,6 @@ class ImageProcessingTabHandler(QThread):
                     row,
                     (name, value),
                 ) in enumerate(params.items()):
-                    print(
-                        "Checking steps in confirm_parameter_before_filtering: ",
-                        name,
-                        value,
-                    )
                     if_valid = self.check_params(name, value)
                     if not if_valid:
                         return
@@ -848,23 +852,23 @@ class ImageProcessingTabHandler(QThread):
         # self.pass_segment_params(self.model.segment_param_dict)
         self._process_step_1()
 
-    def looks_like_float(self, s: str) -> bool:
-        """Check if a string represents a floating-point number.
+    # def looks_like_float(self, s: str) -> bool:
+    #     """Check if a string represents a floating-point number.
 
-        Args:
-            s (str): The string to check.
+    #     Args:
+    #         s (str): The string to check.
 
-        Returns:
-            bool: True if the string represents a floating-point number, False otherwise.
-        """
-        try:
-            f = float(s)
-            # Check if it has a fractional part
-            print(s, "is float?")
-            return not f.is_integer()
-        except ValueError:
-            print(s, "is not float")
-            return False
+    #     Returns:
+    #         bool: True if the string represents a floating-point number, False otherwise.
+    #     """
+    #     try:
+    #         f = float(s)
+    #         # Check if it has a fractional part
+    #         logging.info(s, "determined as float.")
+    #         return not f.is_integer()
+    #     except ValueError:
+    #         logging.info(s, "determined as not a float.")
+    #         return False
 
     def convert_value(self, text: str) -> int | float | str:
         """Convert a string to the appropriate numeric type.
@@ -880,7 +884,13 @@ class ImageProcessingTabHandler(QThread):
         try:
             value = float(text)
             # Return an int if the number is integer
-            return int(value) if value.is_integer() else value
+            if value.is_integer():
+                logging.info(f"{value} determined as integer.")
+                return int(value)
+            else:
+                logging.info(f"{value} determined as float.")
+                return value
+            # return int(value) if value.is_integer() else value
         except ValueError:
             # Fallback if not a number
             return text
@@ -914,15 +924,13 @@ class ImageProcessingTabHandler(QThread):
         """
         # Update the params in the model
         # Extract parameters from the table
+        logging.info("------------------------------Updating Parameters------------------------------")
         params = self.extract_parameters_from_table(self.gui.param_sandbox1)
-
-        print("------------------------------Updating Parameters------------------------------")
-
         # Update the model's dictionary for the selected algorithm
         for algorithm_name, params_in_dict in self.model.all_methods_n_params.items():
             if algorithm_name == self.model.algorithm:
                 for name, value in params.items():
-                    print("Updating", name, "to", value)
+                    logging.info(f"Updating {name} to {value}")
                     params_in_dict[name] = value
 
         return True
@@ -933,6 +941,7 @@ class ImageProcessingTabHandler(QThread):
         Calls the model's step_1_main method to process the current image
         and updates the preview with the results.
         """
+        logging.info("------------------------------Processing Started------------------------------")
         step_1_img = self.model.step_1_main(self.current_index)
         self.update_label_before_filtering(step_1_img)
 
@@ -953,16 +962,19 @@ class ImageProcessingTabHandler(QThread):
         Populates the filtering parameters table with the current values from
         the temporary filter parameter dictionary.
         """
+        logging.info("Initializing parameter table 2...")
         self.filter_param_dict_1 = self.model.filter_param_dict_1
         self.filter_param_dict_2 = self.model.filter_param_dict_2
 
         self.gui.param_sandbox2.setRowCount(len(self.filter_param_dict_1))
         row = 0
         for property, value in self.filter_param_dict_1.items():
-            print("Filter param name:", property, ", value:", value)
+            logging.info(f"Filter param name: {property}, value: {value}")
             self.gui.param_sandbox2.setItem(row, 0, QTableWidgetItem(property))
             self.gui.param_sandbox2.setItem(row, 1, QTableWidgetItem(str(value)))
             row += 1
+
+        logging.info("Parameter table 2 initialized.")
 
     def handle_find_circles(self) -> None:
         """Toggle the visibility of the circle parameter box based on checkbox state.
@@ -978,23 +990,21 @@ class ImageProcessingTabHandler(QThread):
         """
         state = self.gui.fc_checkbox.isChecked()
         if state:
-            print("Hanldle find circles - Yes")
+            logging.info("Find circles enabled.")
             self.gui.circle_param_box.show()
             self.filter_param_dict_2["find_circles(Y/N)"] = "Y"
-
             self.gui.circle_param_box.setRowCount(len(self.filter_param_dict_2) - 1)
-            print("len of filter param 2 - 1 :", len(self.filter_param_dict_2) - 1)
+            logging.info("Find circles parameter box set as Visible.")
 
             row = 0
-            print(self.filter_param_dict_2)
             for property, value in self.filter_param_dict_2.items():
                 if property != "find_circles(Y/N)":
-                    print("Filter param_2 name:", property, ", value:", value)
+                    logging.info(f"Filter parameter name: {property}, value: {value}")
                     self.gui.circle_param_box.setItem(row, 0, QTableWidgetItem(property))
                     self.gui.circle_param_box.setItem(row, 1, QTableWidgetItem(str(value)))
                     row += 1
         else:
-            print("Hanldle find circles - No")
+            logging.info("Find circles disabled.")
             self.gui.circle_param_box.hide()
             self.filter_param_dict_2["find_circles(Y/N)"] = "N"
 
@@ -1004,26 +1014,20 @@ class ImageProcessingTabHandler(QThread):
         Validates all filtering parameters against the configuration schema before
         proceeding with the second processing step.
         """
-        print("------------------------------Updating Filtering Parameters------------------------------")
+        logging.info("-----------------------------------------------------------------------------------------")
+        logging.info("--------------------------------Running Step 2: Filtering--------------------------------")
+        logging.info("-----------------------------------------------------------------------------------------")
+
+        logging.info("------------------------------Updating Filtering Parameters------------------------------")
         self.store_filter_params()
 
-        print("------------------------------Validating Filter Parameters------------------------------")
+        logging.info("------------------------------Validating Filter Parameters------------------------------")
         for name, value in self.filter_param_dict_1.items():
-            print(
-                "Checking parameters in step 2: ",
-                name,
-                value,
-            )
             if_valid = self.check_params(name, value)
             if not if_valid:
                 return
 
         for name, value in self.filter_param_dict_2.items():
-            print(
-                "Checking parameters in step 2: ",
-                name,
-                value,
-            )
             if_valid = self.check_params(name, value)
             if not if_valid:
                 return
@@ -1037,11 +1041,10 @@ class ImageProcessingTabHandler(QThread):
         Extracts the circle parameters from the circle parameter table widget and updates the
         filter parameter dictionary with the new values.
         """
-        print("Store fitler params______________")
+        logging.info("Storing filter parameters...")
         if not hasattr(self.gui, "circle_param_box"):
-            print("Disable find circles.")
+            pass
         else:
-            print("Enable find circles")
             for row in range(self.gui.circle_param_box.rowCount()):
                 name_item = self.gui.circle_param_box.item(row, 0)
                 value_item = self.gui.circle_param_box.item(row, 1)
@@ -1049,7 +1052,7 @@ class ImageProcessingTabHandler(QThread):
                     param_name = name_item.text()
                     param_value = value_item.text()
                     self.filter_param_dict_2[param_name] = float(param_value)
-                    print("Updating", param_name, "to", param_value)
+                    logging.info(f"Updating {param_name} to {param_value}")
 
         for row in range(self.gui.param_sandbox2.rowCount()):
             name_item = self.gui.param_sandbox2.item(row, 0)
@@ -1062,7 +1065,7 @@ class ImageProcessingTabHandler(QThread):
                 float_value = cast(float, param_value)
                 self.filter_param_dict_1[param_name] = float_value
 
-                print("Updating", param_name, "to", param_value)
+                logging.info(f"Updating {param_name} to {param_value}")
 
     def _process_step_2(self) -> None:
         """Execute the second step of image processing (filtering).
@@ -1108,7 +1111,7 @@ class ImageProcessingTabHandler(QThread):
         if response == QMessageBox.StandardButton.Ok:
             self.batch_process_images()
         else:
-            print("Batch processing canceled.")
+            logging.info("Batch processing canceled.")
 
     def create_confirm_dialog(self) -> QMessageBox:
         """Create a confirmation dialog for batch processing.
@@ -1153,7 +1156,7 @@ class ImageProcessingTabHandler(QThread):
         the worker thread to process all images. If saving is enabled, verifies
         that the save path exists before proceeding.
         """
-        print("------------------------------Validating Segment Parameters------------------------------")
+        logging.info("------------------------------Validating Segment Parameters------------------------------")
         # Update the model parameters
         for algorithm_name, params in self.model.all_methods_n_params.items():
             if algorithm_name == self.model.algorithm:
@@ -1161,16 +1164,14 @@ class ImageProcessingTabHandler(QThread):
                     row,
                     (name, value),
                 ) in enumerate(params.items()):
-                    print(
-                        "Checking steps in confirm_parameter_before_filtering: ",
-                        name,
-                        value,
+                    logging.info(
+                        f"Checking segment params before batch processing {name} {value}"
                     )
                     if_valid = self.check_params(name, value)
                     if not if_valid:
                         return
 
-        print("------------------------------Validating Filter Parameters------------------------------")
+        logging.info("------------------------------Validating Filter Parameters------------------------------")
         self.store_filter_params()
         self.update_segment_parameters()
         self.pass_filter_params()
@@ -1220,7 +1221,7 @@ class ImageProcessingTabHandler(QThread):
             value (int): The new progress value to display.
         """
         self.progress_bar.setValue(value)
-        print("update progress bar:", value)
+        logging.info(f"Updating progress bar: {value}")
 
     def on_processing_done(self) -> None:
         """Handle the completion of image processing.
@@ -1285,11 +1286,8 @@ class ResultsTabHandler:
         self.gui.d32_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
         self.gui.dmean_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
         self.gui.dxy_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
-
         self.gui.dxy_x_input.textChanged.connect(self.generate_histogram)  # Connect to auto-update
-
         self.gui.dxy_y_input.textChanged.connect(self.generate_histogram)  # Connect to auto-update
-
         self.gui.save_button.clicked.connect(self.save_results)
 
     def load_ellipse_properties(self, properties: list[list[dict[str, float]]]) -> None:
@@ -1391,8 +1389,8 @@ class ResultsTabHandler:
             "South West": "lower left",
         }
 
-        print("legend_position:", legend_position)
-        print(legend_location_map.get(legend_position, "upper right"))
+        logging.info(f"Legend_position: {legend_position}")
+        # print(legend_location_map.get(legend_position, "upper right"))
 
         # Add legend to the graph
         if show_cdf or show_pdf or show_d32 or show_dmean or show_dxy:
@@ -1554,6 +1552,9 @@ class MainHandler:
 
         self.gui: MainWindow
 
+        # Set up logging to capture terminal output
+        self.setup_logging()
+
         # Get the base directory for the application
         if getattr(sys, "frozen", False):
             # If the application is run as a bundle (PyInstaller)
@@ -1585,6 +1586,7 @@ class MainHandler:
         Creates instances of all necessary handlers and models with appropriate
         configuration parameters from the TOML file.
         """
+        logging.info(f"Initializing Handlers...")
         self.toml_handler = TomlFileHandler(self.toml_file_path)
 
         self.input_file_model = InputFilesModel()
@@ -1615,6 +1617,9 @@ class MainHandler:
         """
         from bubble_analyser.gui import MainWindow
 
+        logging.basicConfig(level=logging.INFO)
+        logging.info(f"Initializing GUI...")
+
         self.app = QApplication(sys.argv)
         self.gui = MainWindow()
         self.gui.show()
@@ -1634,6 +1639,7 @@ class MainHandler:
         the GUI has been initialized and before handlers start interacting with
         GUI components.
         """
+        logging.info(f"Connecting GUI and Handlers...")
         self.folder_tab_handler.load_gui(self.gui)
         self.calibration_tab_handler.load_gui(self.gui)
         self.image_processing_tab_handler.load_gui(self.gui)
@@ -1772,6 +1778,7 @@ class MainHandler:
 
         Resets the application state and restarts the GUI.
         """
+        logging.info(f"Restarting application...")
         self.disconnect_gui_and_handlers()
         self.disconnect_handlers_signals()
         self.clear_all_gui_contents()
@@ -1784,15 +1791,20 @@ class MainHandler:
 
         self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.folder_tab))
 
+        logging.info(f"Application restarted, a new mission initialzed.")
+        logging.info(f"------------------------------New mission started------------------------------")
+
     def load_export_settings(self) -> None:
         """Initialize and configure the export settings handler.
 
         Creates the export settings handler and provides it to relevant tab handlers
         that need access to export functionality.
         """
+        logging.info(f"Initializing Export Settings...")
         self.export_handler = ExportSettingsHandler(parent=self.gui, params=self.toml_handler.params)
         self.image_processing_tab_handler.export_handler = self.export_handler
         self.results_tab_handler.export_handler = self.export_handler
+        logging.info(f"Export Settings initialized!")
 
     def menubar_open_export_settings_dialog(self) -> None:
         """Open the export settings dialog from the menu bar.
@@ -1965,14 +1977,35 @@ class MainHandler:
         self.results_tab_handler.load_ellipse_properties(self.image_processing_model.ellipses_properties)
         self.results_tab_handler.generate_histogram()
 
-    def save_results(self) -> None:
-        """Save the analysis results to disk.
-
-        Delegates the result saving functionality to the results tab handler,
-        which exports the processed data according to the configured export settings.
+    def setup_logging(self) -> None:
+        """Set up logging to capture terminal output to a file.
+        
+        This method configures a logging system that captures all print statements
+        and other terminal outputs to a timestamped log file in the 'logs' directory.
         """
-        self.results_tab_handler.save_results()
-
+        # Create logs directory if it doesn't exist
+        logs_dir = Path("logs")
+        logs_dir.mkdir(exist_ok=True)
+        
+        # Create a timestamped log filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_file = logs_dir / f"bubble_analyser_{timestamp}.log"
+        
+        # Configure logging
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(levelname)s - %(message)s',
+            handlers=[
+                logging.FileHandler(log_file),
+                logging.StreamHandler()  # This will still print to console
+            ]
+        )
+        
+        # Redirect stdout and stderr to the logger
+        sys.stdout = LoggerWriter(logging.info)
+        sys.stderr = LoggerWriter(logging.error)
+        
+        logging.info(f"Starting Bubble Analyser application. Log file: {log_file}")
 
 if __name__ == "__main__":
     main_handler = MainHandler()
