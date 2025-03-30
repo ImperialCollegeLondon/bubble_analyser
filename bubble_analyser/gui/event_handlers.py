@@ -344,7 +344,7 @@ class CalibrationTabHandler:
             gui: The main GUI instance.
         """
         self.gui = gui
-        
+
     def select_ruler_button(self) -> None:
         """Handle the process of resolution calibration with ruler image selecion and pixel-to-mm conversion."""
         self.select_px_mm_image()
@@ -1272,6 +1272,25 @@ class ResultsTabHandler:
             gui: The main GUI instance.
         """
         self.gui = gui
+        # results tab
+        self.gui.pdf_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
+        self.gui.cdf_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
+
+        self.gui.bins_spinbox.valueChanged.connect(self.generate_histogram)  # Connect to auto-update
+
+        self.gui.min_x_axis_input.textChanged.connect(self.generate_histogram)  # Connect to auto-update
+        self.gui.max_x_axis_input.textChanged.connect(self.generate_histogram)  # Connect to auto-update
+
+        self.gui.legend_position_combobox.currentIndexChanged.connect(self.generate_histogram)  # Connect to auto-update
+        self.gui.d32_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
+        self.gui.dmean_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
+        self.gui.dxy_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
+
+        self.gui.dxy_x_input.textChanged.connect(self.generate_histogram)  # Connect to auto-update
+
+        self.gui.dxy_y_input.textChanged.connect(self.generate_histogram)  # Connect to auto-update
+
+        self.gui.save_button.clicked.connect(self.save_results)
 
     def load_ellipse_properties(self, properties: list[list[dict[str, float]]]) -> None:
         """Load the properties of detected ellipses for display and analysis.
@@ -1554,11 +1573,11 @@ class MainHandler:
         self.initialize_gui()
         self.initialize_handlers()
         self.initialize_handlers_signals()
+        self.load_export_settings()
 
         self.load_gui_for_handlers()
         self.connect_gui_and_handlers()
         self.gui_exiting()
-        # self.load_export_settings()
 
     def initialize_handlers(self) -> None:
         """Initialize all handler classes and models used by the application.
@@ -1580,7 +1599,7 @@ class MainHandler:
         )
 
         self.results_tab_handler = ResultsTabHandler(params=self.toml_handler.params)
-        
+
     def initialize_handlers_signals(self) -> None:
         """Connect signals between handlers to enable communication.
 
@@ -1600,7 +1619,11 @@ class MainHandler:
         self.gui = MainWindow()
         self.gui.show()
 
-    def gui_exiting(self):
+    def gui_exiting(self) -> None:
+        """Handle the exit of the GUI application.
+
+        Ensures that the application exits gracefully when the main window is closed.
+        """
         sys.exit(self.app.exec())
 
     def load_gui_for_handlers(self) -> None:
@@ -1615,9 +1638,14 @@ class MainHandler:
         self.calibration_tab_handler.load_gui(self.gui)
         self.image_processing_tab_handler.load_gui(self.gui)
         self.results_tab_handler.load_gui(self.gui)
-    
-    def connect_gui_and_handlers(self) -> None:
 
+    def connect_gui_and_handlers(self) -> None:
+        """Connect GUI components to their respective handlers.
+
+        Sets up signal-slot connections between GUI components and their respective
+        handlers to enable proper event handling and interaction.
+        """
+        # menubar
         self.gui.export_setting_action.triggered.connect(self.menubar_open_export_settings_dialog)
         self.gui.restart_action.triggered.connect(self.menubar_ask_if_restart)
 
@@ -1626,7 +1654,7 @@ class MainHandler:
         self.gui.select_folder_button.clicked.connect(self.tab1_select_folder)
         self.gui.confirm_folder_button.clicked.connect(self.tab1_confirm_folder_selection)
         self.gui.image_list.clicked.connect(self.folder_tab_handler.preview_image_folder_tab)
-        
+
         # calibration tab
         self.gui.pixel_img_name.setText(str(self.calibration_tab_handler.px_img_path))
         self.gui.pixel_img_select_button.clicked.connect(self.tab2_select_ruler_button)
@@ -1634,7 +1662,7 @@ class MainHandler:
         self.gui.confirm_px_mm_button.clicked.connect(
             self.tab2_confirm_calibration
         )  # Connect confirm button to the handler
-        
+
         # image processing tab
         # column 1
         self.gui.prev_button.clicked.connect(lambda: self.tab3_update_sample_image("prev"))
@@ -1653,7 +1681,6 @@ class MainHandler:
         self.gui.manual_adjustment_button.clicked.connect(self.tab3_ellipse_manual_adjustment)
         self.gui.preview_button2.clicked.connect(self.tab3_confirm_parameter_for_filtering)
         self.gui.batch_process_button.clicked.connect(self.tab3_ask_if_batch)
-        
 
     def load_export_settings(self) -> None:
         """Initialize and configure the export settings handler.
