@@ -180,11 +180,9 @@ class MainWindow(QMainWindow):
         top_frame = QFrame()
         top_layout = QHBoxLayout(top_frame)
         self.folder_path_edit = QLineEdit()
-        # self.folder_path_edit.setText(str(self.folder_tab_handler.image_path))
+
         self.select_folder_button = QPushButton("Select Folder")
         self.confirm_folder_button = QPushButton("Confirm Folder")
-        # self.select_folder_button.clicked.connect(self.main_handler.tab1_select_folder)
-        # self.confirm_folder_button.clicked.connect(self.main_handler.tab1_confirm_folder_selection)
         top_layout.addWidget(self.select_folder_button)
         top_layout.addWidget(self.folder_path_edit)
         top_layout.addWidget(self.confirm_folder_button)
@@ -193,7 +191,6 @@ class MainWindow(QMainWindow):
         bottom_left_frame = QFrame()
         bottom_left_layout = QVBoxLayout(bottom_left_frame)
         self.image_list = QListWidget()
-        # self.image_list.clicked.connect(self.folder_tab_handler.preview_image_folder_tab)
         bottom_left_layout.addWidget(self.image_list)
 
         # Bottom Right: Image Preview
@@ -373,10 +370,6 @@ class MainWindow(QMainWindow):
 
         algorithm_label = QLabel("Select Algorithm:")
         self.algorithm_combo = QComboBox()
-        # self.image_processing_tab_handler.initialize_algorithm_combo()
-        # self.algorithm_combo.currentTextChanged.connect(
-        #     lambda: self.main_handler.tab3_handle_algorithm_change(self.algorithm_combo.currentText())
-        # )
 
         # Parameter sandbox for img_resample_factor, threshold_value, element_size
         sandbox1_label = QLabel("Adjust parameters before filtering")
@@ -387,12 +380,9 @@ class MainWindow(QMainWindow):
 
         self.param_sandbox1 = QTableWidget(0, 2)
         self.param_sandbox1.setHorizontalHeaderLabels(["Parameter", "Value"])
-        # self.main_handler.tab3_load_parameter_table_1(self.algorithm_combo.currentText())  # New helper method
 
         # Confirm button for this sandbox
         self.preview_button1 = QPushButton("Confirm parameter and preview")
-        # self.preview_button1.clicked.connect(self.main_handler.tab3_confirm_parameter_before_filtering)
-
         second_column_layout.addWidget(sandbox1_label)
         second_column_layout.addWidget(self.param_sandbox1)
         second_column_layout.addWidget(self.preview_button1)
@@ -411,10 +401,8 @@ class MainWindow(QMainWindow):
         sandbox2_label = QLabel("Adjust parameters for filtering circles")
         self.param_sandbox2 = QTableWidget(0, 2)
         self.param_sandbox2.setHorizontalHeaderLabels(["Parameter", "Value"])
-        # self.main_handler.tab3_initialize_parameter_table_2()  # New helper method
 
         self.fc_checkbox = QCheckBox("Find Circles")
-        # self.fc_checkbox.stateChanged.connect(self.main_handler.tab3_handle_find_circles)
 
         # Additional parameter box for circle finding (initially hidden)
         self.circle_param_box = QTableWidget(0, 2)
