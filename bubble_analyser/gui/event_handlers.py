@@ -28,7 +28,7 @@ import numpy as np
 import toml as tomllib  # type: ignore
 from numpy import typing as npt
 from pydantic import ValidationError
-from PySide6.QtCore import QProcess, Qt, QThread, Signal
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -1681,7 +1681,7 @@ class MainHandler:
         self.gui.manual_adjustment_button.clicked.connect(self.tab3_ellipse_manual_adjustment)
         self.gui.preview_button2.clicked.connect(self.tab3_confirm_parameter_for_filtering)
         self.gui.batch_process_button.clicked.connect(self.tab3_ask_if_batch)
-    
+
     def disconnect_gui_and_handlers(self) -> None:
         """Disconnect GUI components from their respective handlers.
 
@@ -1726,17 +1726,17 @@ class MainHandler:
         self.gui.batch_process_button.clicked.disconnect(self.tab3_ask_if_batch)
 
         # results tab
-        self.gui.pdf_checkbox.stateChanged.disconnect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
-        self.gui.cdf_checkbox.stateChanged.disconnect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
-        self.gui.bins_spinbox.valueChanged.disconnect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
-        self.gui.min_x_axis_input.textChanged.disconnect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
-        self.gui.max_x_axis_input.textChanged.disconnect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
-        self.gui.legend_position_combobox.currentIndexChanged.disconnect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
-        self.gui.d32_checkbox.stateChanged.disconnect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
-        self.gui.dmean_checkbox.stateChanged.disconnect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
-        self.gui.dxy_checkbox.stateChanged.disconnect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
-        self.gui.dxy_x_input.textChanged.disconnect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
-        self.gui.dxy_y_input.textChanged.disconnect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+        self.gui.pdf_checkbox.stateChanged.disconnect(self.results_tab_handler.generate_histogram)
+        self.gui.cdf_checkbox.stateChanged.disconnect(self.results_tab_handler.generate_histogram)
+        self.gui.bins_spinbox.valueChanged.disconnect(self.results_tab_handler.generate_histogram)
+        self.gui.min_x_axis_input.textChanged.disconnect(self.results_tab_handler.generate_histogram)
+        self.gui.max_x_axis_input.textChanged.disconnect(self.results_tab_handler.generate_histogram)
+        self.gui.legend_position_combobox.currentIndexChanged.disconnect(self.results_tab_handler.generate_histogram)
+        self.gui.d32_checkbox.stateChanged.disconnect(self.results_tab_handler.generate_histogram)
+        self.gui.dmean_checkbox.stateChanged.disconnect(self.results_tab_handler.generate_histogram)
+        self.gui.dxy_checkbox.stateChanged.disconnect(self.results_tab_handler.generate_histogram)
+        self.gui.dxy_x_input.textChanged.disconnect(self.results_tab_handler.generate_histogram)
+        self.gui.dxy_y_input.textChanged.disconnect(self.results_tab_handler.generate_histogram)
         self.gui.save_button.clicked.disconnect(self.results_tab_handler.save_results)
 
     def disconnect_handlers_signals(self) -> None:
@@ -1760,9 +1760,12 @@ class MainHandler:
 
         self.gui.sample_image_preview.clear()
         self.gui.label_before_filtering.axes.clear()
+        self.gui.label_before_filtering.draw()
         self.gui.processed_image_preview.axes.clear()
+        self.gui.processed_image_preview.draw()
 
         self.gui.histogram_canvas.axes.clear()
+        self.gui.histogram_canvas.draw()
 
     def restart(self) -> None:
         """Restart the application.
@@ -1778,6 +1781,8 @@ class MainHandler:
         self.load_export_settings()
         self.load_gui_for_handlers()
         self.connect_gui_and_handlers()
+
+        self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.folder_tab))
 
     def load_export_settings(self) -> None:
         """Initialize and configure the export settings handler.
@@ -1967,7 +1972,6 @@ class MainHandler:
         which exports the processed data according to the configured export settings.
         """
         self.results_tab_handler.save_results()
-
 
 
 if __name__ == "__main__":
