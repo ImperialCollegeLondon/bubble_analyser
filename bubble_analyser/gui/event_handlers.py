@@ -167,7 +167,11 @@ class TomlFileHandler:
     def load_gui(self, gui: MainWindow) -> None:
         """Load a reference to the GUI instance for displaying warnings.
 
-        This method should be called after the GUI has been initialized.
+        This method should be called after the GUI has been initialized to enable
+        the handler to interact with GUI components and display warning messages.
+
+        Args:
+            gui: The main GUI instance.
         """
         self.gui = gui
 
@@ -218,6 +222,9 @@ class FolderTabHandler:
 
     def load_gui(self, gui: MainWindow) -> None:
         """Load a reference to the GUI instance.
+
+        This method stores a reference to the main GUI instance and prepares the handler
+        to interact with GUI components for displaying and exporting results.
 
         Args:
             gui: The main GUI instance.
@@ -330,11 +337,14 @@ class CalibrationTabHandler:
     def load_gui(self, gui: MainWindow) -> None:
         """Load a reference to the GUI instance.
 
+        This method stores a reference to the main GUI instance and prepares the handler
+        to interact with GUI components for displaying and exporting results.
+
         Args:
             gui: The main GUI instance.
         """
         self.gui = gui
-
+        
     def select_ruler_button(self) -> None:
         """Handle the process of resolution calibration with ruler image selecion and pixel-to-mm conversion."""
         self.select_px_mm_image()
@@ -518,6 +528,9 @@ class ImageProcessingTabHandler(QThread):
 
     def load_gui(self, gui: MainWindow) -> None:
         """Load a reference to the GUI instance.
+
+        This method stores a reference to the main GUI instance and prepares the handler
+        to interact with GUI components for displaying and exporting results.
 
         Args:
             gui: The main GUI instance.
@@ -1252,6 +1265,9 @@ class ResultsTabHandler:
     def load_gui(self, gui: MainWindow) -> None:
         """Load a reference to the GUI instance.
 
+        This method stores a reference to the main GUI instance and prepares the handler
+        to interact with GUI components for displaying and exporting results.
+
         Args:
             gui: The main GUI instance.
         """
@@ -1535,14 +1551,14 @@ class MainHandler:
             # If running in development mode
             self.toml_file_path = Path("bubble_analyser/config.toml")
 
-        # self.initialize_handlers()
-        # self.initialize_handlers_signals()
-
         self.initialize_gui()
-        # self.load_gui_for_handlers()
+        self.initialize_handlers()
+        self.initialize_handlers_signals()
 
+        self.load_gui_for_handlers()
+        self.connect_gui_and_handlers()
+        self.gui_exiting()
         # self.load_export_settings()
-        self.load_full_gui()
 
     def initialize_handlers(self) -> None:
         """Initialize all handler classes and models used by the application.
@@ -1564,7 +1580,7 @@ class MainHandler:
         )
 
         self.results_tab_handler = ResultsTabHandler(params=self.toml_handler.params)
-
+        
     def initialize_handlers_signals(self) -> None:
         """Connect signals between handlers to enable communication.
 
@@ -1574,7 +1590,7 @@ class MainHandler:
         self.image_processing_tab_handler.batch_processing_done.connect(self.start_generate_histogram)
 
     def initialize_gui(self) -> None:
-        """Initialize the main GUI application and window.
+        """Initialize the main GUI application and window, and display it.
 
         Creates the QApplication instance and the main window for the application.
         """
@@ -1582,27 +1598,62 @@ class MainHandler:
 
         self.app = QApplication(sys.argv)
         self.gui = MainWindow()
-
-    def load_full_gui(self) -> None:
-        """Load and display the complete GUI.
-
-        Finalizes GUI initialization, displays the main window, and starts the
-        application event loop.
-        """
-        # self.gui.load_full_gui()
         self.gui.show()
+
+    def gui_exiting(self):
         sys.exit(self.app.exec())
 
     def load_gui_for_handlers(self) -> None:
         """Load GUI references into all handlers.
 
         Provides each handler with a reference to the main GUI instance to enable
-        direct interaction with GUI components.
+        direct interaction with GUI components. This method must be called after
+        the GUI has been initialized and before handlers start interacting with
+        GUI components.
         """
         self.folder_tab_handler.load_gui(self.gui)
         self.calibration_tab_handler.load_gui(self.gui)
         self.image_processing_tab_handler.load_gui(self.gui)
         self.results_tab_handler.load_gui(self.gui)
+    
+    def connect_gui_and_handlers(self) -> None:
+
+        self.gui.export_setting_action.triggered.connect(self.menubar_open_export_settings_dialog)
+        self.gui.restart_action.triggered.connect(self.menubar_ask_if_restart)
+
+        # folder tab
+        self.gui.folder_path_edit.setText(str(self.folder_tab_handler.image_path))
+        self.gui.select_folder_button.clicked.connect(self.tab1_select_folder)
+        self.gui.confirm_folder_button.clicked.connect(self.tab1_confirm_folder_selection)
+        self.gui.image_list.clicked.connect(self.folder_tab_handler.preview_image_folder_tab)
+        
+        # calibration tab
+        self.gui.pixel_img_name.setText(str(self.calibration_tab_handler.px_img_path))
+        self.gui.pixel_img_select_button.clicked.connect(self.tab2_select_ruler_button)
+        self.gui.bg_corr_select_button.clicked.connect(self.tab2_select_bg_corr_image)
+        self.gui.confirm_px_mm_button.clicked.connect(
+            self.tab2_confirm_calibration
+        )  # Connect confirm button to the handler
+        
+        # image processing tab
+        # column 1
+        self.gui.prev_button.clicked.connect(lambda: self.tab3_update_sample_image("prev"))
+        self.gui.next_button.clicked.connect(lambda: self.tab3_update_sample_image("next"))
+        self.gui.preview_processed_images_button.clicked.connect(self.tab3_preview_processed_images)
+        # column 2
+        self.image_processing_tab_handler.initialize_algorithm_combo()
+        self.gui.algorithm_combo.currentTextChanged.connect(
+            lambda: self.tab3_handle_algorithm_change(self.gui.algorithm_combo.currentText())
+        )
+        self.tab3_load_parameter_table_1(self.gui.algorithm_combo.currentText())  # New helper method
+        self.gui.preview_button1.clicked.connect(self.tab3_confirm_parameter_before_filtering)
+        # column 3
+        self.tab3_initialize_parameter_table_2()  # New helper method
+        self.gui.fc_checkbox.stateChanged.connect(self.tab3_handle_find_circles)
+        self.gui.manual_adjustment_button.clicked.connect(self.tab3_ellipse_manual_adjustment)
+        self.gui.preview_button2.clicked.connect(self.tab3_confirm_parameter_for_filtering)
+        self.gui.batch_process_button.clicked.connect(self.tab3_ask_if_batch)
+        
 
     def load_export_settings(self) -> None:
         """Initialize and configure the export settings handler.
