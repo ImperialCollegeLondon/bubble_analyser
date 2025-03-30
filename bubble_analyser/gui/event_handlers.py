@@ -16,6 +16,8 @@ maintaining separation of concerns and providing clear interaction patterns betw
 the GUI and the underlying processing logic.
 """
 
+from __future__ import annotations
+
 import csv
 import os
 import sys
@@ -48,6 +50,7 @@ from bubble_analyser.gui import (
     InputFilesModel,
     WorkerThread,
 )
+from bubble_analyser.gui.gui import MainWindow as MainWindow
 from bubble_analyser.processing import Config, cv2_to_qpixmap
 
 
@@ -161,7 +164,7 @@ class TomlFileHandler:
         self.params: Config
         self.load_toml()
 
-    def load_gui(self, gui) -> None:  # type: ignore
+    def load_gui(self, gui: MainWindow) -> None:
         """Load a reference to the GUI instance for displaying warnings.
 
         This method should be called after the GUI has been initialized.
@@ -213,7 +216,7 @@ class FolderTabHandler:
         self.model: InputFilesModel = model
         self.image_path: Path = params.raw_img_path
 
-    def load_gui(self, gui) -> None:  # type: ignore
+    def load_gui(self, gui: MainWindow) -> None:
         """Load a reference to the GUI instance.
 
         Args:
@@ -324,7 +327,7 @@ class CalibrationTabHandler:
         self.img_resample: float = params.resample
         self.px_img_path: Path = params.ruler_img_path
 
-    def load_gui(self, gui) -> None:  # type: ignore
+    def load_gui(self, gui: MainWindow) -> None:
         """Load a reference to the GUI instance.
 
         Args:
@@ -513,7 +516,7 @@ class ImageProcessingTabHandler(QThread):
 
         self.save_path: Path = cast(Path, None)
 
-    def load_gui(self, gui) -> None:  # type: ignore
+    def load_gui(self, gui: MainWindow) -> None:
         """Load a reference to the GUI instance.
 
         Args:
@@ -1240,14 +1243,13 @@ class ResultsTabHandler:
         Args:
             params (Config): Configuration parameters containing default values.
         """
-        # self.gui = gui
         self.params = params
         self.save_path = params.save_path
 
         self.ellipses_properties: list[list[dict[str, float]]]
         self.export_handler: ExportSettingsHandler
 
-    def load_gui(self, gui) -> None:  # type: ignore
+    def load_gui(self, gui: MainWindow) -> None:
         """Load a reference to the GUI instance.
 
         Args:
@@ -1515,6 +1517,8 @@ class MainHandler:
         import os
         import sys
 
+        self.gui: MainWindow
+
         # Get the base directory for the application
         if getattr(sys, "frozen", False):
             # If the application is run as a bundle (PyInstaller)
@@ -1577,7 +1581,7 @@ class MainHandler:
         from bubble_analyser.gui import MainWindow
 
         self.app = QApplication(sys.argv)
-        self.gui: MainWindow = MainWindow(self)
+        self.gui = MainWindow(self)
 
     def load_full_gui(self) -> None:
         """Load and display the complete GUI.

@@ -23,7 +23,7 @@ from datetime import datetime
 
 import matplotlib
 
-import bubble_analyser.gui.event_handlers as hd
+# import bubble_analyser.gui.event_handlers as hd
 
 # Try to change orders
 
@@ -95,7 +95,7 @@ class MainWindow(QMainWindow):
         calibration_confirmed: Flag indicating if calibration is confirmed.
     """
 
-    def __init__(self, main_handler: hd.MainHandler) -> None:
+    def __init__(self, main_handler) -> None:  # type: ignore
         """Initialize the main window of the Bubble Analyser application.
 
         Sets up the main window with all its components including the menu bar
@@ -105,9 +105,10 @@ class MainWindow(QMainWindow):
         Args:
             main_handler: The main event handler that manages the application's logic.
         """
-        super().__init__()
+        from bubble_analyser.gui.event_handlers import MainHandler
 
-        self.main_handler: hd.MainHandler = main_handler
+        super().__init__()
+        self.main_handler: MainHandler = main_handler
 
         self.folder_tab_handler = self.main_handler.folder_tab_handler
 
@@ -361,7 +362,6 @@ class MainWindow(QMainWindow):
         self.sample_image_preview = QLabel("Sample image preview")
         self.sample_image_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.sample_image_preview.setFixedSize(400, 300)  # Adjust size as needed
-
         prev_button = QPushButton("< Prev. Img")
         next_button = QPushButton("Next Img >")
         prev_button.clicked.connect(lambda: self.main_handler.tab3_update_sample_image("prev"))

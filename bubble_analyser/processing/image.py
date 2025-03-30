@@ -5,7 +5,6 @@ It includes functionality for dynamic method loading, image preprocessing, segme
 filtering, and ellipse detection and measurement.
 """
 
-import importlib.resources
 import importlib.util
 import inspect
 import sys
