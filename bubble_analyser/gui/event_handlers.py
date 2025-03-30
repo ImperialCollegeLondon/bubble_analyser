@@ -1673,14 +1673,111 @@ class MainHandler:
         self.gui.algorithm_combo.currentTextChanged.connect(
             lambda: self.tab3_handle_algorithm_change(self.gui.algorithm_combo.currentText())
         )
-        self.tab3_load_parameter_table_1(self.gui.algorithm_combo.currentText())  # New helper method
+        self.tab3_load_parameter_table_1(self.gui.algorithm_combo.currentText())
         self.gui.preview_button1.clicked.connect(self.tab3_confirm_parameter_before_filtering)
         # column 3
-        self.tab3_initialize_parameter_table_2()  # New helper method
+        self.tab3_initialize_parameter_table_2()
         self.gui.fc_checkbox.stateChanged.connect(self.tab3_handle_find_circles)
         self.gui.manual_adjustment_button.clicked.connect(self.tab3_ellipse_manual_adjustment)
         self.gui.preview_button2.clicked.connect(self.tab3_confirm_parameter_for_filtering)
         self.gui.batch_process_button.clicked.connect(self.tab3_ask_if_batch)
+    
+    def disconnect_gui_and_handlers(self) -> None:
+        """Disconnect GUI components from their respective handlers.
+
+        Removes signal-slot connections between GUI components and their respective
+        handlers to prevent further event handling and interaction.
+        """
+        # menubar
+        self.gui.export_setting_action.triggered.disconnect(self.menubar_open_export_settings_dialog)
+        self.gui.restart_action.triggered.disconnect(self.menubar_ask_if_restart)
+
+        # folder tab
+        self.gui.folder_path_edit.setText(str(self.folder_tab_handler.image_path))
+        self.gui.select_folder_button.clicked.disconnect(self.tab1_select_folder)
+        self.gui.confirm_folder_button.clicked.disconnect(self.tab1_confirm_folder_selection)
+        self.gui.image_list.clicked.disconnect(self.folder_tab_handler.preview_image_folder_tab)
+
+        # calibration tab
+        self.gui.pixel_img_name.setText(str(self.calibration_tab_handler.px_img_path))
+        self.gui.pixel_img_select_button.clicked.disconnect(self.tab2_select_ruler_button)
+        self.gui.bg_corr_select_button.clicked.disconnect(self.tab2_select_bg_corr_image)
+        self.gui.confirm_px_mm_button.clicked.disconnect(
+            self.tab2_confirm_calibration
+        )  # Connect confirm button to the handler
+
+        # image processing tab
+        # column 1
+        self.gui.prev_button.clicked.disconnect(lambda: self.tab3_update_sample_image("prev"))
+        self.gui.next_button.clicked.disconnect(lambda: self.tab3_update_sample_image("next"))
+        self.gui.preview_processed_images_button.clicked.disconnect(self.tab3_preview_processed_images)
+        # column 2
+        self.image_processing_tab_handler.initialize_algorithm_combo()
+        self.gui.algorithm_combo.currentTextChanged.disconnect(
+            lambda: self.tab3_handle_algorithm_change(self.gui.algorithm_combo.currentText())
+        )
+        self.tab3_load_parameter_table_1(self.gui.algorithm_combo.currentText())
+        self.gui.preview_button1.clicked.disconnect(self.tab3_confirm_parameter_before_filtering)
+        # column 3
+        self.tab3_initialize_parameter_table_2()
+        self.gui.fc_checkbox.stateChanged.disconnect(self.tab3_handle_find_circles)
+        self.gui.manual_adjustment_button.clicked.disconnect(self.tab3_ellipse_manual_adjustment)
+        self.gui.preview_button2.clicked.disconnect(self.tab3_confirm_parameter_for_filtering)
+        self.gui.batch_process_button.clicked.disconnect(self.tab3_ask_if_batch)
+
+        # results tab
+        self.gui.pdf_checkbox.stateChanged.disconnect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+        self.gui.cdf_checkbox.stateChanged.disconnect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+        self.gui.bins_spinbox.valueChanged.disconnect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+        self.gui.min_x_axis_input.textChanged.disconnect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+        self.gui.max_x_axis_input.textChanged.disconnect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+        self.gui.legend_position_combobox.currentIndexChanged.disconnect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+        self.gui.d32_checkbox.stateChanged.disconnect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+        self.gui.dmean_checkbox.stateChanged.disconnect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+        self.gui.dxy_checkbox.stateChanged.disconnect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+        self.gui.dxy_x_input.textChanged.disconnect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+        self.gui.dxy_y_input.textChanged.disconnect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+        self.gui.save_button.clicked.disconnect(self.results_tab_handler.save_results)
+
+    def disconnect_handlers_signals(self) -> None:
+        """Disconnect signals between handlers to prevent further event handling.
+
+        Removes signal-slot connections between handlers to prevent further event
+        handling and interaction.
+        """
+        self.image_processing_tab_handler.batch_processing_done.disconnect(self.start_generate_histogram)
+
+    def clear_all_gui_contents(self) -> None:
+        """Clear all contents from the GUI components.
+
+        Clears all contents from all GUI components to reset the application state.
+        """
+        self.gui.image_list.clear()
+
+        self.gui.pixel_img_preview.clear()
+        self.gui.bg_corr_image_preview.clear()
+        self.gui.manual_px_mm_input.clear()
+
+        self.gui.sample_image_preview.clear()
+        self.gui.label_before_filtering.axes.clear()
+        self.gui.processed_image_preview.axes.clear()
+
+        self.gui.histogram_canvas.axes.clear()
+
+    def restart(self) -> None:
+        """Restart the application.
+
+        Resets the application state and restarts the GUI.
+        """
+        self.disconnect_gui_and_handlers()
+        self.disconnect_handlers_signals()
+        self.clear_all_gui_contents()
+
+        self.initialize_handlers()
+        self.initialize_handlers_signals()
+        self.load_export_settings()
+        self.load_gui_for_handlers()
+        self.connect_gui_and_handlers()
 
     def load_export_settings(self) -> None:
         """Initialize and configure the export settings handler.
@@ -1871,17 +1968,6 @@ class MainHandler:
         """
         self.results_tab_handler.save_results()
 
-    def restart(self) -> None:
-        """Restart the application by launching a new instance and closing the current one.
-
-        Creates a new detached process running the same Python executable with the same
-        arguments, then closes the current application instance.
-        """
-        QProcess.startDetached(sys.executable, sys.argv)  # type: ignore
-        QApplication.quit()
-
-    # def reinitialize_main_handler(self) -> None:
-    #     self.__init__()
 
 
 if __name__ == "__main__":
