@@ -21,6 +21,7 @@ from typing import cast
 
 import cv2
 import numpy as np
+import logging
 from cv2.typing import MatLike
 from numpy import typing as npt
 from PySide6.QtCore import QEventLoop, QThread, Signal
@@ -300,7 +301,7 @@ class ImageProcessingModel:
         self.adjuster: EllipseAdjuster
         self.ellipses_properties: list[list[dict[str, float]]] = []
 
-        print("------------------------------Intialize parameters in GUI------------------------------")
+        logging.info("------------------------------Intializing Parameters------------------------------")
         self.methods_handler: MethodsHandler
         self.filter_param_handler: FilterParamHandler
         self.initialize_methods_handlers()
@@ -315,7 +316,7 @@ class ImageProcessingModel:
         """
         self.methods_handler = MethodsHandler(self.params_config)
         self.all_methods_n_params = self.methods_handler.full_dict
-        print("All methods and their parameters:", self.all_methods_n_params)
+        logging.info(f"All detected methods and their parameters: {self.all_methods_n_params}")
 
     def initialize_filter_param_handler(self) -> None:
         """Initialize the filter parameter handler and retrieve filtering parameters.
@@ -330,8 +331,8 @@ class ImageProcessingModel:
         """
         self.filter_param_handler = FilterParamHandler(self.params_config.model_dump())
         self.filter_param_dict_1, self.filter_param_dict_2 = self.filter_param_handler.get_needed_params()
-        print("Filter parameters:", self.filter_param_dict_1)
-        print("Find circles parameters:", self.filter_param_dict_2)
+        logging.info(f"Basic filtering parameters: {self.filter_param_dict_1}")
+        logging.info(f"Find circles filtering parameters: {self.filter_param_dict_2}")
 
     def confirm_folder_selection(self, folder_path_list: list[Path]) -> None:
         """Set the list of image paths to be processed.
@@ -458,6 +459,7 @@ class ImageProcessingModel:
         Returns:
             npt.NDArray[np.int_]: The updated image with adjusted ellipses overlaid.
         """
+        logging.info("Ellipse handler triggered.")
         name = self.img_path_list[index]
         image = self.img_dict[name]
         self.adjuster = EllipseAdjuster(image.ellipses, image.img_rgb)
@@ -472,6 +474,7 @@ class ImageProcessingModel:
         self.adjuster.show()
 
         loop.exec()
+        logging.info("Ellipse handler finished.")
         return image.ellipses_on_images
 
     def handle_ellipse_adjustment_finished(self, image: Image) -> None:
@@ -484,11 +487,8 @@ class ImageProcessingModel:
         Args:
             image (Image): The image object containing the ellipses to update.
         """
-        print("ellipse handler triggered")
-        print(image.filter_param_dict)
         image.update_ellipses(self.adjuster.ellipses)
         image.overlay_ellipses_on_images()
-        print("ellipse handler finished ")
 
     def batch_process_images(
         self,
@@ -510,8 +510,8 @@ class ImageProcessingModel:
         """
         # Process every image in the list
         for index, name in enumerate(self.img_path_list):
-            print("-----------------")
-            print("if_save", if_save)
+            logging.info("------------------------------Batch Process Started------------------------------")
+            logging.info(f"If saving processed images: {if_save}")
             self.initialize_image(name)
             self.img_dict[name].load_filter_params(self.filter_param_dict_1, self.filter_param_dict_2)
 
@@ -519,7 +519,7 @@ class ImageProcessingModel:
             if self.img_dict[name].if_fine_tuned:
                 # If fine tuned, save the ellipses properties
                 # and skip the processing
-                print("This image has been fine tuned: ", name)
+                logging.info(f"This image has been fine tuned: {name}, no need to process again.")
                 self.img_dict[name].get_ellipse_properties()
                 self.ellipses_properties.append(self.img_dict[name].ellipses_properties)
 
@@ -550,12 +550,12 @@ class ImageProcessingModel:
         """
         file_name = os.path.basename(img_name)
         new_name = os.path.join(save_path, file_name)
-        print("new_saving_img_name:", new_name)
+        logging.info(f"Processed image with ellipses saving to: {new_name}")
         try:
             cv2.imwrite(new_name, img)
-            print("saved")
+            logging.info("saved")
         except Exception as e:
-            print(e)
+            logging.info(e)
 
     def save_labelled_masks(self, img: npt.NDArray[np.int_], img_name: Path, save_path: Path) -> None:
         """Save the labelled mask image to disk.
@@ -571,8 +571,9 @@ class ImageProcessingModel:
         """
         file_name = os.path.basename(img_name)
         new_name = os.path.join(save_path, f"{file_name}_mask.png")
+        logging.info(f"Labelled mask saving to: {new_name}")
         try:
             cv2.imwrite(new_name, img)
-            print("saved")
+            logging.info("saved")
         except Exception as e:
-            print(e)
+            logging.info(e)

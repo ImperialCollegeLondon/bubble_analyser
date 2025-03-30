@@ -15,7 +15,7 @@ from bubble_analyser.processing.image_preprocess import image_preprocess
 from bubble_analyser.processing.morphological_process import morphological_process
 from bubble_analyser.processing.threshold_methods import ThresholdMethods
 from bubble_analyser.processing.watershed_parent_class import WatershedSegmentation
-
+from bubble_analyser.processing.logger_writer import LoggerWriter
 __all__ = [
     "CircleHandler",
     "Config",
@@ -30,4 +30,5 @@ __all__ = [
     "image_preprocess",
     "morphological_process",
     "overlay_labels_on_rgb",
+    "LoggerWriter"
 ]
