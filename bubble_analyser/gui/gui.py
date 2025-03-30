@@ -105,19 +105,8 @@ class MainWindow(QMainWindow):
         Args:
             main_handler: The main event handler that manages the application's logic.
         """
-        # from bubble_analyser.gui.event_handlers import MainHandler
 
         super().__init__()
-        # self.main_handler: MainHandler = main_handler
-
-        # self.folder_tab_handler = self.main_handler.folder_tab_handler
-
-        # self.calibration_tab_handler = self.main_handler.calibration_tab_handler
-
-        # self.image_processing_tab_handler = self.main_handler.image_processing_tab_handler
-
-        # self.results_tab_handler = self.main_handler.results_tab_handler
-
         self.bknd_img_exist = False
         self.calibration_confirmed = False
 
@@ -150,7 +139,7 @@ class MainWindow(QMainWindow):
 
         self.results_tab = QWidget()
         self.tabs.addTab(self.results_tab, "Results")
-        
+
         self.setup_folder_tab()
         self.setup_calibration_tab()
         self.setup_image_processing_tab()
@@ -163,20 +152,11 @@ class MainWindow(QMainWindow):
         calibration, image processing, and results tabs. This method should be
         called after the main window is created to complete the GUI initialization.
         """
-        # self.setup_folder_tab()
-        # self.setup_calibration_tab()
-        # self.setup_image_processing_tab()
-        # self.setup_results_tab()
         from bubble_analyser.gui.event_handlers import MainHandler
-
         self.main_handler: MainHandler = main_handler
-
         self.folder_tab_handler = self.main_handler.folder_tab_handler
-
         self.calibration_tab_handler = self.main_handler.calibration_tab_handler
-
         self.image_processing_tab_handler = self.main_handler.image_processing_tab_handler
-
         self.results_tab_handler = self.main_handler.results_tab_handler
 
         self.export_setting_action.triggered.connect(self.main_handler.menubar_open_export_settings_dialog)
