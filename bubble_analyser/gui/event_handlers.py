@@ -1530,18 +1530,18 @@ class MainHandler:
             else:
                 # Fall back to the bundled path
                 base_dir = os.path.dirname(sys.executable)
-                self.toml_file_path = Path(os.path.join(base_dir, "bubble_analyser", "gui", "config.toml"))
+                self.toml_file_path = Path(os.path.join(base_dir, "bubble_analyser", "config.toml"))
         else:
             # If running in development mode
-            self.toml_file_path = Path("bubble_analyser/gui/config.toml")
+            self.toml_file_path = Path("bubble_analyser/config.toml")
 
-        self.initialize_handlers()
-        self.initialize_handlers_signals()
+        # self.initialize_handlers()
+        # self.initialize_handlers_signals()
 
         self.initialize_gui()
-        self.load_gui_for_handlers()
+        # self.load_gui_for_handlers()
 
-        self.load_export_settings()
+        # self.load_export_settings()
         self.load_full_gui()
 
     def initialize_handlers(self) -> None:
@@ -1581,7 +1581,7 @@ class MainHandler:
         from bubble_analyser.gui import MainWindow
 
         self.app = QApplication(sys.argv)
-        self.gui = MainWindow(self)
+        self.gui = MainWindow()
 
     def load_full_gui(self) -> None:
         """Load and display the complete GUI.
@@ -1589,7 +1589,7 @@ class MainHandler:
         Finalizes GUI initialization, displays the main window, and starts the
         application event loop.
         """
-        self.gui.load_full_gui()
+        # self.gui.load_full_gui()
         self.gui.show()
         sys.exit(self.app.exec())
 

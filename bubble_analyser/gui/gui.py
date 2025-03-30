@@ -95,7 +95,7 @@ class MainWindow(QMainWindow):
         calibration_confirmed: Flag indicating if calibration is confirmed.
     """
 
-    def __init__(self, main_handler) -> None:  # type: ignore
+    def __init__(self) -> None:
         """Initialize the main window of the Bubble Analyser application.
 
         Sets up the main window with all its components including the menu bar
@@ -105,18 +105,18 @@ class MainWindow(QMainWindow):
         Args:
             main_handler: The main event handler that manages the application's logic.
         """
-        from bubble_analyser.gui.event_handlers import MainHandler
+        # from bubble_analyser.gui.event_handlers import MainHandler
 
         super().__init__()
-        self.main_handler: MainHandler = main_handler
+        # self.main_handler: MainHandler = main_handler
 
-        self.folder_tab_handler = self.main_handler.folder_tab_handler
+        # self.folder_tab_handler = self.main_handler.folder_tab_handler
 
-        self.calibration_tab_handler = self.main_handler.calibration_tab_handler
+        # self.calibration_tab_handler = self.main_handler.calibration_tab_handler
 
-        self.image_processing_tab_handler = self.main_handler.image_processing_tab_handler
+        # self.image_processing_tab_handler = self.main_handler.image_processing_tab_handler
 
-        self.results_tab_handler = self.main_handler.results_tab_handler
+        # self.results_tab_handler = self.main_handler.results_tab_handler
 
         self.bknd_img_exist = False
         self.calibration_confirmed = False
@@ -150,18 +150,92 @@ class MainWindow(QMainWindow):
 
         self.results_tab = QWidget()
         self.tabs.addTab(self.results_tab, "Results")
-
-    def load_full_gui(self) -> None:
+        
+        self.setup_folder_tab()
+        self.setup_calibration_tab()
+        self.setup_image_processing_tab()
+        self.setup_results_tab()
+    
+    def load_handlers(self, main_handler) -> None:
         """Load and initialize all GUI components.
 
         Sets up all the tabs in the application including the folder selection,
         calibration, image processing, and results tabs. This method should be
         called after the main window is created to complete the GUI initialization.
         """
-        self.setup_folder_tab()
-        self.setup_calibration_tab()
-        self.setup_image_processing_tab()
-        self.setup_results_tab()
+        # self.setup_folder_tab()
+        # self.setup_calibration_tab()
+        # self.setup_image_processing_tab()
+        # self.setup_results_tab()
+        from bubble_analyser.gui.event_handlers import MainHandler
+
+        self.main_handler: MainHandler = main_handler
+
+        self.folder_tab_handler = self.main_handler.folder_tab_handler
+
+        self.calibration_tab_handler = self.main_handler.calibration_tab_handler
+
+        self.image_processing_tab_handler = self.main_handler.image_processing_tab_handler
+
+        self.results_tab_handler = self.main_handler.results_tab_handler
+
+        self.export_setting_action.triggered.connect(self.main_handler.menubar_open_export_settings_dialog)
+        self.restart_action.triggered.connect(self.main_handler.menubar_ask_if_restart)
+
+        # folder tab
+        self.folder_path_edit.setText(str(self.folder_tab_handler.image_path))
+        self.select_folder_button.clicked.connect(self.main_handler.tab1_select_folder)
+        self.confirm_folder_button.clicked.connect(self.main_handler.tab1_confirm_folder_selection)
+        self.image_list.clicked.connect(self.folder_tab_handler.preview_image_folder_tab)
+        
+        # calibration tab
+        self.pixel_img_name.setText(str(self.calibration_tab_handler.px_img_path))
+        self.pixel_img_select_button.clicked.connect(self.main_handler.tab2_select_ruler_button)
+        self.bg_corr_select_button.clicked.connect(self.main_handler.tab2_select_bg_corr_image)
+        self.confirm_px_mm_button.clicked.connect(
+            self.main_handler.tab2_confirm_calibration
+        )  # Connect confirm button to the handler
+        
+        # image processing tab
+        # column 1
+        self.prev_button.clicked.connect(lambda: self.main_handler.tab3_update_sample_image("prev"))
+        self.next_button.clicked.connect(lambda: self.main_handler.tab3_update_sample_image("next"))
+        self.preview_processed_images_button.clicked.connect(self.main_handler.tab3_preview_processed_images)
+        # column 2
+        self.image_processing_tab_handler.initialize_algorithm_combo()
+        self.algorithm_combo.currentTextChanged.connect(
+            lambda: self.main_handler.tab3_handle_algorithm_change(self.algorithm_combo.currentText())
+        )
+        self.main_handler.tab3_load_parameter_table_1(self.algorithm_combo.currentText())  # New helper method
+        self.preview_button1.clicked.connect(self.main_handler.tab3_confirm_parameter_before_filtering)
+        # column 3
+        self.main_handler.tab3_initialize_parameter_table_2()  # New helper method
+        self.fc_checkbox.stateChanged.connect(self.main_handler.tab3_handle_find_circles)
+        self.manual_adjustment_button.clicked.connect(self.main_handler.tab3_ellipse_manual_adjustment)
+        self.preview_button2.clicked.connect(self.main_handler.tab3_confirm_parameter_for_filtering)
+        self.batch_process_button.clicked.connect(self.main_handler.tab3_ask_if_batch)
+        
+        # results tab
+        self.pdf_checkbox.stateChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+        self.cdf_checkbox.stateChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+
+        self.bins_spinbox.valueChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+
+        self.min_x_axis_input.textChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+        self.max_x_axis_input.textChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+
+        self.legend_position_combobox.currentIndexChanged.connect(
+            self.results_tab_handler.generate_histogram
+        )  # Connect to auto-update
+        self.d32_checkbox.stateChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+        self.dmean_checkbox.stateChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+        self.dxy_checkbox.stateChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+
+        self.dxy_x_input.textChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+
+        self.dxy_y_input.textChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+
+        self.save_button.clicked.connect(self.results_tab_handler.save_results)
 
     def setup_menu_bar(self) -> None:
         """Set up the application's menu bar.
@@ -170,13 +244,13 @@ class MainWindow(QMainWindow):
         options to export settings and restart a new session.
         """
         setting_menu = QMenu("Settings")
-        export_setting_action = QAction("Export settings", self)
-        export_setting_action.triggered.connect(self.main_handler.menubar_open_export_settings_dialog)
-        setting_menu.addAction(export_setting_action)
+        self.export_setting_action = QAction("Export settings", self)
+        # self.export_setting_action.triggered.connect(self.main_handler.menubar_open_export_settings_dialog)
+        setting_menu.addAction(self.export_setting_action)
 
-        restart_action = QAction("Restart a new session", self)
-        restart_action.triggered.connect(self.main_handler.menubar_ask_if_restart)
-        setting_menu.addAction(restart_action)
+        self.restart_action = QAction("Restart a new session", self)
+        # self.restart_action.triggered.connect(self.main_handler.menubar_ask_if_restart)
+        setting_menu.addAction(self.restart_action)
 
         setting_menu = self.menu_bar.addMenu(setting_menu)  # type: ignore
 
@@ -199,20 +273,20 @@ class MainWindow(QMainWindow):
         top_frame = QFrame()
         top_layout = QHBoxLayout(top_frame)
         self.folder_path_edit = QLineEdit()
-        self.folder_path_edit.setText(str(self.folder_tab_handler.image_path))
-        select_folder_button = QPushButton("Select Folder")
-        confirm_folder_button = QPushButton("Confirm Folder")
-        select_folder_button.clicked.connect(self.main_handler.tab1_select_folder)
-        confirm_folder_button.clicked.connect(self.main_handler.tab1_confirm_folder_selection)
-        top_layout.addWidget(select_folder_button)
+        # self.folder_path_edit.setText(str(self.folder_tab_handler.image_path))
+        self.select_folder_button = QPushButton("Select Folder")
+        self.confirm_folder_button = QPushButton("Confirm Folder")
+        # self.select_folder_button.clicked.connect(self.main_handler.tab1_select_folder)
+        # self.confirm_folder_button.clicked.connect(self.main_handler.tab1_confirm_folder_selection)
+        top_layout.addWidget(self.select_folder_button)
         top_layout.addWidget(self.folder_path_edit)
-        top_layout.addWidget(confirm_folder_button)
+        top_layout.addWidget(self.confirm_folder_button)
 
         # Bottom Left: List of images in folder
         bottom_left_frame = QFrame()
         bottom_left_layout = QVBoxLayout(bottom_left_frame)
         self.image_list = QListWidget()
-        self.image_list.clicked.connect(self.folder_tab_handler.preview_image_folder_tab)
+        # self.image_list.clicked.connect(self.folder_tab_handler.preview_image_folder_tab)
         bottom_left_layout.addWidget(self.image_list)
 
         # Bottom Right: Image Preview
@@ -266,9 +340,9 @@ class MainWindow(QMainWindow):
         pixel_img_frame = QFrame()
         pixel_img_layout = QVBoxLayout(pixel_img_frame)
         self.pixel_img_name = QLineEdit()
-        self.pixel_img_name.setText(str(self.calibration_tab_handler.px_img_path))
-        pixel_img_select_button = QPushButton("Select ruler image")
-        pixel_img_select_button.clicked.connect(self.main_handler.tab2_select_ruler_button)
+        # self.pixel_img_name.setText(str(self.calibration_tab_handler.px_img_path))
+        self.pixel_img_select_button = QPushButton("Select ruler image")
+        # self.pixel_img_select_button.clicked.connect(self.main_handler.tab2_select_ruler_button)
         self.pixel_img_preview = QLabel()
         self.pixel_img_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.pixel_img_preview.setFixedSize(400, 300)
@@ -276,8 +350,7 @@ class MainWindow(QMainWindow):
         pixel_img_layout.addWidget(QLabel("Step 1: Pixel resolution calibration"))
         pixel_img_layout.addWidget(QLabel("Image name"))
         pixel_img_layout.addWidget(self.pixel_img_name)
-        # pixel_img_layout.addWidget(pixel_img_confirm_button)
-        pixel_img_layout.addWidget(pixel_img_select_button)
+        pixel_img_layout.addWidget(self.pixel_img_select_button)
         pixel_img_layout.addWidget(self.pixel_img_preview)
         pixel_img_layout.addStretch()
 
@@ -288,8 +361,8 @@ class MainWindow(QMainWindow):
         self.bg_corr_image_name.setText("Choose your background image from local")
         # bg_corr_confirm_button = QPushButton("Confirm")
         # bg_corr_confirm_button.clicked.connect(self.confirm_bg_corr_image)
-        bg_corr_select_button = QPushButton("Select background image (optional)")
-        bg_corr_select_button.clicked.connect(self.main_handler.tab2_select_bg_corr_image)
+        self.bg_corr_select_button = QPushButton("Select background image (optional)")
+        # self.bg_corr_select_button.clicked.connect(self.main_handler.tab2_select_bg_corr_image)
         self.bg_corr_image_preview = QLabel()
         self.bg_corr_image_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.bg_corr_image_preview.setFixedSize(400, 300)
@@ -298,7 +371,7 @@ class MainWindow(QMainWindow):
         bg_corr_layout.addWidget(QLabel("Image name"))
         bg_corr_layout.addWidget(self.bg_corr_image_name)
         # bg_corr_layout.addWidget(bg_corr_confirm_button)
-        bg_corr_layout.addWidget(bg_corr_select_button)
+        bg_corr_layout.addWidget(self.bg_corr_select_button)
         bg_corr_layout.addWidget(self.bg_corr_image_preview)
         bg_corr_layout.addStretch()
 
@@ -319,13 +392,13 @@ class MainWindow(QMainWindow):
         manualcalibration_layout.addWidget(self.manual_px_mm_input)
         manualcalibration_layout.addWidget(QLabel("px/mm"))
 
-        confirm_px_mm_button = QPushButton("Confirm calibration and background image")
-        confirm_px_mm_button.clicked.connect(
-            self.main_handler.tab2_confirm_calibration
-        )  # Connect confirm button to the handler
+        self.confirm_px_mm_button = QPushButton("Confirm calibration and background image")
+        # self.confirm_px_mm_button.clicked.connect(
+        #     self.main_handler.tab2_confirm_calibration
+        # )  # Connect confirm button to the handler
 
         bottom_frame_layout.addWidget(manualcalibration_frame)
-        bottom_frame_layout.addWidget(confirm_px_mm_button)
+        bottom_frame_layout.addWidget(self.confirm_px_mm_button)
 
         # Add frames to main layout
         layout.addWidget(top_frame, 0, 0, 1, 2)
@@ -362,21 +435,21 @@ class MainWindow(QMainWindow):
         self.sample_image_preview = QLabel("Sample image preview")
         self.sample_image_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.sample_image_preview.setFixedSize(400, 300)  # Adjust size as needed
-        prev_button = QPushButton("< Prev. Img")
-        next_button = QPushButton("Next Img >")
-        prev_button.clicked.connect(lambda: self.main_handler.tab3_update_sample_image("prev"))
-        next_button.clicked.connect(lambda: self.main_handler.tab3_update_sample_image("next"))
+        self.prev_button = QPushButton("< Prev. Img")
+        self.next_button = QPushButton("Next Img >")
+        # self.prev_button.clicked.connect(lambda: self.main_handler.tab3_update_sample_image("prev"))
+        # self.next_button.clicked.connect(lambda: self.main_handler.tab3_update_sample_image("next"))
         self.preview_processed_images_button = QPushButton("Preview Processed Images")
         self.preview_processed_images_button.setEnabled(False)
-        self.preview_processed_images_button.clicked.connect(self.main_handler.tab3_preview_processed_images)
+        # self.preview_processed_images_button.clicked.connect(self.main_handler.tab3_preview_processed_images)
 
         first_column_layout.addWidget(QLabel("Select image and preview"))
         first_column_layout.addWidget(self.sample_image_preview)
 
         # Prev/Next Buttons
         first_column_buttons_layout = QHBoxLayout()
-        first_column_buttons_layout.addWidget(prev_button)
-        first_column_buttons_layout.addWidget(next_button)
+        first_column_buttons_layout.addWidget(self.prev_button)
+        first_column_buttons_layout.addWidget(self.next_button)
 
         first_column_layout.addLayout(first_column_buttons_layout)
         first_column_layout.addWidget(self.preview_processed_images_button)
@@ -393,10 +466,10 @@ class MainWindow(QMainWindow):
 
         algorithm_label = QLabel("Select Algorithm:")
         self.algorithm_combo = QComboBox()
-        self.image_processing_tab_handler.initialize_algorithm_combo()
-        self.algorithm_combo.currentTextChanged.connect(
-            lambda: self.main_handler.tab3_handle_algorithm_change(self.algorithm_combo.currentText())
-        )
+        # self.image_processing_tab_handler.initialize_algorithm_combo()
+        # self.algorithm_combo.currentTextChanged.connect(
+        #     lambda: self.main_handler.tab3_handle_algorithm_change(self.algorithm_combo.currentText())
+        # )
 
         # Parameter sandbox for img_resample_factor, threshold_value, element_size
         sandbox1_label = QLabel("Adjust parameters before filtering")
@@ -407,15 +480,15 @@ class MainWindow(QMainWindow):
 
         self.param_sandbox1 = QTableWidget(0, 2)
         self.param_sandbox1.setHorizontalHeaderLabels(["Parameter", "Value"])
-        self.main_handler.tab3_load_parameter_table_1(self.algorithm_combo.currentText())  # New helper method
+        # self.main_handler.tab3_load_parameter_table_1(self.algorithm_combo.currentText())  # New helper method
 
         # Confirm button for this sandbox
-        preview_button1 = QPushButton("Confirm parameter and preview")
-        preview_button1.clicked.connect(self.main_handler.tab3_confirm_parameter_before_filtering)
+        self.preview_button1 = QPushButton("Confirm parameter and preview")
+        # self.preview_button1.clicked.connect(self.main_handler.tab3_confirm_parameter_before_filtering)
 
         second_column_layout.addWidget(sandbox1_label)
         second_column_layout.addWidget(self.param_sandbox1)
-        second_column_layout.addWidget(preview_button1)
+        second_column_layout.addWidget(self.preview_button1)
 
         # ----------- Third Column: Processed Image After Filtering and Sandbox ------
 
@@ -431,10 +504,10 @@ class MainWindow(QMainWindow):
         sandbox2_label = QLabel("Adjust parameters for filtering circles")
         self.param_sandbox2 = QTableWidget(0, 2)
         self.param_sandbox2.setHorizontalHeaderLabels(["Parameter", "Value"])
-        self.main_handler.tab3_initialize_parameter_table_2()  # New helper method
+        # self.main_handler.tab3_initialize_parameter_table_2()  # New helper method
 
         self.fc_checkbox = QCheckBox("Find Circles")
-        self.fc_checkbox.stateChanged.connect(self.main_handler.tab3_handle_find_circles)
+        # self.fc_checkbox.stateChanged.connect(self.main_handler.tab3_handle_find_circles)
 
         # Additional parameter box for circle finding (initially hidden)
         self.circle_param_box = QTableWidget(0, 2)
@@ -442,21 +515,21 @@ class MainWindow(QMainWindow):
         self.circle_param_box.setVisible(False)
 
         # Confirm and Batch Process buttons for this sandbox
-        preview_button2 = QPushButton("Confirm parameter and preview")
-        manual_adjustment_button = QPushButton("Manual adjustment")
-        manual_adjustment_button.clicked.connect(self.main_handler.tab3_ellipse_manual_adjustment)
-        batch_process_button = QPushButton("Batch process images")
-        batch_process_button.setStyleSheet("background-color: red; color: white;")
-        preview_button2.clicked.connect(self.main_handler.tab3_confirm_parameter_for_filtering)
-        batch_process_button.clicked.connect(self.main_handler.tab3_ask_if_batch)
+        self.preview_button2 = QPushButton("Confirm parameter and preview")
+        self.manual_adjustment_button = QPushButton("Manual adjustment")
+        # self.manual_adjustment_button.clicked.connect(self.main_handler.tab3_ellipse_manual_adjustment)
+        self.batch_process_button = QPushButton("Batch process images")
+        self.batch_process_button.setStyleSheet("background-color: red; color: white;")
+        # self.preview_button2.clicked.connect(self.main_handler.tab3_confirm_parameter_for_filtering)
+        # self.batch_process_button.clicked.connect(self.main_handler.tab3_ask_if_batch)
 
         third_column_layout.addWidget(sandbox2_label)
         third_column_layout.addWidget(self.param_sandbox2)
         third_column_layout.addWidget(self.fc_checkbox)
         third_column_layout.addWidget(self.circle_param_box)
-        third_column_layout.addWidget(preview_button2)
-        third_column_layout.addWidget(manual_adjustment_button)
-        third_column_layout.addWidget(batch_process_button)
+        third_column_layout.addWidget(self.preview_button2)
+        third_column_layout.addWidget(self.manual_adjustment_button)
+        third_column_layout.addWidget(self.batch_process_button)
 
         # Add the columns to the main layout
         layout.addWidget(first_column_frame, 0, 0)
@@ -507,22 +580,22 @@ class MainWindow(QMainWindow):
         # PDF/CDF Checkboxes
         self.pdf_checkbox = QCheckBox("PDF")
         self.cdf_checkbox = QCheckBox("CDF")
-        self.pdf_checkbox.stateChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
-        self.cdf_checkbox.stateChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+        # self.pdf_checkbox.stateChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+        # self.cdf_checkbox.stateChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
 
         # Number of bins
         bins_label = QLabel("Number of bins:")
         self.bins_spinbox = QSpinBox()
         self.bins_spinbox.setValue(15)
         self.bins_spinbox.setRange(1, 100)
-        self.bins_spinbox.valueChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+        # self.bins_spinbox.valueChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
 
         # X-axis limits
         x_axis_limits_label = QLabel("X-axis limits:")
         self.min_x_axis_input = QLineEdit("0.0")
         self.max_x_axis_input = QLineEdit("5.0")
-        self.min_x_axis_input.textChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
-        self.max_x_axis_input.textChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+        # self.min_x_axis_input.textChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+        # self.max_x_axis_input.textChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
 
         legend_label = QLabel("Legend settings:")
         legend_frame = QFrame()
@@ -532,9 +605,9 @@ class MainWindow(QMainWindow):
         legend_layout.addWidget(QLabel("Position:"), 0, 0)
         self.legend_position_combobox = QComboBox()
         self.legend_position_combobox.addItems(["North East", "North West", "South East", "South West"])
-        self.legend_position_combobox.currentIndexChanged.connect(
-            self.results_tab_handler.generate_histogram
-        )  # Connect to auto-update
+        # self.legend_position_combobox.currentIndexChanged.connect(
+        #     self.results_tab_handler.generate_histogram
+        # )  # Connect to auto-update
         legend_layout.addWidget(self.legend_position_combobox, 0, 1)
 
         # Descriptive size options
@@ -545,20 +618,20 @@ class MainWindow(QMainWindow):
         self.d32_checkbox = QCheckBox("d32")
         self.dmean_checkbox = QCheckBox("d mean")
         self.dxy_checkbox = QCheckBox("dxy")
-        self.d32_checkbox.stateChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
-        self.dmean_checkbox.stateChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
-        self.dxy_checkbox.stateChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+        # self.d32_checkbox.stateChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+        # self.dmean_checkbox.stateChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+        # self.dxy_checkbox.stateChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
 
         # Add input boxes for `x` and `y` values
         self.dxy_x_input = QLineEdit()
         self.dxy_x_input.setText("5")  # Set default value for x
         self.dxy_x_input.setMaximumWidth(40)
-        self.dxy_x_input.textChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+        # self.dxy_x_input.textChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
 
         self.dxy_y_input = QLineEdit()
         self.dxy_y_input.setText("4")  # Set default value for y
         self.dxy_y_input.setMaximumWidth(40)
-        self.dxy_y_input.textChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
+        # self.dxy_y_input.textChanged.connect(self.results_tab_handler.generate_histogram)  # Connect to auto-update
 
         # Add elements to the descriptive layout
         descriptive_layout.addWidget(self.d32_checkbox, 0, 0)
@@ -609,14 +682,14 @@ class MainWindow(QMainWindow):
         csv_filename_layout.addWidget(csv_filename_label)
 
         # Save button
-        save_button = QPushButton("Save graph and data")
-        save_button.clicked.connect(self.results_tab_handler.save_results)
+        self.save_button = QPushButton("Save graph and data")
+        # self.save_button.clicked.connect(self.results_tab_handler.save_results)
 
         # Add folder selection and save button to the layout
         # save_layout.addWidget(folder_selection_frame)
         save_layout.addWidget(graph_frame)
         save_layout.addWidget(csv_filename_frame)
-        save_layout.addWidget(save_button)
+        save_layout.addWidget(self.save_button)
 
         # Assemble controls layout
         # controls_layout.addWidget(histogram_by_label)
