@@ -7,9 +7,9 @@ filtering, and ellipse detection and measurement.
 
 import importlib.util
 import inspect
+import logging
 import sys
 import types
-import logging
 from pathlib import Path
 from typing import cast
 
@@ -247,7 +247,7 @@ class Image:
         self.bknd_img: npt.NDArray[np.int_] = cast(npt.NDArray[np.int_], None)
 
         if bknd_img_path is not None:
-            logging.info("bknd_img_path:", bknd_img_path)
+            logging.info(f"bknd_img_path: {bknd_img_path}")
             self.if_bknd_img = True
             # self.bknd_img_path = bknd_img_path
 

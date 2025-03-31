@@ -15,13 +15,13 @@ These components work together to provide a structured approach to image process
 data management, and user interface interaction in the Bubble Analyser application.
 """
 
+import logging
 import os
 from pathlib import Path
 from typing import cast
 
 import cv2
 import numpy as np
-import logging
 from cv2.typing import MatLike
 from numpy import typing as npt
 from PySide6.QtCore import QEventLoop, QThread, Signal
