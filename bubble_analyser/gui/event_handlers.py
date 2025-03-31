@@ -19,9 +19,9 @@ the GUI and the underlying processing logic.
 from __future__ import annotations
 
 import csv
+import logging
 import os
 import sys
-import logging
 from datetime import datetime
 from pathlib import Path
 from typing import cast
@@ -53,7 +53,8 @@ from bubble_analyser.gui import (
     WorkerThread,
 )
 from bubble_analyser.gui.gui import MainWindow as MainWindow
-from bubble_analyser.processing import Config, cv2_to_qpixmap, LoggerWriter
+from bubble_analyser.processing import Config, LoggerWriter, cv2_to_qpixmap
+
 
 class ExportSettingsHandler(QDialog):
     """A dialog for configuring export settings for processed images.
@@ -103,7 +104,7 @@ class ExportSettingsHandler(QDialog):
 
         layout.addLayout(path_Vlayout)
 
-        layout.addLayout(path_layout)
+        # layout.addLayout(path_layout)
 
     def accept(self) -> None:
         """Handle the confirmation of the selected save path.
@@ -118,7 +119,10 @@ class ExportSettingsHandler(QDialog):
             return None
         super().accept()
         self.save_path = cast(Path, self.default_path_edit.text())
-        logging.info(f"Export path for final graph, csv datafile, and processed images (optional) set as: {self.save_path}")
+        logging.info(
+            f"Export path for final graph, csv datafile, and processed\
+images (optional) set as: {self.save_path}"
+        )
 
     def select_folder(self) -> None:
         """Open a file dialog to select a folder for saving processed images.
@@ -285,7 +289,8 @@ class FolderTabHandler:
             self.model.confirm_folder_selection(folder_path)
             self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.calibration_tab))
             logging.info("Raw image path confirmed and locked.")
-            
+            logging.info("******************************Calibration session******************************")
+
     def preview_image_folder_tab(self) -> None:
         """Display a preview of the selected image in the folder tab.
 
@@ -405,6 +410,7 @@ class CalibrationTabHandler:
                     Qt.AspectRatioMode.KeepAspectRatio,
                 )
             )
+            logging.info(f"Pixel to millimeter ratio detected as: {px2mm:.3f}")
         else:
             self.gui.statusBar().showMessage("Image file does not exist or not selected.", 5000)
 
@@ -439,6 +445,7 @@ class CalibrationTabHandler:
                 )
             )
             self.calibration_model.if_bknd = True
+            logging.info(f"Background image path set as: {image_path}")
 
     def confirm_calibration(self) -> None:
         """Confirm the calibration settings and proceed to the next tab.
@@ -459,6 +466,10 @@ class CalibrationTabHandler:
 
         self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.image_processing_tab))
         self.preview_image_intialize()
+        logging.info(f"Pixel to millimeter ratio locked as: {self.calibration_model.px2mm:.3f}")
+        logging.info(f"Background image path locked as: {self.calibration_model.bknd_img_path}")
+        logging.info("Calibration confirmed and locked.")
+        logging.info("******************************Parameter Adjustment Session******************************")
 
     def preview_image_intialize(self) -> None:
         """Display a preview of the first image in the image processing tab.
@@ -852,24 +863,6 @@ class ImageProcessingTabHandler(QThread):
         # self.pass_segment_params(self.model.segment_param_dict)
         self._process_step_1()
 
-    # def looks_like_float(self, s: str) -> bool:
-    #     """Check if a string represents a floating-point number.
-
-    #     Args:
-    #         s (str): The string to check.
-
-    #     Returns:
-    #         bool: True if the string represents a floating-point number, False otherwise.
-    #     """
-    #     try:
-    #         f = float(s)
-    #         # Check if it has a fractional part
-    #         logging.info(s, "determined as float.")
-    #         return not f.is_integer()
-    #     except ValueError:
-    #         logging.info(s, "determined as not a float.")
-    #         return False
-
     def convert_value(self, text: str) -> int | float | str:
         """Convert a string to the appropriate numeric type.
 
@@ -1156,6 +1149,9 @@ class ImageProcessingTabHandler(QThread):
         the worker thread to process all images. If saving is enabled, verifies
         that the save path exists before proceeding.
         """
+        logging.info("-----------------------------------------------------------------------------------------")
+        logging.info("--------------------------------Running Batch Processing--------------------------------")
+        logging.info("-----------------------------------------------------------------------------------------")
         logging.info("------------------------------Validating Segment Parameters------------------------------")
         # Update the model parameters
         for algorithm_name, params in self.model.all_methods_n_params.items():
@@ -1164,9 +1160,7 @@ class ImageProcessingTabHandler(QThread):
                     row,
                     (name, value),
                 ) in enumerate(params.items()):
-                    logging.info(
-                        f"Checking segment params before batch processing {name} {value}"
-                    )
+                    logging.info(f"Checking segment params before batch processing {name} {value}")
                     if_valid = self.check_params(name, value)
                     if not if_valid:
                         return
@@ -1235,6 +1229,8 @@ class ImageProcessingTabHandler(QThread):
 
         # Switch to the final tab
         self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.results_tab))
+        logging.info("Batch processing completed.")
+        logging.info("******************************Result Session******************************")
 
 
 class ResultsTabHandler:
@@ -1586,7 +1582,7 @@ class MainHandler:
         Creates instances of all necessary handlers and models with appropriate
         configuration parameters from the TOML file.
         """
-        logging.info(f"Initializing Handlers...")
+        logging.info("Initializing Handlers...")
         self.toml_handler = TomlFileHandler(self.toml_file_path)
 
         self.input_file_model = InputFilesModel()
@@ -1618,7 +1614,7 @@ class MainHandler:
         from bubble_analyser.gui import MainWindow
 
         logging.basicConfig(level=logging.INFO)
-        logging.info(f"Initializing GUI...")
+        logging.info("Initializing GUI...")
 
         self.app = QApplication(sys.argv)
         self.gui = MainWindow()
@@ -1639,7 +1635,7 @@ class MainHandler:
         the GUI has been initialized and before handlers start interacting with
         GUI components.
         """
-        logging.info(f"Connecting GUI and Handlers...")
+        logging.info("Connecting GUI and Handlers...")
         self.folder_tab_handler.load_gui(self.gui)
         self.calibration_tab_handler.load_gui(self.gui)
         self.image_processing_tab_handler.load_gui(self.gui)
@@ -1778,7 +1774,7 @@ class MainHandler:
 
         Resets the application state and restarts the GUI.
         """
-        logging.info(f"Restarting application...")
+        logging.info("Restarting application...")
         self.disconnect_gui_and_handlers()
         self.disconnect_handlers_signals()
         self.clear_all_gui_contents()
@@ -1791,8 +1787,8 @@ class MainHandler:
 
         self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.folder_tab))
 
-        logging.info(f"Application restarted, a new mission initialzed.")
-        logging.info(f"------------------------------New mission started------------------------------")
+        logging.info("Application restarted, a new mission initialzed.")
+        logging.info("------------------------------New mission started------------------------------")
 
     def load_export_settings(self) -> None:
         """Initialize and configure the export settings handler.
@@ -1800,11 +1796,11 @@ class MainHandler:
         Creates the export settings handler and provides it to relevant tab handlers
         that need access to export functionality.
         """
-        logging.info(f"Initializing Export Settings...")
+        logging.info("Initializing Export Settings...")
         self.export_handler = ExportSettingsHandler(parent=self.gui, params=self.toml_handler.params)
         self.image_processing_tab_handler.export_handler = self.export_handler
         self.results_tab_handler.export_handler = self.export_handler
-        logging.info(f"Export Settings initialized!")
+        logging.info("Export Settings initialized!")
 
     def menubar_open_export_settings_dialog(self) -> None:
         """Open the export settings dialog from the menu bar.
@@ -1979,33 +1975,34 @@ class MainHandler:
 
     def setup_logging(self) -> None:
         """Set up logging to capture terminal output to a file.
-        
+
         This method configures a logging system that captures all print statements
         and other terminal outputs to a timestamped log file in the 'logs' directory.
         """
         # Create logs directory if it doesn't exist
         logs_dir = Path("logs")
         logs_dir.mkdir(exist_ok=True)
-        
+
         # Create a timestamped log filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         log_file = logs_dir / f"bubble_analyser_{timestamp}.log"
-        
+
         # Configure logging
         logging.basicConfig(
             level=logging.INFO,
-            format='%(asctime)s - %(levelname)s - %(message)s',
+            format="%(asctime)s - %(levelname)s - %(message)s",
             handlers=[
                 logging.FileHandler(log_file),
-                logging.StreamHandler()  # This will still print to console
-            ]
+                logging.StreamHandler(),  # This will still print to console
+            ],
         )
-        
+
         # Redirect stdout and stderr to the logger
         sys.stdout = LoggerWriter(logging.info)
         sys.stderr = LoggerWriter(logging.error)
-        
+
         logging.info(f"Starting Bubble Analyser application. Log file: {log_file}")
+
 
 if __name__ == "__main__":
     main_handler = MainHandler()

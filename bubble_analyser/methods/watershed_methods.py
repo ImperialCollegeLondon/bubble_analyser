@@ -286,7 +286,6 @@ class NormalWatershed(WatershedSegmentation):
         self.img_rgb = img_rgb
         self.bknd_img = bknd_img
         self.if_bknd_img = if_bknd_img
-        print("if_bknd_img in normal watershed: ", if_bknd_img)
         self.update_params(params)
         super().__init__(
             img_grey,
