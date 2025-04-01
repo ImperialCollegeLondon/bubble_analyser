@@ -53,7 +53,7 @@ from bubble_analyser.gui import (
     WorkerThread,
 )
 from bubble_analyser.gui.gui import MainWindow as MainWindow
-from bubble_analyser.processing import Config, LoggerWriter, cv2_to_qpixmap
+from bubble_analyser.processing import Config, cv2_to_qpixmap
 
 
 class ExportSettingsHandler(QDialog):
@@ -103,8 +103,6 @@ class ExportSettingsHandler(QDialog):
         path_Vlayout.addWidget(self.confirm_button)
 
         layout.addLayout(path_Vlayout)
-
-        # layout.addLayout(path_layout)
 
     def accept(self) -> None:
         """Handle the confirmation of the selected save path.
@@ -251,7 +249,9 @@ class FolderTabHandler:
         if folder_path:
             self._update_folder_path(folder_path)
             self._populate_image_list(folder_path)
-        logging.info(f"Raw image path set as: {folder_path}")
+            logging.info(f"Raw image path set as: {folder_path}")
+        else:
+            logging.info("User cancelled folder selection")
 
     def _update_folder_path(self, folder_path: str) -> None:
         """Update the model and GUI with the selected folder path.
@@ -355,22 +355,31 @@ class CalibrationTabHandler:
         self.gui = gui
 
     def select_ruler_button(self) -> None:
-        """Handle the process of resolution calibration with ruler image selecion and pixel-to-mm conversion."""
-        self.select_px_mm_image()
-        self.get_px2mm_ratio()
+        """Handle the process of resolution calibration with ruler image selection and pixel-to-mm conversion."""
+        # First select the image
+        image_selected = self.select_px_mm_image()
 
-    def select_px_mm_image(self) -> None:
+        # Only proceed to calculate ratio if an image was actually selected
+        if image_selected:
+            self.get_px2mm_ratio()
+        else:
+            logging.info("Skipping px2mm ratio calculation as no image was selected")
+
+    def select_px_mm_image(self) -> bool:
         """Handle the selection of a ruler image for pixel-to-millimeter calibration.
 
         Opens a file dialog for selecting a ruler image and updates the preview in the GUI.
         If calibration has already been confirmed, displays a warning instead.
+
+        Returns:
+            bool: True if an image was selected, False otherwise.
         """
         if self.calibration_model.calibration_confirmed:
             self._show_warning(
                 "Selection Locked",
                 "You have already confirmed the ruler image selection.",
             )
-            return
+            return False
 
         image_path, _ = QFileDialog.getOpenFileName(
             self.gui, "Select Ruler Image", "", "Image Files (*.png *.jpg *.jpeg *.bmp)"
@@ -385,6 +394,10 @@ class CalibrationTabHandler:
                     Qt.AspectRatioMode.KeepAspectRatio,
                 )
             )
+            return True
+        else:
+            logging.info("User cancelled ruler image selection")
+            return False
 
     def get_px2mm_ratio(self) -> None:
         """Calculate the pixel-to-millimeter ratio from the selected ruler image.
@@ -446,6 +459,8 @@ class CalibrationTabHandler:
             )
             self.calibration_model.if_bknd = True
             logging.info(f"Background image path set as: {image_path}")
+        else:
+            logging.info("User cancelled background image selection")
 
     def confirm_calibration(self) -> None:
         """Confirm the calibration settings and proceed to the next tab.
@@ -593,7 +608,6 @@ class ImageProcessingTabHandler(QThread):
 
         logging.info(f"Checking parameter: {name} {value}")
         if name == "element_size":
-            print("True")
             try:
                 new_checker.element_size = cast(int, value)
             except ValidationError as e:
@@ -1258,6 +1272,7 @@ class ResultsTabHandler:
 
         self.ellipses_properties: list[list[dict[str, float]]]
         self.export_handler: ExportSettingsHandler
+        self.if_dinf_displayed: bool = False
 
     def load_gui(self, gui: MainWindow) -> None:
         """Load a reference to the GUI instance.
@@ -1270,6 +1285,9 @@ class ResultsTabHandler:
         """
         self.gui = gui
         # results tab
+        # self.gui.histogram_by.currentIndexChanged.connect(
+        #     self.generate_histogram
+        # )
         self.gui.pdf_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
         self.gui.cdf_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
 
@@ -1348,6 +1366,9 @@ class ResultsTabHandler:
 
         # Calculate descriptive sizes
         d32, d_mean, dxy = self.calculate_descriptive_sizes(equivalent_diameters_array)
+        if not self.if_dinf_displayed:
+            logging.info(f"d32: {d32}, d_mean: {d_mean}, dxy: {dxy}")
+            self.if_dinf_displayed = True
 
         # Update descriptive size label
         desc_text = f"Results:\nd32 = {d32:.2f} mm\ndmean = {d_mean:.2f} mm\ndxy = {dxy:.2f} mm"
@@ -1386,7 +1407,6 @@ class ResultsTabHandler:
         }
 
         logging.info(f"Legend_position: {legend_position}")
-        # print(legend_location_map.get(legend_position, "upper right"))
 
         # Add legend to the graph
         if show_cdf or show_pdf or show_d32 or show_dmean or show_dxy:
@@ -1401,7 +1421,6 @@ class ResultsTabHandler:
 
         # Redraw the canvas
         self.gui.histogram_canvas.draw()
-
         return
 
     def calculate_descriptive_sizes(self, equivalent_diameters: npt.NDArray[np.float64]) -> tuple[float, float, float]:
@@ -1502,6 +1521,7 @@ class ResultsTabHandler:
             writer.writerows(rows)
 
         self._show_warning("Results Saved", f"Results have been saved successfully to {folder_path}.")
+        logging.info(f"Results have been saved successfully to {folder_path}.")
         return
 
     def _show_warning(self, title: str, message: str) -> None:
@@ -1788,7 +1808,7 @@ class MainHandler:
         self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.folder_tab))
 
         logging.info("Application restarted, a new mission initialzed.")
-        logging.info("------------------------------New mission started------------------------------")
+        logging.info("##############################New mission started##############################")
 
     def load_export_settings(self) -> None:
         """Initialize and configure the export settings handler.
@@ -1993,13 +2013,9 @@ class MainHandler:
             format="%(asctime)s - %(levelname)s - %(message)s",
             handlers=[
                 logging.FileHandler(log_file),
-                logging.StreamHandler(),  # This will still print to console
+                logging.StreamHandler(),
             ],
         )
-
-        # Redirect stdout and stderr to the logger
-        sys.stdout = LoggerWriter(logging.info)
-        sys.stderr = LoggerWriter(logging.error)
 
         logging.info(f"Starting Bubble Analyser application. Log file: {log_file}")
 
