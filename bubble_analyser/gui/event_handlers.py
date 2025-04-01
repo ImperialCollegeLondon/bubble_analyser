@@ -68,7 +68,7 @@ class ExportSettingsHandler(QDialog):
         confirm_button (QPushButton): Button to confirm the selected path.
     """
 
-    def __init__(self, parent=None, params: Config = None) -> None:  # type: ignore
+    def __init__(self, parent=None) -> None:  # type: ignore
         """Initialize the export settings dialog.
 
         Args:
@@ -82,7 +82,8 @@ class ExportSettingsHandler(QDialog):
 
         layout = QVBoxLayout(self)
 
-        self.save_path: Path = params.save_path
+        self.save_path: Path = cast(Path, "Select Export Path")
+        self.if_save_path: bool = False
 
         # Default path for results saving
         self.default_path_edit = QLineEdit()
@@ -121,6 +122,7 @@ class ExportSettingsHandler(QDialog):
             f"Export path for final graph, csv datafile, and processed\
 images (optional) set as: {self.save_path}"
         )
+        self.if_save_path = True
 
     def select_folder(self) -> None:
         """Open a file dialog to select a folder for saving processed images.
@@ -550,6 +552,7 @@ class ImageProcessingTabHandler(QThread):
     """
 
     batch_processing_done = Signal()
+    check_for_export_path = Signal()
 
     def __init__(self, image_processing_model: ImageProcessingModel, params: Config) -> None:
         """Initialize the image processing tab handler.
@@ -1124,13 +1127,15 @@ class ImageProcessingTabHandler(QThread):
         Creates and displays a confirmation dialog with options for saving processed images.
         If confirmed, initiates the batch processing operation.
         """
+        self.if_save_processed_images = False
         confirm_dialog = self.create_confirm_dialog()
         self.create_save_images_checkbox(confirm_dialog)
 
         response = confirm_dialog.exec()
 
         if response == QMessageBox.StandardButton.Ok:
-            self.batch_process_images()
+            self.check_for_export_path.emit()
+            # self.batch_process_images()
         else:
             logging.info("Batch processing canceled.")
 
@@ -1261,7 +1266,7 @@ class ImageProcessingTabHandler(QThread):
         logging.info("******************************Result Session******************************")
 
 
-class ResultsTabHandler:
+class ResultsTabHandler(QThread):
     """Handler for the results tab in the GUI.
 
     This class manages the display and export of processing results, including
@@ -1275,12 +1280,15 @@ class ResultsTabHandler:
         gui: Reference to the main GUI instance.
     """
 
+    check_for_export_path = Signal()
+
     def __init__(self, params: Config) -> None:
         """Initialize the results tab handler.
 
         Args:
             params (Config): Configuration parameters containing default values.
         """
+        super().__init__()
         self.params = params
         self.save_path = params.save_path
 
@@ -1316,7 +1324,8 @@ class ResultsTabHandler:
         self.gui.dxy_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
         self.gui.dxy_x_input.textChanged.connect(self.generate_histogram)  # Connect to auto-update
         self.gui.dxy_y_input.textChanged.connect(self.generate_histogram)  # Connect to auto-update
-        self.gui.save_button.clicked.connect(self.save_results)
+        # self.gui.save_button.clicked.connect(self.save_results)
+        self.gui.save_button.clicked.connect(self.check_for_export_path.emit)
 
     def load_ellipse_properties(self, properties: list[list[dict[str, float]]]) -> None:
         """Load the properties of detected ellipses for display and analysis.
@@ -1604,6 +1613,7 @@ class MainHandler:
         self.initialize_gui()
         self.initialize_handlers()
         self.initialize_handlers_signals()
+        self.initialize_new_export_settings()
         self.load_export_settings()
 
         self.load_gui_for_handlers()
@@ -1639,6 +1649,8 @@ class MainHandler:
         proper event propagation and response to user actions.
         """
         self.image_processing_tab_handler.batch_processing_done.connect(self.start_generate_histogram)
+        self.image_processing_tab_handler.check_for_export_path.connect(self.check_before_batch)
+        self.results_tab_handler.check_for_export_path.connect(self.check_before_saving_results)
 
     def initialize_gui(self) -> None:
         """Initialize the main GUI application and window, and display it.
@@ -1775,6 +1787,10 @@ class MainHandler:
         self.gui.dxy_y_input.textChanged.disconnect(self.results_tab_handler.generate_histogram)
         self.gui.save_button.clicked.disconnect(self.results_tab_handler.save_results)
 
+        self.image_processing_tab_handler.batch_processing_done.disconnect(self.start_generate_histogram)
+        self.image_processing_tab_handler.check_for_export_path.disconnect(self.check_before_batch)
+        self.results_tab_handler.check_for_export_path.disconnect(self.check_before_saving_results)
+
     def disconnect_handlers_signals(self) -> None:
         """Disconnect signals between handlers to prevent further event handling.
 
@@ -1830,11 +1846,48 @@ class MainHandler:
         Creates the export settings handler and provides it to relevant tab handlers
         that need access to export functionality.
         """
-        logging.info("Initializing Export Settings...")
-        self.export_handler = ExportSettingsHandler(parent=self.gui, params=self.toml_handler.params)
+        logging.info("Connecting Export Settings with handlers...")
         self.image_processing_tab_handler.export_handler = self.export_handler
         self.results_tab_handler.export_handler = self.export_handler
-        logging.info("Export Settings initialized!")
+
+    def initialize_new_export_settings(self) -> None:
+        """Initialize and configure the export settings handler."""
+        logging.info("Initializing Export Settings...")
+        self.export_handler = ExportSettingsHandler(parent=self.gui)
+
+    def check_before_batch(self) -> None:
+        """Check if batch processing can proceed."""
+        if self.image_processing_tab_handler.if_save_processed_images:
+            if self.check_if_export_settings_loaded():
+                self.image_processing_tab_handler.batch_process_images()
+            else:
+                return
+        else:
+            self.image_processing_tab_handler.batch_process_images()
+
+    def check_before_saving_results(self) -> None:
+        """Check if saving results can proceed."""
+        if self.check_if_export_settings_loaded():
+            self.results_tab_handler.save_results()
+        else:
+            return
+
+    def check_if_export_settings_loaded(self) -> bool:
+        """Check if export settings have been loaded.
+
+        Returns:
+            bool: True if export settings have been loaded, False otherwise.
+        """
+        if not self.export_handler.if_save_path:
+            self._show_warning(
+                "Export Path Not Configured",
+                "Please finish export settings first from menu bar (settings -> export setting).",
+            )
+            logging.info("Export Settings not loaded.")
+            return False
+        else:
+            logging.info("Export Settings loaded.")
+            return True
 
     def menubar_open_export_settings_dialog(self) -> None:
         """Open the export settings dialog from the menu bar.
@@ -1858,6 +1911,15 @@ class MainHandler:
         )
         if restart == QMessageBox.StandardButton.Yes:
             self.restart()
+
+    def _show_warning(self, title: str, message: str) -> None:
+        """Display a warning message box to the user.
+
+        Args:
+            title (str): The title of the warning dialog.
+            message (str): The detailed warning message to display.
+        """
+        QMessageBox.warning(self.gui, title, message)
 
     def tab1_select_folder(self) -> None:
         """Handle folder selection in the first tab.
