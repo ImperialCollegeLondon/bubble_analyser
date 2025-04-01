@@ -7,6 +7,7 @@ filtering, and ellipse detection and measurement.
 
 import importlib.util
 import inspect
+import logging
 import sys
 import types
 from pathlib import Path
@@ -121,7 +122,7 @@ class MethodsHandler:
 
                 modules["watershed_methods"] = watershed_methods
             except Exception as inner_e:
-                print(f"Fallback import failed: {inner_e}")
+                logging.info(f"Fallback import failed: {inner_e}")
 
         return modules
 
@@ -165,10 +166,10 @@ class MethodsHandler:
             - Populates the `all_classes` and `full_dict` attributes with the instances and their parameters.
         """
         for module_name, module in self.modules.items():
-            print(f"Module: {module_name}")
+            logging.info(f"Module: {module_name}")
             new_classes = self.get_new_classes(module)
             for class_name, class_obj in new_classes.items():
-                print(f"  Class: {class_name}")
+                logging.info(f"  Class: {class_name}")
 
                 instance: IterativeWatershed | NormalWatershed = class_obj(self.params_dict)  # type: ignore
                 self.all_classes[instance.name] = instance
@@ -180,7 +181,7 @@ class MethodsHandler:
             del self.full_dict["Default"]
             self.full_dict = {"Default": default_value, **self.full_dict}
 
-        print("All methods achieved and their needed params:", self.full_dict)
+        logging.info("All methods achieved and their needed params:", self.full_dict)
 
 
 class Image:
@@ -240,12 +241,13 @@ class Image:
 
         self.px2mm: float = px2mm
         self.raw_img_path = raw_img_path
+        logging.info(f"Initialzing image: {raw_img_path}")
         self.if_bknd_img: bool = False
         self.bknd_img_path: Path = bknd_img_path
         self.bknd_img: npt.NDArray[np.int_] = cast(npt.NDArray[np.int_], None)
 
         if bknd_img_path is not None:
-            print("bknd_img_path:", bknd_img_path)
+            logging.info(f"bknd_img_path: {bknd_img_path}")
             self.if_bknd_img = True
             # self.bknd_img_path = bknd_img_path
 
@@ -316,9 +318,6 @@ class Image:
             None
         """
         for algorithm_name, params in self.all_methods_n_params.items():
-            print("------------------------------Processing Step 1------------------------------")
-            print("algorithm name:", algorithm_name)
-
             if algorithm_name == algorithm:
                 for (
                     name,

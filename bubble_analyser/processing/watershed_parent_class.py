@@ -13,6 +13,7 @@ implementations, which can customize the segmentation process while reusing the 
 functionality provided by this base class.
 """
 
+import logging
 from typing import cast
 
 import cv2
@@ -93,7 +94,7 @@ class WatershedSegmentation:
         Uses either background subtraction thresholding if a background image is provided,
         or standard thresholding if no background image is available.
         """
-        print("if_bknd in watershed_parent: ", self.if_bknd_img)
+        logging.info(f"If background image: {self.if_bknd_img}")
         threshold_methods = ThresholdMethods()
         if self.if_bknd_img is True:
             thresholded_img = threshold_methods.threshold_with_background(image, self.bknd_img)
@@ -117,10 +118,6 @@ class WatershedSegmentation:
         The result is converted to uint8 type for further processing.
         """
         dt_image = cv2.distanceTransform(image, cv2.DIST_L2, self.element_size)  # type: ignore
-        # dt_image = dt_image.astype(np.int_)
-
-        # print(dt_image.max())
-        # self.img_grey_dt_copy = self.img_grey_dt.copy()
         return dt_image
 
     def _initialize_labels(self, img: MatLike) -> MatLike:
