@@ -32,6 +32,7 @@ image processing where preprocessing steps are crucial for subsequent analysis, 
 object detection, pattern recognition, and more.
 """
 
+import logging
 import time
 from pathlib import Path
 from typing import cast
@@ -153,26 +154,28 @@ def image_preprocess(img_path: Path, img_resample: float) -> tuple[npt.NDArray[n
         tuple[npt.NDArray, npt.NDArray]: A tuple containing the resized grayscale image
         and the resized RGB image.
     """
+    logging.info("Image preprocessing...")
     start_time = time.perf_counter()
     image = load_image(img_path)
-    print("Time used for load_image: ", time.perf_counter() - start_time)
+    logging.info(f"Time used for load_image: {time.perf_counter() - start_time}")
 
     start_time = time.perf_counter()
     image_RGB = get_RGB(image)
-    print("Time used for get_RGB: ", time.perf_counter() - start_time)
+    logging.info(f"Time used for get_RGB:  {time.perf_counter() - start_time}")
 
     start_time = time.perf_counter()
     image = resize_for_original_image(image, img_resample)
-    print("Time used for resize_for_original_image: ", time.perf_counter() - start_time)
+    logging.info(f"Time used for resize_for_original_image:  {time.perf_counter() - start_time}")
 
     start_time = time.perf_counter()
     image = get_greyscale(image)
-    print("Time used for get_greyscale: ", time.perf_counter() - start_time)
+    logging.info(f"Time used for get_greyscale:  {time.perf_counter() - start_time}")
 
     start_time = time.perf_counter()
     image_RGB = resize_for_RGB(image_RGB, img_resample)
-    print("Time used for resize_for_RGB: ", time.perf_counter() - start_time)
+    logging.info(f"Time used for resize_for_RGB:  {time.perf_counter() - start_time}")
 
+    logging.info("Image preprocessing finished.")
     return image, image_RGB
 
 
