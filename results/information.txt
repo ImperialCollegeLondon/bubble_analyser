@@ -1,4 +1,0 @@
-This is the default export path for:
-1. result graph
-2. result data in csv
-3. optional processed images and corresponding labelled masks
