@@ -245,8 +245,19 @@ class FolderTabHandler:
             self._show_warning("Selection Locked", "You have already confirmed the folder selection.")
             return
 
-        folder_path = QFileDialog.getExistingDirectory(self.gui, "Select Folder")
-        if folder_path:
+        # Use QFileDialog with options to show files but still select a folder
+        dialog = QFileDialog(self.gui, "Select Folder")
+        dialog.setFileMode(QFileDialog.FileMode.Directory)
+        dialog.setOption(QFileDialog.Option.ShowDirsOnly, False)  # Show files as well as directories
+
+        # Set a filter to show image files
+        dialog.setNameFilter(
+            "Image Files (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.\
+                PNG *.JPG *.JPEG *.BMP *.TIF *.TIFF);;All Files (*)"
+        )
+
+        if dialog.exec():
+            folder_path = dialog.selectedFiles()[0]
             self._update_folder_path(folder_path)
             self._populate_image_list(folder_path)
             logging.info(f"Raw image path set as: {folder_path}")
@@ -382,7 +393,10 @@ class CalibrationTabHandler:
             return False
 
         image_path, _ = QFileDialog.getOpenFileName(
-            self.gui, "Select Ruler Image", "", "Image Files (*.png *.jpg *.jpeg *.bmp)"
+            self.gui,
+            "Select Ruler Image",
+            "",
+            "Image Files (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.PNG *.JPG *.JPEG *.BMP *.TIF *.TIFF)",
         )
 
         if image_path:
@@ -444,7 +458,7 @@ class CalibrationTabHandler:
             self.gui,
             "Select Background Image",
             "",
-            "Image Files (*.png *.jpg *.jpeg *.bmp)",
+            "Image Files (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.PNG *.JPG *.JPEG *.BMP *.TIF *.TIFF)",
         )
 
         if image_path:
