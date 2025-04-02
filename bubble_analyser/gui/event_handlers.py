@@ -1327,13 +1327,31 @@ class ResultsTabHandler(QThread):
         # self.gui.save_button.clicked.connect(self.save_results)
         self.gui.save_button.clicked.connect(self.check_for_export_path.emit)
 
-    def load_ellipse_properties(self, properties: list[list[dict[str, float]]]) -> None:
+    def load_ellipse_properties(
+        self,
+        properties: list[list[dict[str, float]]],
+        algorithm: str,
+        all_methods_n_params: dict[str, dict[str, float | int]],
+        param_dict_1: dict[str, float | str],
+        param_dict_2: dict[str, float | str],
+    ) -> None:
         """Load the properties of detected ellipses for display and analysis.
 
         Args:
             properties (list[list[dict[str, float]]]): Properties of detected ellipses for all images.
+            algorithm (str): The name of the algorithm used for detection.
+            all_methods_n_params (dict[str, dict[str, float | int]]): Dictionary containing
+                parameters for all algorithms.
+            param_dict_1 (dict[str, float | str]): Dictionary containing parameters for the
+                first algorithm.
+            param_dict_2 (dict[str, float | str]): Dictionary containing parameters for the
+                second algorithm.
         """
         self.ellipses_properties = properties
+        self.algorithm = algorithm
+        self.all_methods_n_params = all_methods_n_params
+        self.param_dict_1 = param_dict_1
+        self.param_dict_2 = param_dict_2
         pass
 
     def generate_histogram(self) -> None:
@@ -1486,7 +1504,6 @@ class ResultsTabHandler(QThread):
 
     def save_results(self) -> None:
         """Saves histogram and data to the selected folder."""
-        # folder_path = self.gui.save_folder_edit.text()
         folder_path = self.export_handler.save_path
         if folder_path == "" or not os.path.exists(folder_path):
             self._show_warning("Folder Not Found", "Please select a valid folder in export settings.")
@@ -1507,10 +1524,23 @@ class ResultsTabHandler(QThread):
         # Set file paths
         graph_path = os.path.join(folder_path, f"{graph_filename}.png")
         csv_path = os.path.join(folder_path, f"{csv_filename}.csv")
+        config_path = os.path.join(folder_path, f"{csv_filename}_config.csv")
 
         # Assuming `self.histogram_canvas` is a matplotlib canvas
-        self.gui.histogram_canvas.fig.savefig(graph_path)
+        self.save_graph(graph_path)
+        self.save_ellipses_data(csv_path)
+        self.save_config_data(config_path)
 
+        self._show_warning("Results Saved", f"Results have been saved successfully to {folder_path}.")
+        logging.info(f"Results have been saved successfully to {folder_path}.")
+        return
+
+    def save_graph(self, export_path: str) -> None:
+        """Saves the current histogram to the selected folder."""
+        self.gui.histogram_canvas.fig.savefig(export_path)
+
+    def save_ellipses_data(self, export_path: str) -> None:
+        """Saves the detected ellipses data to the selected folder."""
         headers = [
             "major_axis_length",
             "minor_axis_length",
@@ -1536,7 +1566,7 @@ class ResultsTabHandler(QThread):
                 )
 
         # Write the data into a CSV file
-        with open(csv_path, mode="w", newline="") as data_file:
+        with open(export_path, mode="w", newline="") as data_file:
             writer = csv.writer(data_file)
 
             # Write the header
@@ -1545,9 +1575,60 @@ class ResultsTabHandler(QThread):
             # Write the rows of data
             writer.writerows(rows)
 
-        self._show_warning("Results Saved", f"Results have been saved successfully to {folder_path}.")
-        logging.info(f"Results have been saved successfully to {folder_path}.")
-        return
+    def save_config_data(self, export_path: str) -> None:
+        """Save the configuration data to a txt file."""
+        # Store the segmentation data
+        headers_seg: list[str] = []
+        rows_seg: list[str] = []
+        for algorithm_name, params in self.all_methods_n_params.items():
+            if algorithm_name == self.algorithm:
+                for key, value in params.items():
+                    headers_seg.append(key)
+                    rows_seg.append(cast(str, value))
+
+        # Store the Filtering Data
+        headers_1: list[str] = []
+        rows_1: list[str] = []
+        headers_2: list[str] = []
+        rows_2: list[str] = []
+        for key, value in self.param_dict_1.items():  # type: ignore
+            headers_1.append(key)
+            rows_1.append(cast(str, value))
+
+        if_find_circles: bool = self.param_dict_1.get("find_circles(Y/N)") == "Y"
+        if self.param_dict_2.get("find_circles(Y/N)") == "Y":
+            if_find_circles = True
+            for key, value in self.param_dict_2.items():  # type: ignore
+                headers_2.append(key)
+                rows_2.append(cast(str, value))
+
+        with open(export_path, mode="w", newline="") as data_file:
+            writer = csv.writer(data_file)
+
+            # Write algorithm name and parameters
+            writer.writerow(["Segmentation Parameters"])
+            writer.writerow(["Algorithm", self.algorithm])
+            for i in range(len(headers_seg)):
+                writer.writerow([headers_seg[i], rows_seg[i]])
+            writer.writerow([])  # Empty row for separation
+
+            # Write the first set of parameters (header, value pairs)
+            writer.writerow(["Filtering Parameters"])
+            for i in range(len(headers_1)):
+                writer.writerow([headers_1[i], rows_1[i]])
+
+            # If find circles is enabled, write the second set of parameters
+            if if_find_circles:
+                writer.writerow([])  # Empty row for separation
+                writer.writerow(["Circle Detection Parameters"])
+                for i in range(len(headers_2)):
+                    writer.writerow([headers_2[i], rows_2[i]])
+
+            # Add timestamp
+            writer.writerow([])
+            writer.writerow(["Generated on", datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
+
+            logging.info(f"Configuration data saved to {export_path}")
 
     def _show_warning(self, title: str, message: str) -> None:
         """Display a warning message box to the user.
@@ -2068,7 +2149,13 @@ class MainHandler:
         results tab handler and triggers histogram generation to visualize
         the distribution of bubble sizes and other properties.
         """
-        self.results_tab_handler.load_ellipse_properties(self.image_processing_model.ellipses_properties)
+        self.results_tab_handler.load_ellipse_properties(
+            self.image_processing_model.ellipses_properties,
+            self.image_processing_model.algorithm,
+            self.image_processing_model.all_methods_n_params,
+            self.image_processing_model.filter_param_dict_1,
+            self.image_processing_model.filter_param_dict_2,
+        )
         self.results_tab_handler.generate_histogram()
 
     def setup_logging(self) -> None:
