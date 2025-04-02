@@ -17,6 +17,7 @@ to remove partial objects, this function prepares images for more reliable and r
 analysis.
 """
 
+import logging
 import time
 from pathlib import Path
 from typing import cast
@@ -54,6 +55,7 @@ def morphological_process(
         A processed binary image (numpy array) where the regions of interest are more
         defined, with filled holes and cleared borders.
     """
+    logging.info("Morphological processing...")
     start_time = time.perf_counter()
     # element_size = morphology.disk(element_size)
 
@@ -65,13 +67,13 @@ def morphological_process(
     #     target_img.astype(np.uint8), cv2.MORPH_CLOSE, element_size
     # )  # type: ignore
 
-    print("Time consumed for closing: ", time.perf_counter() - start_time)
+    logging.info(f"Time consumed for closing: {time.perf_counter() - start_time}")
     start_time = time.perf_counter()
     image_processed_filled = ndimage.binary_fill_holes(image_processed_closed)
-    print("Time consumed for filling holes: ", time.perf_counter() - start_time)
+    logging.info(f"Time consumed for filling holes: {time.perf_counter() - start_time}")
     start_time = time.perf_counter()
     image_processed_cleared = segmentation.clear_border(image_processed_filled)
-    print("Time consumed for clearing borders: ", time.perf_counter() - start_time)
+    logging.info(f"Time consumed for clearing borders: {time.perf_counter() - start_time}")
 
     image_processed_cleared = image_processed_cleared.astype(np.uint8)
     # opening = cv2.morphologyEx(B,cv2.MORPH_OPEN,kernel, iterations = 2)
@@ -80,8 +82,9 @@ def morphological_process(
     if reverse_dilation:
         start_time = time.perf_counter()
         image_processed_cleard_eroded = cv2.erode(image_processed_cleared, kernel, iterations=1)
-        print("Time consumed for erosion: ", time.perf_counter() - start_time)
+        logging.info(f"Time consumed for erosion: {time.perf_counter() - start_time}")
 
+    logging.info("Morphological processing completed.")
     return image_processed_cleared, image_processed_cleard_eroded
 
 
