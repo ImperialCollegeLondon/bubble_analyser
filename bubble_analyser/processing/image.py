@@ -85,7 +85,8 @@ class MethodsHandler:
                 # Use a more cross-platform approach instead of glob()
                 try:
                     # For directories
-                    for file_path in package_path.iterdir():
+
+                    for file_path in package_path.iterdir():  # type: ignore
                         if file_path.is_file() and file_path.name.endswith(".py") and file_path.name != "__init__.py":
                             module_name = str(file_path).rsplit(".", 1)[0].split("/")[-1]
                             spec = importlib.util.spec_from_file_location(module_name, str(file_path))
