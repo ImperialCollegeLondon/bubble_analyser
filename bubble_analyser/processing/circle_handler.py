@@ -7,6 +7,7 @@ can be dynamically configured to control circle detection thresholds, size const
 settings. It is primarily used for bubble/circle analysis in scientific images.
 """
 
+import logging
 from collections.abc import Sequence
 from typing import cast
 
@@ -170,7 +171,6 @@ class CircleHandler:
         min_size = float(self.filter_param_dict_1["min_size"])
 
         if_find_circles_str = self.filter_param_dict_2.get("find_circles(Y/N)")
-        print("if_find_circles:", if_find_circles_str)
 
         L_min = cast(float, self.filter_param_dict_2["L_minA"])
         L_max = cast(float, self.filter_param_dict_2["L_maxA"])
@@ -195,27 +195,27 @@ class CircleHandler:
             if not (eccentricity <= max_eccentricity and solidity >= min_solidity and area >= min_size):
                 # Remove the region by setting it to 1 (background)
                 new_labels[new_labels == prop.label] = 1
-                print("A circle is being filtered out because the following parameter(s) are not qualified:")
+                logging.info("A circle is being filtered out because the following parameter(s) are not qualified:")
                 if eccentricity > max_eccentricity:
-                    print("Eccentricity (too large):", eccentricity)
+                    logging.info(f"Eccentricity (too large): {eccentricity}")
                 if solidity < min_solidity:
-                    print("Solidity (too small):", solidity)
+                    logging.info(f"Solidity (too small): {solidity}")
                 if area < min_size:
-                    print("Area (too small):", area)
+                    logging.info(f"Area (too small): {area}")
 
             else:
                 if if_find_circles:
-                    print("Find Circles activated.")
+                    logging.info("Find Circles activated.")
                     if not ((L_min <= area <= L_max) or (s_min <= area <= s_max)):
-                        print(
+                        logging.info(
                             "A circle is being filtered out because one or \
 more of the following parameter(s) are not qualified:"
                         )
-                        print("Value of the circle's area:", area)
-                        print("Value of the L_min:", L_min)
-                        print("Value of the L_max:", L_max)
-                        print("Value of the s_min:", s_min)
-                        print("Value of the s_max:", s_max)
+                        logging.info(f"Value of the circle's area: {area}")
+                        logging.info(f"Value of the L_min: {L_min}")
+                        logging.info(f"Value of the L_max: {L_max}")
+                        logging.info(f"Value of the s_min: {s_min}")
+                        logging.info(f"Value of the s_max: {s_max}")
                         new_labels[new_labels == prop.label] = 1
                         continue
 

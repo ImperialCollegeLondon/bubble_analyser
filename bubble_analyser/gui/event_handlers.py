@@ -19,8 +19,10 @@ the GUI and the underlying processing logic.
 from __future__ import annotations
 
 import csv
+import logging
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import cast
 
@@ -66,7 +68,7 @@ class ExportSettingsHandler(QDialog):
         confirm_button (QPushButton): Button to confirm the selected path.
     """
 
-    def __init__(self, parent=None, params: Config = None) -> None:  # type: ignore
+    def __init__(self, parent=None) -> None:  # type: ignore
         """Initialize the export settings dialog.
 
         Args:
@@ -80,7 +82,8 @@ class ExportSettingsHandler(QDialog):
 
         layout = QVBoxLayout(self)
 
-        self.save_path: Path = params.save_path
+        self.save_path: Path = cast(Path, "Select Export Path")
+        self.if_save_path: bool = False
 
         # Default path for results saving
         self.default_path_edit = QLineEdit()
@@ -102,8 +105,6 @@ class ExportSettingsHandler(QDialog):
 
         layout.addLayout(path_Vlayout)
 
-        layout.addLayout(path_layout)
-
     def accept(self) -> None:
         """Handle the confirmation of the selected save path.
 
@@ -117,6 +118,11 @@ class ExportSettingsHandler(QDialog):
             return None
         super().accept()
         self.save_path = cast(Path, self.default_path_edit.text())
+        logging.info(
+            f"Export path for final graph, csv datafile, and processed\
+images (optional) set as: {self.save_path}"
+        )
+        self.if_save_path = True
 
     def select_folder(self) -> None:
         """Open a file dialog to select a folder for saving processed images.
@@ -241,10 +247,24 @@ class FolderTabHandler:
             self._show_warning("Selection Locked", "You have already confirmed the folder selection.")
             return
 
-        folder_path = QFileDialog.getExistingDirectory(self.gui, "Select Folder")
-        if folder_path:
+        # Use QFileDialog with options to show files but still select a folder
+        dialog = QFileDialog(self.gui, "Select Folder")
+        dialog.setFileMode(QFileDialog.FileMode.Directory)
+        dialog.setOption(QFileDialog.Option.ShowDirsOnly, False)  # Show files as well as directories
+
+        # Set a filter to show image files
+        dialog.setNameFilter(
+            "Image Files (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.\
+                PNG *.JPG *.JPEG *.BMP *.TIF *.TIFF);;All Files (*)"
+        )
+
+        if dialog.exec():
+            folder_path = dialog.selectedFiles()[0]
             self._update_folder_path(folder_path)
             self._populate_image_list(folder_path)
+            logging.info(f"Raw image path set as: {folder_path}")
+        else:
+            logging.info("User cancelled folder selection")
 
     def _update_folder_path(self, folder_path: str) -> None:
         """Update the model and GUI with the selected folder path.
@@ -281,6 +301,8 @@ class FolderTabHandler:
             self._populate_image_list(folder_path)
             self.model.confirm_folder_selection(folder_path)
             self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.calibration_tab))
+            logging.info("Raw image path confirmed and locked.")
+            logging.info("******************************Calibration session******************************")
 
     def preview_image_folder_tab(self) -> None:
         """Display a preview of the selected image in the folder tab.
@@ -346,25 +368,37 @@ class CalibrationTabHandler:
         self.gui = gui
 
     def select_ruler_button(self) -> None:
-        """Handle the process of resolution calibration with ruler image selecion and pixel-to-mm conversion."""
-        self.select_px_mm_image()
-        self.get_px2mm_ratio()
+        """Handle the process of resolution calibration with ruler image selection and pixel-to-mm conversion."""
+        # First select the image
+        image_selected = self.select_px_mm_image()
 
-    def select_px_mm_image(self) -> None:
+        # Only proceed to calculate ratio if an image was actually selected
+        if image_selected:
+            self.get_px2mm_ratio()
+        else:
+            logging.info("Skipping px2mm ratio calculation as no image was selected")
+
+    def select_px_mm_image(self) -> bool:
         """Handle the selection of a ruler image for pixel-to-millimeter calibration.
 
         Opens a file dialog for selecting a ruler image and updates the preview in the GUI.
         If calibration has already been confirmed, displays a warning instead.
+
+        Returns:
+            bool: True if an image was selected, False otherwise.
         """
         if self.calibration_model.calibration_confirmed:
             self._show_warning(
                 "Selection Locked",
                 "You have already confirmed the ruler image selection.",
             )
-            return
+            return False
 
         image_path, _ = QFileDialog.getOpenFileName(
-            self.gui, "Select Ruler Image", "", "Image Files (*.png *.jpg *.jpeg *.bmp)"
+            self.gui,
+            "Select Ruler Image",
+            "",
+            "Image Files (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.PNG *.JPG *.JPEG *.BMP *.TIF *.TIFF)",
         )
 
         if image_path:
@@ -376,6 +410,10 @@ class CalibrationTabHandler:
                     Qt.AspectRatioMode.KeepAspectRatio,
                 )
             )
+            return True
+        else:
+            logging.info("User cancelled ruler image selection")
+            return False
 
     def get_px2mm_ratio(self) -> None:
         """Calculate the pixel-to-millimeter ratio from the selected ruler image.
@@ -401,6 +439,7 @@ class CalibrationTabHandler:
                     Qt.AspectRatioMode.KeepAspectRatio,
                 )
             )
+            logging.info(f"Pixel to millimeter ratio detected as: {px2mm:.3f}")
         else:
             self.gui.statusBar().showMessage("Image file does not exist or not selected.", 5000)
 
@@ -421,7 +460,7 @@ class CalibrationTabHandler:
             self.gui,
             "Select Background Image",
             "",
-            "Image Files (*.png *.jpg *.jpeg *.bmp)",
+            "Image Files (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.PNG *.JPG *.JPEG *.BMP *.TIF *.TIFF)",
         )
 
         if image_path:
@@ -435,6 +474,9 @@ class CalibrationTabHandler:
                 )
             )
             self.calibration_model.if_bknd = True
+            logging.info(f"Background image path set as: {image_path}")
+        else:
+            logging.info("User cancelled background image selection")
 
     def confirm_calibration(self) -> None:
         """Confirm the calibration settings and proceed to the next tab.
@@ -455,6 +497,10 @@ class CalibrationTabHandler:
 
         self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.image_processing_tab))
         self.preview_image_intialize()
+        logging.info(f"Pixel to millimeter ratio locked as: {self.calibration_model.px2mm:.3f}")
+        logging.info(f"Background image path locked as: {self.calibration_model.bknd_img_path}")
+        logging.info("Calibration confirmed and locked.")
+        logging.info("******************************Parameter Adjustment Session******************************")
 
     def preview_image_intialize(self) -> None:
         """Display a preview of the first image in the image processing tab.
@@ -464,7 +510,6 @@ class CalibrationTabHandler:
         """
         self.gui.image_list.setCurrentRow(0)
         selected_image = self.gui.image_list.currentItem().text()
-        print("Set current image to:", selected_image)
         folder_path = self.gui.folder_path_edit.text()
         image_path = folder_path + "/" + selected_image
         pixmap = QPixmap(image_path)
@@ -507,6 +552,7 @@ class ImageProcessingTabHandler(QThread):
     """
 
     batch_processing_done = Signal()
+    check_for_export_path = Signal()
 
     def __init__(self, image_processing_model: ImageProcessingModel, params: Config) -> None:
         """Initialize the image processing tab handler.
@@ -577,9 +623,8 @@ class ImageProcessingTabHandler(QThread):
         """
         new_checker: Config = self.params_checker.model_copy()
 
-        print("check_params:", name, value)
+        logging.info(f"Checking parameter: {name} {value}")
         if name == "element_size":
-            print("True")
             try:
                 new_checker.element_size = cast(int, value)
             except ValidationError as e:
@@ -719,7 +764,8 @@ class ImageProcessingTabHandler(QThread):
                 self.gui.image_list.setCurrentRow(current_row)
 
         self.current_index = current_row
-        print("(event_handlers/update_sample_img)current index: ", self.current_index)
+        logging.info(f"(event_handlers/update_sample_img)Current image index: {self.current_index}")
+
         self.preview_image()
         self.update_preview_procsd_img_button()
 
@@ -729,9 +775,8 @@ class ImageProcessingTabHandler(QThread):
         If the current image has been processed, the preview processed image button is enabled.
         """
         if_img, img_before_filter, img_after_filter = self.model.preview_processed_image(self.current_index)
-        print("update_preview_procsd_img_button:", if_img)
         if if_img:
-            print("Set true")
+            logging.info("Preview processed image enabled for current image.")
             self.gui.preview_processed_images_button.setEnabled(True)
 
         else:
@@ -761,12 +806,14 @@ class ImageProcessingTabHandler(QThread):
         # Initialize the algorithm combo box
         # And achieve all the available methods' names
 
+        logging.info("Initializing algorithm combo box...")
         for algorithm, params in self.model.all_methods_n_params.items():
-            print("initialize algorithm:", algorithm)
+            logging.info(f"Initialize algorithm: {algorithm}")
             self.algorithm_list.append(algorithm)
 
         self.gui.algorithm_combo.addItems(self.algorithm_list)
         self.update_model_algorithm(self.algorithm_list[0])
+        logging.info("Algorithm combo box initialized.")
 
     def load_parameter_table_1(self, algorithm: str) -> None:
         """Load the parameter table with values for the selected algorithm.
@@ -778,10 +825,9 @@ class ImageProcessingTabHandler(QThread):
         # This function only triggered by first initialization and algorithm change
 
         self.current_algorithm = algorithm
-        print("current algorithm:", self.current_algorithm)
+        logging.info(f"Current choosing algorithm: {self.current_algorithm}")
 
         for algorithm_name, params in self.model.all_methods_n_params.items():
-            print("algorithm name:", algorithm_name)
             if algorithm_name == self.current_algorithm:
                 self.gui.param_sandbox1.setRowCount(len(params))
 
@@ -827,8 +873,13 @@ class ImageProcessingTabHandler(QThread):
         Validates all parameters against the configuration schema before
         proceeding with the first processing step.
         """
+        logging.info("-----------------------------------------------------------------------------------------")
+        logging.info("-------------------------------Running Step 1: Segmentation------------------------------")
+        logging.info("-----------------------------------------------------------------------------------------")
         self.update_segment_parameters()
-        print("------------------------------Validating Segment Parameters------------------------------")
+
+        # Validate the parameters
+        logging.info("------------------------------Validating Segment Parameters------------------------------")
         # Update the model parameters
         for algorithm_name, params in self.model.all_methods_n_params.items():
             if algorithm_name == self.model.algorithm:
@@ -836,35 +887,12 @@ class ImageProcessingTabHandler(QThread):
                     row,
                     (name, value),
                 ) in enumerate(params.items()):
-                    print(
-                        "Checking steps in confirm_parameter_before_filtering: ",
-                        name,
-                        value,
-                    )
                     if_valid = self.check_params(name, value)
                     if not if_valid:
                         return
 
         # self.pass_segment_params(self.model.segment_param_dict)
         self._process_step_1()
-
-    def looks_like_float(self, s: str) -> bool:
-        """Check if a string represents a floating-point number.
-
-        Args:
-            s (str): The string to check.
-
-        Returns:
-            bool: True if the string represents a floating-point number, False otherwise.
-        """
-        try:
-            f = float(s)
-            # Check if it has a fractional part
-            print(s, "is float?")
-            return not f.is_integer()
-        except ValueError:
-            print(s, "is not float")
-            return False
 
     def convert_value(self, text: str) -> int | float | str:
         """Convert a string to the appropriate numeric type.
@@ -880,7 +908,13 @@ class ImageProcessingTabHandler(QThread):
         try:
             value = float(text)
             # Return an int if the number is integer
-            return int(value) if value.is_integer() else value
+            if value.is_integer():
+                logging.info(f"{value} determined as integer.")
+                return int(value)
+            else:
+                logging.info(f"{value} determined as float.")
+                return value
+            # return int(value) if value.is_integer() else value
         except ValueError:
             # Fallback if not a number
             return text
@@ -914,15 +948,13 @@ class ImageProcessingTabHandler(QThread):
         """
         # Update the params in the model
         # Extract parameters from the table
+        logging.info("------------------------------Updating Parameters------------------------------")
         params = self.extract_parameters_from_table(self.gui.param_sandbox1)
-
-        print("------------------------------Updating Parameters------------------------------")
-
         # Update the model's dictionary for the selected algorithm
         for algorithm_name, params_in_dict in self.model.all_methods_n_params.items():
             if algorithm_name == self.model.algorithm:
                 for name, value in params.items():
-                    print("Updating", name, "to", value)
+                    logging.info(f"Updating {name} to {value}")
                     params_in_dict[name] = value
 
         return True
@@ -933,6 +965,7 @@ class ImageProcessingTabHandler(QThread):
         Calls the model's step_1_main method to process the current image
         and updates the preview with the results.
         """
+        logging.info("------------------------------Processing Started------------------------------")
         step_1_img = self.model.step_1_main(self.current_index)
         self.update_label_before_filtering(step_1_img)
 
@@ -953,16 +986,19 @@ class ImageProcessingTabHandler(QThread):
         Populates the filtering parameters table with the current values from
         the temporary filter parameter dictionary.
         """
+        logging.info("Initializing parameter table 2...")
         self.filter_param_dict_1 = self.model.filter_param_dict_1
         self.filter_param_dict_2 = self.model.filter_param_dict_2
 
         self.gui.param_sandbox2.setRowCount(len(self.filter_param_dict_1))
         row = 0
         for property, value in self.filter_param_dict_1.items():
-            print("Filter param name:", property, ", value:", value)
+            logging.info(f"Filter param name: {property}, value: {value}")
             self.gui.param_sandbox2.setItem(row, 0, QTableWidgetItem(property))
             self.gui.param_sandbox2.setItem(row, 1, QTableWidgetItem(str(value)))
             row += 1
+
+        logging.info("Parameter table 2 initialized.")
 
     def handle_find_circles(self) -> None:
         """Toggle the visibility of the circle parameter box based on checkbox state.
@@ -978,23 +1014,21 @@ class ImageProcessingTabHandler(QThread):
         """
         state = self.gui.fc_checkbox.isChecked()
         if state:
-            print("Hanldle find circles - Yes")
+            logging.info("Find circles enabled.")
             self.gui.circle_param_box.show()
             self.filter_param_dict_2["find_circles(Y/N)"] = "Y"
-
             self.gui.circle_param_box.setRowCount(len(self.filter_param_dict_2) - 1)
-            print("len of filter param 2 - 1 :", len(self.filter_param_dict_2) - 1)
+            logging.info("Find circles parameter box set as Visible.")
 
             row = 0
-            print(self.filter_param_dict_2)
             for property, value in self.filter_param_dict_2.items():
                 if property != "find_circles(Y/N)":
-                    print("Filter param_2 name:", property, ", value:", value)
+                    logging.info(f"Filter parameter name: {property}, value: {value}")
                     self.gui.circle_param_box.setItem(row, 0, QTableWidgetItem(property))
                     self.gui.circle_param_box.setItem(row, 1, QTableWidgetItem(str(value)))
                     row += 1
         else:
-            print("Hanldle find circles - No")
+            logging.info("Find circles disabled.")
             self.gui.circle_param_box.hide()
             self.filter_param_dict_2["find_circles(Y/N)"] = "N"
 
@@ -1004,26 +1038,20 @@ class ImageProcessingTabHandler(QThread):
         Validates all filtering parameters against the configuration schema before
         proceeding with the second processing step.
         """
-        print("------------------------------Updating Filtering Parameters------------------------------")
+        logging.info("-----------------------------------------------------------------------------------------")
+        logging.info("--------------------------------Running Step 2: Filtering--------------------------------")
+        logging.info("-----------------------------------------------------------------------------------------")
+
+        logging.info("------------------------------Updating Filtering Parameters------------------------------")
         self.store_filter_params()
 
-        print("------------------------------Validating Filter Parameters------------------------------")
+        logging.info("------------------------------Validating Filter Parameters------------------------------")
         for name, value in self.filter_param_dict_1.items():
-            print(
-                "Checking parameters in step 2: ",
-                name,
-                value,
-            )
             if_valid = self.check_params(name, value)
             if not if_valid:
                 return
 
         for name, value in self.filter_param_dict_2.items():
-            print(
-                "Checking parameters in step 2: ",
-                name,
-                value,
-            )
             if_valid = self.check_params(name, value)
             if not if_valid:
                 return
@@ -1037,11 +1065,10 @@ class ImageProcessingTabHandler(QThread):
         Extracts the circle parameters from the circle parameter table widget and updates the
         filter parameter dictionary with the new values.
         """
-        print("Store fitler params______________")
+        logging.info("Storing filter parameters...")
         if not hasattr(self.gui, "circle_param_box"):
-            print("Disable find circles.")
+            pass
         else:
-            print("Enable find circles")
             for row in range(self.gui.circle_param_box.rowCount()):
                 name_item = self.gui.circle_param_box.item(row, 0)
                 value_item = self.gui.circle_param_box.item(row, 1)
@@ -1049,7 +1076,7 @@ class ImageProcessingTabHandler(QThread):
                     param_name = name_item.text()
                     param_value = value_item.text()
                     self.filter_param_dict_2[param_name] = float(param_value)
-                    print("Updating", param_name, "to", param_value)
+                    logging.info(f"Updating {param_name} to {param_value}")
 
         for row in range(self.gui.param_sandbox2.rowCount()):
             name_item = self.gui.param_sandbox2.item(row, 0)
@@ -1062,7 +1089,7 @@ class ImageProcessingTabHandler(QThread):
                 float_value = cast(float, param_value)
                 self.filter_param_dict_1[param_name] = float_value
 
-                print("Updating", param_name, "to", param_value)
+                logging.info(f"Updating {param_name} to {param_value}")
 
     def _process_step_2(self) -> None:
         """Execute the second step of image processing (filtering).
@@ -1100,15 +1127,17 @@ class ImageProcessingTabHandler(QThread):
         Creates and displays a confirmation dialog with options for saving processed images.
         If confirmed, initiates the batch processing operation.
         """
+        self.if_save_processed_images = False
         confirm_dialog = self.create_confirm_dialog()
         self.create_save_images_checkbox(confirm_dialog)
 
         response = confirm_dialog.exec()
 
         if response == QMessageBox.StandardButton.Ok:
-            self.batch_process_images()
+            self.check_for_export_path.emit()
+            # self.batch_process_images()
         else:
-            print("Batch processing canceled.")
+            logging.info("Batch processing canceled.")
 
     def create_confirm_dialog(self) -> QMessageBox:
         """Create a confirmation dialog for batch processing.
@@ -1153,7 +1182,10 @@ class ImageProcessingTabHandler(QThread):
         the worker thread to process all images. If saving is enabled, verifies
         that the save path exists before proceeding.
         """
-        print("------------------------------Validating Segment Parameters------------------------------")
+        logging.info("-----------------------------------------------------------------------------------------")
+        logging.info("--------------------------------Running Batch Processing--------------------------------")
+        logging.info("-----------------------------------------------------------------------------------------")
+        logging.info("------------------------------Validating Segment Parameters------------------------------")
         # Update the model parameters
         for algorithm_name, params in self.model.all_methods_n_params.items():
             if algorithm_name == self.model.algorithm:
@@ -1161,16 +1193,12 @@ class ImageProcessingTabHandler(QThread):
                     row,
                     (name, value),
                 ) in enumerate(params.items()):
-                    print(
-                        "Checking steps in confirm_parameter_before_filtering: ",
-                        name,
-                        value,
-                    )
+                    logging.info(f"Checking segment params before batch processing {name} {value}")
                     if_valid = self.check_params(name, value)
                     if not if_valid:
                         return
 
-        print("------------------------------Validating Filter Parameters------------------------------")
+        logging.info("------------------------------Validating Filter Parameters------------------------------")
         self.store_filter_params()
         self.update_segment_parameters()
         self.pass_filter_params()
@@ -1220,7 +1248,7 @@ class ImageProcessingTabHandler(QThread):
             value (int): The new progress value to display.
         """
         self.progress_bar.setValue(value)
-        print("update progress bar:", value)
+        logging.info(f"Updating progress bar: {value}")
 
     def on_processing_done(self) -> None:
         """Handle the completion of image processing.
@@ -1234,9 +1262,11 @@ class ImageProcessingTabHandler(QThread):
 
         # Switch to the final tab
         self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.results_tab))
+        logging.info("Batch processing completed.")
+        logging.info("******************************Result Session******************************")
 
 
-class ResultsTabHandler:
+class ResultsTabHandler(QThread):
     """Handler for the results tab in the GUI.
 
     This class manages the display and export of processing results, including
@@ -1250,17 +1280,21 @@ class ResultsTabHandler:
         gui: Reference to the main GUI instance.
     """
 
+    check_for_export_path = Signal()
+
     def __init__(self, params: Config) -> None:
         """Initialize the results tab handler.
 
         Args:
             params (Config): Configuration parameters containing default values.
         """
+        super().__init__()
         self.params = params
         self.save_path = params.save_path
 
         self.ellipses_properties: list[list[dict[str, float]]]
         self.export_handler: ExportSettingsHandler
+        self.if_dinf_displayed: bool = False
 
     def load_gui(self, gui: MainWindow) -> None:
         """Load a reference to the GUI instance.
@@ -1273,6 +1307,7 @@ class ResultsTabHandler:
         """
         self.gui = gui
         # results tab
+        self.gui.histogram_by.currentIndexChanged.connect(self.generate_histogram)
         self.gui.pdf_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
         self.gui.cdf_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
 
@@ -1285,20 +1320,36 @@ class ResultsTabHandler:
         self.gui.d32_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
         self.gui.dmean_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
         self.gui.dxy_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
-
         self.gui.dxy_x_input.textChanged.connect(self.generate_histogram)  # Connect to auto-update
-
         self.gui.dxy_y_input.textChanged.connect(self.generate_histogram)  # Connect to auto-update
+        # self.gui.save_button.clicked.connect(self.save_results)
+        self.gui.save_button.clicked.connect(self.check_for_export_path.emit)
 
-        self.gui.save_button.clicked.connect(self.save_results)
-
-    def load_ellipse_properties(self, properties: list[list[dict[str, float]]]) -> None:
+    def load_ellipse_properties(
+        self,
+        properties: list[list[dict[str, float]]],
+        algorithm: str,
+        all_methods_n_params: dict[str, dict[str, float | int]],
+        param_dict_1: dict[str, float | str],
+        param_dict_2: dict[str, float | str],
+    ) -> None:
         """Load the properties of detected ellipses for display and analysis.
 
         Args:
             properties (list[list[dict[str, float]]]): Properties of detected ellipses for all images.
+            algorithm (str): The name of the algorithm used for detection.
+            all_methods_n_params (dict[str, dict[str, float | int]]): Dictionary containing
+                parameters for all algorithms.
+            param_dict_1 (dict[str, float | str]): Dictionary containing parameters for the
+                first algorithm.
+            param_dict_2 (dict[str, float | str]): Dictionary containing parameters for the
+                second algorithm.
         """
         self.ellipses_properties = properties
+        self.algorithm = algorithm
+        self.all_methods_n_params = all_methods_n_params
+        self.param_dict_1 = param_dict_1
+        self.param_dict_2 = param_dict_2
         pass
 
     def generate_histogram(self) -> None:
@@ -1307,6 +1358,10 @@ class ResultsTabHandler:
         Creates a histogram showing the distribution of equivalent diameters of detected bubbles.
         Optionally displays PDF, CDF, and characteristic diameters (d32, dmean, dxy) based on
         user selections. Updates the plot with appropriate labels and legend.
+
+        Supports two histogram types:
+        - Count: Shows the count of bubbles for each diameter range
+        - Volume: Shows the volume of bubbles (using diameter^3) for each diameter range
         """
         num_bins = self.gui.bins_spinbox.value()
         show_pdf = self.gui.pdf_checkbox.isChecked()
@@ -1314,6 +1369,9 @@ class ResultsTabHandler:
         show_d32 = self.gui.d32_checkbox.isChecked()
         show_dmean = self.gui.dmean_checkbox.isChecked()
         show_dxy = self.gui.dxy_checkbox.isChecked()
+        histogram_type = self.gui.histogram_by.currentText()
+
+        logging.info(f"Histogram type: {histogram_type}")
 
         try:
             equivalent_diameters_array = self.get_equivalent_diameters_list()
@@ -1344,34 +1402,60 @@ class ResultsTabHandler:
         except AttributeError:
             pass
 
-        # Plot histogram
-        counts, bins, patches = self.gui.histogram_canvas.axes.hist(
-            equivalent_diameters_array, bins=num_bins, range=(x_min, x_max)
-        )
-        # Set graph labels
-        self.gui.histogram_canvas.axes.set_xlabel("Equivalent diameter [mm]")
-        self.gui.histogram_canvas.axes.set_ylabel("Count [#]")
+        # Plot histogram based on selected type
+        if histogram_type == "Volume":
+            # Calculate volumes (diameter^3) for each bubble
+            volumes = equivalent_diameters_array**3
+            counts, bins, patches = self.gui.histogram_canvas.axes.hist(
+                equivalent_diameters_array,
+                bins=num_bins,
+                range=(x_min, x_max),
+                weights=volumes,  # Use volumes as weights
+            )
+            # Set graph labels for volume histogram
+            self.gui.histogram_canvas.axes.set_xlabel("Equivalent diameter [mm]")
+            self.gui.histogram_canvas.axes.set_ylabel("Volume [mm³]")
+        else:  # Count histogram (default)
+            counts, bins, patches = self.gui.histogram_canvas.axes.hist(
+                equivalent_diameters_array, bins=num_bins, range=(x_min, x_max)
+            )
+            # Set graph labels for count histogram
+            self.gui.histogram_canvas.axes.set_xlabel("Equivalent diameter [mm]")
+            self.gui.histogram_canvas.axes.set_ylabel("Count [#]")
 
         # Calculate descriptive sizes
         d32, d_mean, dxy = self.calculate_descriptive_sizes(equivalent_diameters_array)
+        if not self.if_dinf_displayed:
+            logging.info(f"d32: {d32}, d_mean: {d_mean}, dxy: {dxy}")
+            self.if_dinf_displayed = True
 
         # Update descriptive size label
         desc_text = f"Results:\nd32 = {d32:.2f} mm\ndmean = {d_mean:.2f} mm\ndxy = {dxy:.2f} mm"
         self.gui.descriptive_size_label.setText(desc_text)
 
-        # Optionally add CDF
+        # Optionally add CDF and PDF
         if show_pdf or show_cdf:
             self.gui.histogram_canvas.axes2 = self.gui.histogram_canvas.axes.twinx()
             self.gui.histogram_canvas.axes2.set_ylabel("Probability [%]")
 
-            if show_cdf:
-                cdf = np.cumsum(counts) / np.sum(counts) * 100
-                self.gui.histogram_canvas.axes2.plot(bins[:-1], cdf, "r-", marker="o", label="CDF")
+            # For volume histogram, we need to normalize differently
+            if histogram_type == "Volume":
+                total = np.sum(counts)
+                if show_cdf:
+                    cdf = np.cumsum(counts) / total * 100
+                    self.gui.histogram_canvas.axes2.plot(bins[:-1], cdf, "r-", marker="o", label="CDF")
+                if show_pdf:
+                    pdf = counts / total * 100
+                    self.gui.histogram_canvas.axes2.plot(bins[:-1], pdf, "b-", marker="o", label="PDF")
+            else:  # Count histogram
+                if show_cdf:
+                    cdf = np.cumsum(counts) / np.sum(counts) * 100
+                    self.gui.histogram_canvas.axes2.plot(bins[:-1], cdf, "r-", marker="o", label="CDF")
+                if show_pdf:
+                    pdf = counts / np.sum(counts) * 100
+                    self.gui.histogram_canvas.axes2.plot(bins[:-1], pdf, "b-", marker="o", label="PDF")
 
-            if show_pdf:
-                pdf = counts / np.sum(counts) * 100
-                self.gui.histogram_canvas.axes2.plot(bins[:-1], pdf, "b-", marker="o", label="PDF")
-
+        # Add characteristic diameter lines
         if show_d32:
             self.gui.histogram_canvas.axes.axvline(x=d32, color="r", linestyle="-", label="d32")
 
@@ -1391,8 +1475,7 @@ class ResultsTabHandler:
             "South West": "lower left",
         }
 
-        print("legend_position:", legend_position)
-        print(legend_location_map.get(legend_position, "upper right"))
+        logging.info(f"Legend_position: {legend_position}")
 
         # Add legend to the graph
         if show_cdf or show_pdf or show_d32 or show_dmean or show_dxy:
@@ -1407,7 +1490,6 @@ class ResultsTabHandler:
 
         # Redraw the canvas
         self.gui.histogram_canvas.draw()
-
         return
 
     def calculate_descriptive_sizes(self, equivalent_diameters: npt.NDArray[np.float64]) -> tuple[float, float, float]:
@@ -1450,7 +1532,6 @@ class ResultsTabHandler:
 
     def save_results(self) -> None:
         """Saves histogram and data to the selected folder."""
-        # folder_path = self.gui.save_folder_edit.text()
         folder_path = self.export_handler.save_path
         if folder_path == "" or not os.path.exists(folder_path):
             self._show_warning("Folder Not Found", "Please select a valid folder in export settings.")
@@ -1471,12 +1552,27 @@ class ResultsTabHandler:
         # Set file paths
         graph_path = os.path.join(folder_path, f"{graph_filename}.png")
         csv_path = os.path.join(folder_path, f"{csv_filename}.csv")
+        config_path = os.path.join(folder_path, f"{csv_filename}_config.csv")
 
         # Assuming `self.histogram_canvas` is a matplotlib canvas
-        self.gui.histogram_canvas.fig.savefig(graph_path)
+        self.save_graph(graph_path)
+        self.save_ellipses_data(csv_path)
+        self.save_config_data(config_path)
 
+        self._show_warning("Results Saved", f"Results have been saved successfully to {folder_path}.")
+        logging.info(f"Results have been saved successfully to {folder_path}.")
+        return
+
+    def save_graph(self, export_path: str) -> None:
+        """Saves the current histogram to the selected folder."""
+        self.gui.histogram_canvas.fig.savefig(export_path)
+
+    def save_ellipses_data(self, export_path: str) -> None:
+        """Saves the detected ellipses data to the selected folder."""
         headers = [
-            "major_axis_lengthminor_axis_lengthequivalent_diameter",
+            "major_axis_length",
+            "minor_axis_length",
+            "equivalent_diameter",
             "area",
             "perimeter",
             "eccentricity",
@@ -1498,7 +1594,7 @@ class ResultsTabHandler:
                 )
 
         # Write the data into a CSV file
-        with open(csv_path, mode="w", newline="") as data_file:
+        with open(export_path, mode="w", newline="") as data_file:
             writer = csv.writer(data_file)
 
             # Write the header
@@ -1507,8 +1603,60 @@ class ResultsTabHandler:
             # Write the rows of data
             writer.writerows(rows)
 
-        self._show_warning("Results Saved", f"Results have been saved successfully to {folder_path}.")
-        return
+    def save_config_data(self, export_path: str) -> None:
+        """Save the configuration data to a txt file."""
+        # Store the segmentation data
+        headers_seg: list[str] = []
+        rows_seg: list[str] = []
+        for algorithm_name, params in self.all_methods_n_params.items():
+            if algorithm_name == self.algorithm:
+                for key, value in params.items():
+                    headers_seg.append(key)
+                    rows_seg.append(cast(str, value))
+
+        # Store the Filtering Data
+        headers_1: list[str] = []
+        rows_1: list[str] = []
+        headers_2: list[str] = []
+        rows_2: list[str] = []
+        for key, value in self.param_dict_1.items():  # type: ignore
+            headers_1.append(key)
+            rows_1.append(cast(str, value))
+
+        if_find_circles: bool = self.param_dict_1.get("find_circles(Y/N)") == "Y"
+        if self.param_dict_2.get("find_circles(Y/N)") == "Y":
+            if_find_circles = True
+            for key, value in self.param_dict_2.items():  # type: ignore
+                headers_2.append(key)
+                rows_2.append(cast(str, value))
+
+        with open(export_path, mode="w", newline="") as data_file:
+            writer = csv.writer(data_file)
+
+            # Write algorithm name and parameters
+            writer.writerow(["Segmentation Parameters"])
+            writer.writerow(["Algorithm", self.algorithm])
+            for i in range(len(headers_seg)):
+                writer.writerow([headers_seg[i], rows_seg[i]])
+            writer.writerow([])  # Empty row for separation
+
+            # Write the first set of parameters (header, value pairs)
+            writer.writerow(["Filtering Parameters"])
+            for i in range(len(headers_1)):
+                writer.writerow([headers_1[i], rows_1[i]])
+
+            # If find circles is enabled, write the second set of parameters
+            if if_find_circles:
+                writer.writerow([])  # Empty row for separation
+                writer.writerow(["Circle Detection Parameters"])
+                for i in range(len(headers_2)):
+                    writer.writerow([headers_2[i], rows_2[i]])
+
+            # Add timestamp
+            writer.writerow([])
+            writer.writerow(["Generated on", datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
+
+            logging.info(f"Configuration data saved to {export_path}")
 
     def _show_warning(self, title: str, message: str) -> None:
         """Display a warning message box to the user.
@@ -1554,6 +1702,9 @@ class MainHandler:
 
         self.gui: MainWindow
 
+        # Set up logging to capture terminal output
+        self.setup_logging()
+
         # Get the base directory for the application
         if getattr(sys, "frozen", False):
             # If the application is run as a bundle (PyInstaller)
@@ -1573,6 +1724,7 @@ class MainHandler:
         self.initialize_gui()
         self.initialize_handlers()
         self.initialize_handlers_signals()
+        self.initialize_new_export_settings()
         self.load_export_settings()
 
         self.load_gui_for_handlers()
@@ -1585,6 +1737,7 @@ class MainHandler:
         Creates instances of all necessary handlers and models with appropriate
         configuration parameters from the TOML file.
         """
+        logging.info("Initializing Handlers...")
         self.toml_handler = TomlFileHandler(self.toml_file_path)
 
         self.input_file_model = InputFilesModel()
@@ -1607,6 +1760,8 @@ class MainHandler:
         proper event propagation and response to user actions.
         """
         self.image_processing_tab_handler.batch_processing_done.connect(self.start_generate_histogram)
+        self.image_processing_tab_handler.check_for_export_path.connect(self.check_before_batch)
+        self.results_tab_handler.check_for_export_path.connect(self.check_before_saving_results)
 
     def initialize_gui(self) -> None:
         """Initialize the main GUI application and window, and display it.
@@ -1614,6 +1769,9 @@ class MainHandler:
         Creates the QApplication instance and the main window for the application.
         """
         from bubble_analyser.gui import MainWindow
+
+        logging.basicConfig(level=logging.INFO)
+        logging.info("Initializing GUI...")
 
         self.app = QApplication(sys.argv)
         self.gui = MainWindow()
@@ -1634,6 +1792,7 @@ class MainHandler:
         the GUI has been initialized and before handlers start interacting with
         GUI components.
         """
+        logging.info("Connecting GUI and Handlers...")
         self.folder_tab_handler.load_gui(self.gui)
         self.calibration_tab_handler.load_gui(self.gui)
         self.image_processing_tab_handler.load_gui(self.gui)
@@ -1708,14 +1867,12 @@ class MainHandler:
 
         # image processing tab
         # column 1
-        self.gui.prev_button.clicked.disconnect(lambda: self.tab3_update_sample_image("prev"))
-        self.gui.next_button.clicked.disconnect(lambda: self.tab3_update_sample_image("next"))
+        self.gui.prev_button.clicked.disconnect()
+        self.gui.next_button.clicked.disconnect()
         self.gui.preview_processed_images_button.clicked.disconnect(self.tab3_preview_processed_images)
         # column 2
         self.image_processing_tab_handler.initialize_algorithm_combo()
-        self.gui.algorithm_combo.currentTextChanged.disconnect(
-            lambda: self.tab3_handle_algorithm_change(self.gui.algorithm_combo.currentText())
-        )
+        self.gui.algorithm_combo.currentTextChanged.disconnect()
         self.tab3_load_parameter_table_1(self.gui.algorithm_combo.currentText())
         self.gui.preview_button1.clicked.disconnect(self.tab3_confirm_parameter_before_filtering)
         # column 3
@@ -1737,7 +1894,11 @@ class MainHandler:
         self.gui.dxy_checkbox.stateChanged.disconnect(self.results_tab_handler.generate_histogram)
         self.gui.dxy_x_input.textChanged.disconnect(self.results_tab_handler.generate_histogram)
         self.gui.dxy_y_input.textChanged.disconnect(self.results_tab_handler.generate_histogram)
-        self.gui.save_button.clicked.disconnect(self.results_tab_handler.save_results)
+        self.gui.save_button.clicked.disconnect()
+
+        self.image_processing_tab_handler.batch_processing_done.disconnect(self.start_generate_histogram)
+        self.image_processing_tab_handler.check_for_export_path.disconnect(self.check_before_batch)
+        self.results_tab_handler.check_for_export_path.disconnect(self.check_before_saving_results)
 
     def disconnect_handlers_signals(self) -> None:
         """Disconnect signals between handlers to prevent further event handling.
@@ -1745,7 +1906,7 @@ class MainHandler:
         Removes signal-slot connections between handlers to prevent further event
         handling and interaction.
         """
-        self.image_processing_tab_handler.batch_processing_done.disconnect(self.start_generate_histogram)
+        self.image_processing_tab_handler.batch_processing_done.disconnect()
 
     def clear_all_gui_contents(self) -> None:
         """Clear all contents from the GUI components.
@@ -1772,6 +1933,7 @@ class MainHandler:
 
         Resets the application state and restarts the GUI.
         """
+        logging.info("##############################Restarting Mission...##############################")
         self.disconnect_gui_and_handlers()
         self.disconnect_handlers_signals()
         self.clear_all_gui_contents()
@@ -1784,15 +1946,57 @@ class MainHandler:
 
         self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.folder_tab))
 
+        logging.info("Application restarted, a new mission initialzed.")
+        logging.info("##############################New mission started##############################")
+
     def load_export_settings(self) -> None:
         """Initialize and configure the export settings handler.
 
         Creates the export settings handler and provides it to relevant tab handlers
         that need access to export functionality.
         """
-        self.export_handler = ExportSettingsHandler(parent=self.gui, params=self.toml_handler.params)
+        logging.info("Connecting Export Settings with handlers...")
         self.image_processing_tab_handler.export_handler = self.export_handler
         self.results_tab_handler.export_handler = self.export_handler
+
+    def initialize_new_export_settings(self) -> None:
+        """Initialize and configure the export settings handler."""
+        logging.info("Initializing Export Settings...")
+        self.export_handler = ExportSettingsHandler(parent=self.gui)
+
+    def check_before_batch(self) -> None:
+        """Check if batch processing can proceed."""
+        if self.image_processing_tab_handler.if_save_processed_images:
+            if self.check_if_export_settings_loaded():
+                self.image_processing_tab_handler.batch_process_images()
+            else:
+                return
+        else:
+            self.image_processing_tab_handler.batch_process_images()
+
+    def check_before_saving_results(self) -> None:
+        """Check if saving results can proceed."""
+        if self.check_if_export_settings_loaded():
+            self.results_tab_handler.save_results()
+        else:
+            return
+
+    def check_if_export_settings_loaded(self) -> bool:
+        """Check if export settings have been loaded.
+
+        Returns:
+            bool: True if export settings have been loaded, False otherwise.
+        """
+        if not self.export_handler.if_save_path:
+            self._show_warning(
+                "Export Path Not Configured",
+                "Please finish export settings first from menu bar (settings -> export setting).",
+            )
+            logging.info("Export Settings not loaded.")
+            return False
+        else:
+            logging.info("Export Settings loaded.")
+            return True
 
     def menubar_open_export_settings_dialog(self) -> None:
         """Open the export settings dialog from the menu bar.
@@ -1816,6 +2020,15 @@ class MainHandler:
         )
         if restart == QMessageBox.StandardButton.Yes:
             self.restart()
+
+    def _show_warning(self, title: str, message: str) -> None:
+        """Display a warning message box to the user.
+
+        Args:
+            title (str): The title of the warning dialog.
+            message (str): The detailed warning message to display.
+        """
+        QMessageBox.warning(self.gui, title, message)
 
     def tab1_select_folder(self) -> None:
         """Handle folder selection in the first tab.
@@ -1962,16 +2175,40 @@ class MainHandler:
         results tab handler and triggers histogram generation to visualize
         the distribution of bubble sizes and other properties.
         """
-        self.results_tab_handler.load_ellipse_properties(self.image_processing_model.ellipses_properties)
+        self.results_tab_handler.load_ellipse_properties(
+            self.image_processing_model.ellipses_properties,
+            self.image_processing_model.algorithm,
+            self.image_processing_model.all_methods_n_params,
+            self.image_processing_model.filter_param_dict_1,
+            self.image_processing_model.filter_param_dict_2,
+        )
         self.results_tab_handler.generate_histogram()
 
-    def save_results(self) -> None:
-        """Save the analysis results to disk.
+    def setup_logging(self) -> None:
+        """Set up logging to capture terminal output to a file.
 
-        Delegates the result saving functionality to the results tab handler,
-        which exports the processed data according to the configured export settings.
+        This method configures a logging system that captures all print statements
+        and other terminal outputs to a timestamped log file in the 'logs' directory.
         """
-        self.results_tab_handler.save_results()
+        # Create logs directory if it doesn't exist
+        logs_dir = Path("logs")
+        logs_dir.mkdir(exist_ok=True)
+
+        # Create a timestamped log filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_file = logs_dir / f"bubble_analyser_{timestamp}.log"
+
+        # Configure logging
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(levelname)s - %(message)s",
+            handlers=[
+                logging.FileHandler(log_file),
+                logging.StreamHandler(),
+            ],
+        )
+
+        logging.info(f"Starting Bubble Analyser application. Log file: {log_file}")
 
 
 if __name__ == "__main__":

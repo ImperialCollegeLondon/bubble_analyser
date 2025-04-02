@@ -499,9 +499,6 @@ class EllipseAdjuster(QMainWindow):
         display_image = self.B.copy()
         self.draw_ellipses(display_image, self.ellipses)
 
-        # Optionally, you can write the file.
-        cv2.imwrite("adjusted_ellipses.jpg", display_image)
-
         # Emit the finished signal with the original image and the ellipses list.
         self.finished.emit(self.B, self.ellipses)
         event.accept()
