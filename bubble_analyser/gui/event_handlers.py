@@ -1512,7 +1512,9 @@ class ResultsTabHandler(QThread):
         self.gui.histogram_canvas.fig.savefig(graph_path)
 
         headers = [
-            "major_axis_lengthminor_axis_lengthequivalent_diameter",
+            "major_axis_length",
+            "minor_axis_length",
+            "equivalent_diameter",
             "area",
             "perimeter",
             "eccentricity",
