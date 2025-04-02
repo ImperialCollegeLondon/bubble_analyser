@@ -36,7 +36,7 @@ def overlay_labels_on_rgb(
         The resulting image with the labeled regions overlaid on the original image.
     """
     # Ensure imgRGB is in uint8 format
-    imgRGB = (imgRGB * 255.0).astype(np.uint8) if imgRGB.max() <= 1 else imgRGB
+    imgRGB = (imgRGB * 255.0).astype(np.int_) if imgRGB.max() <= 1 else imgRGB.astype(np.int_)
 
     unique_labels = np.unique(labels)
 
