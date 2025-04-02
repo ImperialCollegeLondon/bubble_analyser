@@ -1839,14 +1839,12 @@ class MainHandler:
 
         # image processing tab
         # column 1
-        self.gui.prev_button.clicked.disconnect(lambda: self.tab3_update_sample_image("prev"))
-        self.gui.next_button.clicked.disconnect(lambda: self.tab3_update_sample_image("next"))
+        self.gui.prev_button.clicked.disconnect()
+        self.gui.next_button.clicked.disconnect()
         self.gui.preview_processed_images_button.clicked.disconnect(self.tab3_preview_processed_images)
         # column 2
         self.image_processing_tab_handler.initialize_algorithm_combo()
-        self.gui.algorithm_combo.currentTextChanged.disconnect(
-            lambda: self.tab3_handle_algorithm_change(self.gui.algorithm_combo.currentText())
-        )
+        self.gui.algorithm_combo.currentTextChanged.disconnect()
         self.tab3_load_parameter_table_1(self.gui.algorithm_combo.currentText())
         self.gui.preview_button1.clicked.disconnect(self.tab3_confirm_parameter_before_filtering)
         # column 3
@@ -1868,7 +1866,7 @@ class MainHandler:
         self.gui.dxy_checkbox.stateChanged.disconnect(self.results_tab_handler.generate_histogram)
         self.gui.dxy_x_input.textChanged.disconnect(self.results_tab_handler.generate_histogram)
         self.gui.dxy_y_input.textChanged.disconnect(self.results_tab_handler.generate_histogram)
-        self.gui.save_button.clicked.disconnect(self.results_tab_handler.save_results)
+        self.gui.save_button.clicked.disconnect()
 
         self.image_processing_tab_handler.batch_processing_done.disconnect(self.start_generate_histogram)
         self.image_processing_tab_handler.check_for_export_path.disconnect(self.check_before_batch)
@@ -1880,7 +1878,7 @@ class MainHandler:
         Removes signal-slot connections between handlers to prevent further event
         handling and interaction.
         """
-        self.image_processing_tab_handler.batch_processing_done.disconnect(self.start_generate_histogram)
+        self.image_processing_tab_handler.batch_processing_done.disconnect()
 
     def clear_all_gui_contents(self) -> None:
         """Clear all contents from the GUI components.
@@ -1907,7 +1905,7 @@ class MainHandler:
 
         Resets the application state and restarts the GUI.
         """
-        logging.info("Restarting application...")
+        logging.info("##############################Restarting Mission...##############################")
         self.disconnect_gui_and_handlers()
         self.disconnect_handlers_signals()
         self.clear_all_gui_contents()
