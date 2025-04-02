@@ -1307,9 +1307,7 @@ class ResultsTabHandler(QThread):
         """
         self.gui = gui
         # results tab
-        # self.gui.histogram_by.currentIndexChanged.connect(
-        #     self.generate_histogram
-        # )
+        self.gui.histogram_by.currentIndexChanged.connect(self.generate_histogram)
         self.gui.pdf_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
         self.gui.cdf_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
 
@@ -1360,6 +1358,10 @@ class ResultsTabHandler(QThread):
         Creates a histogram showing the distribution of equivalent diameters of detected bubbles.
         Optionally displays PDF, CDF, and characteristic diameters (d32, dmean, dxy) based on
         user selections. Updates the plot with appropriate labels and legend.
+
+        Supports two histogram types:
+        - Count: Shows the count of bubbles for each diameter range
+        - Volume: Shows the volume of bubbles (using diameter^3) for each diameter range
         """
         num_bins = self.gui.bins_spinbox.value()
         show_pdf = self.gui.pdf_checkbox.isChecked()
@@ -1367,6 +1369,9 @@ class ResultsTabHandler(QThread):
         show_d32 = self.gui.d32_checkbox.isChecked()
         show_dmean = self.gui.dmean_checkbox.isChecked()
         show_dxy = self.gui.dxy_checkbox.isChecked()
+        histogram_type = self.gui.histogram_by.currentText()
+
+        logging.info(f"Histogram type: {histogram_type}")
 
         try:
             equivalent_diameters_array = self.get_equivalent_diameters_list()
@@ -1397,13 +1402,26 @@ class ResultsTabHandler(QThread):
         except AttributeError:
             pass
 
-        # Plot histogram
-        counts, bins, patches = self.gui.histogram_canvas.axes.hist(
-            equivalent_diameters_array, bins=num_bins, range=(x_min, x_max)
-        )
-        # Set graph labels
-        self.gui.histogram_canvas.axes.set_xlabel("Equivalent diameter [mm]")
-        self.gui.histogram_canvas.axes.set_ylabel("Count [#]")
+        # Plot histogram based on selected type
+        if histogram_type == "Volume":
+            # Calculate volumes (diameter^3) for each bubble
+            volumes = equivalent_diameters_array**3
+            counts, bins, patches = self.gui.histogram_canvas.axes.hist(
+                equivalent_diameters_array,
+                bins=num_bins,
+                range=(x_min, x_max),
+                weights=volumes,  # Use volumes as weights
+            )
+            # Set graph labels for volume histogram
+            self.gui.histogram_canvas.axes.set_xlabel("Equivalent diameter [mm]")
+            self.gui.histogram_canvas.axes.set_ylabel("Volume [mm³]")
+        else:  # Count histogram (default)
+            counts, bins, patches = self.gui.histogram_canvas.axes.hist(
+                equivalent_diameters_array, bins=num_bins, range=(x_min, x_max)
+            )
+            # Set graph labels for count histogram
+            self.gui.histogram_canvas.axes.set_xlabel("Equivalent diameter [mm]")
+            self.gui.histogram_canvas.axes.set_ylabel("Count [#]")
 
         # Calculate descriptive sizes
         d32, d_mean, dxy = self.calculate_descriptive_sizes(equivalent_diameters_array)
@@ -1415,19 +1433,29 @@ class ResultsTabHandler(QThread):
         desc_text = f"Results:\nd32 = {d32:.2f} mm\ndmean = {d_mean:.2f} mm\ndxy = {dxy:.2f} mm"
         self.gui.descriptive_size_label.setText(desc_text)
 
-        # Optionally add CDF
+        # Optionally add CDF and PDF
         if show_pdf or show_cdf:
             self.gui.histogram_canvas.axes2 = self.gui.histogram_canvas.axes.twinx()
             self.gui.histogram_canvas.axes2.set_ylabel("Probability [%]")
 
-            if show_cdf:
-                cdf = np.cumsum(counts) / np.sum(counts) * 100
-                self.gui.histogram_canvas.axes2.plot(bins[:-1], cdf, "r-", marker="o", label="CDF")
+            # For volume histogram, we need to normalize differently
+            if histogram_type == "Volume":
+                total = np.sum(counts)
+                if show_cdf:
+                    cdf = np.cumsum(counts) / total * 100
+                    self.gui.histogram_canvas.axes2.plot(bins[:-1], cdf, "r-", marker="o", label="CDF")
+                if show_pdf:
+                    pdf = counts / total * 100
+                    self.gui.histogram_canvas.axes2.plot(bins[:-1], pdf, "b-", marker="o", label="PDF")
+            else:  # Count histogram
+                if show_cdf:
+                    cdf = np.cumsum(counts) / np.sum(counts) * 100
+                    self.gui.histogram_canvas.axes2.plot(bins[:-1], cdf, "r-", marker="o", label="CDF")
+                if show_pdf:
+                    pdf = counts / np.sum(counts) * 100
+                    self.gui.histogram_canvas.axes2.plot(bins[:-1], pdf, "b-", marker="o", label="PDF")
 
-            if show_pdf:
-                pdf = counts / np.sum(counts) * 100
-                self.gui.histogram_canvas.axes2.plot(bins[:-1], pdf, "b-", marker="o", label="PDF")
-
+        # Add characteristic diameter lines
         if show_d32:
             self.gui.histogram_canvas.axes.axvline(x=d32, color="r", linestyle="-", label="d32")
 
