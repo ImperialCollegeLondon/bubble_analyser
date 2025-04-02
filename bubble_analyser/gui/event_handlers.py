@@ -1308,21 +1308,20 @@ class ResultsTabHandler(QThread):
         self.gui = gui
         # results tab
         self.gui.histogram_by.currentIndexChanged.connect(self.generate_histogram)
-        self.gui.pdf_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
-        self.gui.cdf_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
+        self.gui.pdf_checkbox.stateChanged.connect(self.generate_histogram)
+        self.gui.cdf_checkbox.stateChanged.connect(self.generate_histogram)
 
-        self.gui.bins_spinbox.valueChanged.connect(self.generate_histogram)  # Connect to auto-update
+        self.gui.bins_spinbox.valueChanged.connect(self.generate_histogram)
 
-        self.gui.min_x_axis_input.textChanged.connect(self.generate_histogram)  # Connect to auto-update
-        self.gui.max_x_axis_input.textChanged.connect(self.generate_histogram)  # Connect to auto-update
+        self.gui.min_x_axis_input.textChanged.connect(self.generate_histogram)
+        self.gui.max_x_axis_input.textChanged.connect(self.generate_histogram)
 
-        self.gui.legend_position_combobox.currentIndexChanged.connect(self.generate_histogram)  # Connect to auto-update
-        self.gui.d32_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
-        self.gui.dmean_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
-        self.gui.dxy_checkbox.stateChanged.connect(self.generate_histogram)  # Connect to auto-update
-        self.gui.dxy_x_input.textChanged.connect(self.generate_histogram)  # Connect to auto-update
-        self.gui.dxy_y_input.textChanged.connect(self.generate_histogram)  # Connect to auto-update
-        # self.gui.save_button.clicked.connect(self.save_results)
+        self.gui.legend_position_combobox.currentIndexChanged.connect(self.generate_histogram)
+        self.gui.d32_checkbox.stateChanged.connect(self.generate_histogram)
+        self.gui.dmean_checkbox.stateChanged.connect(self.generate_histogram)
+        self.gui.dxy_checkbox.stateChanged.connect(self.generate_histogram)
+        self.gui.dxy_x_input.textChanged.connect(self.generate_histogram)
+        self.gui.dxy_y_input.textChanged.connect(self.generate_histogram)
         self.gui.save_button.clicked.connect(self.check_for_export_path.emit)
 
     def load_ellipse_properties(
@@ -1715,10 +1714,12 @@ class MainHandler:
                 self.toml_file_path = Path(config_path)
             else:
                 # Fall back to the bundled path
-                self.toml_file_path = Path(__file__).parent / "config.toml"
+                self.toml_file_path = Path(__file__).parent.parent / "config.toml"
         else:
             # If running in development mode
-            self.toml_file_path = Path(__file__).parent / "config.toml"
+            self.toml_file_path = Path(__file__).parent.parent / "config.toml"
+
+        logging.info(f"Using TOML file at: {self.toml_file_path}")
 
         self.initialize_gui()
         self.initialize_handlers()
