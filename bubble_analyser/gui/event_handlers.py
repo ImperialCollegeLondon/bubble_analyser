@@ -1692,7 +1692,6 @@ class MainHandler:
             # If running in development mode
             self.toml_file_path = Path(__file__).parent / "config.toml"
 
-
         self.initialize_gui()
         self.initialize_handlers()
         self.initialize_handlers_signals()
