@@ -463,10 +463,9 @@ class MainWindow(QMainWindow):
         controls_layout = QVBoxLayout(controls_frame)
 
         # Histogram type
-        # histogram_by_label = QLabel("Histogram by:")
-        # self.histogram_by = QComboBox()
-        # self.histogram_by.addItems(["Number", "Volume"])
-        # self.histogram_by.addItems(["Number"])
+        histogram_by_label = QLabel("Histogram by:")
+        self.histogram_by = QComboBox()
+        self.histogram_by.addItems(["Count", "Volume"])
         # Connect to auto-update
 
         self.options_label = QLabel("Histogram Options:")
@@ -555,8 +554,8 @@ class MainWindow(QMainWindow):
         save_layout.addWidget(self.save_button)
 
         # Assemble controls layout
-        # controls_layout.addWidget(histogram_by_label)
-        # controls_layout.addWidget(self.histogram_by)
+        controls_layout.addWidget(histogram_by_label)
+        controls_layout.addWidget(self.histogram_by)
         controls_layout.addWidget(self.options_label)
         controls_layout.addWidget(self.pdf_checkbox)
         controls_layout.addWidget(self.cdf_checkbox)
