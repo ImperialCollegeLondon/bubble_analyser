@@ -48,7 +48,7 @@ bknd_img_path = "None"
 ruler_img_path = "."
 
 # Save path
-save_path = "."
+save_path = " "
 
 # Save path for Images
 save_path_for_images = "."
