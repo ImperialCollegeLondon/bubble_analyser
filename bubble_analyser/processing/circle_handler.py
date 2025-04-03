@@ -197,11 +197,11 @@ class CircleHandler:
                 new_labels[new_labels == prop.label] = 1
                 logging.info("A circle is being filtered out because the following parameter(s) are not qualified:")
                 if eccentricity > max_eccentricity:
-                    logging.info("Eccentricity (too large):", eccentricity)
+                    logging.info(f"Eccentricity (too large): {eccentricity}")
                 if solidity < min_solidity:
-                    logging.info("Solidity (too small):", solidity)
+                    logging.info(f"Solidity (too small): {solidity}")
                 if area < min_size:
-                    logging.info("Area (too small):", area)
+                    logging.info(f"Area (too small): {area}")
 
             else:
                 if if_find_circles:
@@ -211,11 +211,11 @@ class CircleHandler:
                             "A circle is being filtered out because one or \
 more of the following parameter(s) are not qualified:"
                         )
-                        logging.info("Value of the circle's area:", area)
-                        logging.info("Value of the L_min:", L_min)
-                        logging.info("Value of the L_max:", L_max)
-                        logging.info("Value of the s_min:", s_min)
-                        logging.info("Value of the s_max:", s_max)
+                        logging.info(f"Value of the circle's area: {area}")
+                        logging.info(f"Value of the L_min: {L_min}")
+                        logging.info(f"Value of the L_max: {L_max}")
+                        logging.info(f"Value of the s_min: {s_min}")
+                        logging.info(f"Value of the s_max: {s_max}")
                         new_labels[new_labels == prop.label] = 1
                         continue
 
