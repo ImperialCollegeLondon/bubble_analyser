@@ -83,7 +83,7 @@ class FilterParamHandler:
         self.filter_param_dict_2 = params
 
 
-class CircleHandler:
+class EllipseHandler:
     """Handles the detection, filtering, and analysis of circular regions in labeled images.
 
     This class provides methods for filtering labeled regions based on geometric properties,
@@ -357,7 +357,7 @@ if __name__ == "__main__":
     labels_before_filtering = np.load(input_labels_path)
 
     # Create an instance of CircleHandler
-    circle_handler = CircleHandler(labels_before_filtering, img_rgb)
+    circle_handler = EllipseHandler(labels_before_filtering, img_rgb)
     ellipse_image_path = "../../tests/test_image_rgb.JPG"
     ellipse_image: npt.NDArray[np.int_] = cv2.imread(ellipse_image_path)  # type: ignore
     circle_handler.img_rgb = ellipse_image  # type: ignore

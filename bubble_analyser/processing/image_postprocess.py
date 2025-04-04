@@ -19,20 +19,14 @@ def overlay_labels_on_rgb(
 ) -> npt.NDArray[np.int_]:
     """Overlay labeled regions on an RGB image with a transparent color.
 
-    Parameters
-    ----------
-    imgRGB : ndarray
-        The RGB image to overlay the labeled regions on.
-    labels : ndarray
-        A 2D array of labeled regions, where each unique label is represented by a
-        distinct integer.
-    alpha : float, optional
-        The transparency of the overlay, with 0 being fully transparent and 1 being
-        fully opaque. Default is 0.5.
+    Args:
+        imgRGB: The RGB image to overlay the labeled regions on.
+        labels: A 2D array of labeled regions, where each unique label is represented by a
+            distinct integer.
+        alpha: The transparency of the overlay, with 0 being fully transparent and 1 being
+            fully opaque. Default is 0.5.
 
     Returns:
-    -------
-    ndarray
         The resulting image with the labeled regions overlaid on the original image.
     """
     # Ensure imgRGB is in uint8 format

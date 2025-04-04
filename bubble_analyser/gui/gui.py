@@ -6,10 +6,12 @@ window and all UI components including tabs for folder selection, calibration, i
 processing, and results visualization.
 
 The module contains the following key components:
+
 - MplCanvas: A class for embedding Matplotlib figures in the PySide6 application
 - MainWindow: The main application window with multiple tabs for different functionalities
 
 The GUI is structured around a tab-based interface with separate sections for:
+
 1. Folder selection - for choosing input image folders
 2. Calibration - for pixel-to-mm calibration and background image selection
 3. Image processing - for bubble detection, filtering, and manual adjustment
@@ -165,6 +167,7 @@ class MainWindow(QMainWindow):
         """Set up the folder tab.
 
         This function sets up the folder tab, which contains the following components:
+
         1. A text box for user to input the folder path.
         2. A button to select the folder.
         3. A button to confirm the folder selection.
@@ -312,6 +315,7 @@ class MainWindow(QMainWindow):
         """Set up the image processing tab, which contains the following components.
 
         Set up the image processing tab, which contains the following components:
+
         1. A box to select the image processing algorithm.
         2. A table to display and edit the processing parameters.
         3. A button to confirm the parameter settings and preview a sample image.
@@ -435,6 +439,7 @@ class MainWindow(QMainWindow):
         """Set up the results tab.
 
         This function sets up the results tab by creating the following widgets:
+
         1. A graph canvas for displaying the histogram.
         2. Controls for histogram options, including the type of histogram to
         generate (by number or volume), checkboxes for PDF and CDF, the number

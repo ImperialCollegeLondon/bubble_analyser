@@ -12,14 +12,29 @@ from bubble_analyser.gui.component_handlers import (
     InputFilesModel,
     WorkerThread,
 )
-from bubble_analyser.gui.event_handlers import MainHandler
-from bubble_analyser.gui.gui import MainWindow
+from bubble_analyser.gui.event_handlers import (
+    MainHandler,
+    ExportSettingsHandler,
+    TomlFileHandler,
+    FolderTabHandler,
+    CalibrationTabHandler,
+    ImageProcessingTabHandler,
+    ResultsTabHandler
+)
+from bubble_analyser.gui.gui import MainWindow, MplCanvas
 
 __all__ = [
+    "MplCanvas",
     "CalibrationModel",
     "ImageProcessingModel",
     "InputFilesModel",
     "MainHandler",
+    "ExportSettingsHandler",
+    "TomlFileHandler",
+    "FolderTabHandler",
+    "CalibrationTabHandler",
+    "ImageProcessingTabHandler",
+    "ResultsTabHandler",
     "MainWindow",
     "WorkerThread",
 ]
