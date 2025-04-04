@@ -17,7 +17,7 @@ import numpy as np
 from numpy import typing as npt
 
 from ..methods.watershed_methods import IterativeWatershed, NormalWatershed
-from .circle_handler import CircleHandler
+from .circle_handler import EllipseHandler as CircleHandler
 from .config import Config
 from .image_preprocess import image_preprocess
 

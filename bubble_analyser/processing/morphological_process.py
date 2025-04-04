@@ -1,14 +1,5 @@
 """Morphological Processing Function for filling holes and clear borders.
 
-This module includes functions for advanced image processing using morphological
-operations tailored to for filling holes and clear borders for further analysis. It
-specifically focuses on refining the binary masks generated during image segmentation
-processes.
-
-Function:
-- morphological_process(target_img, element_size): Enhances a binary image by
-  applying morphological operations such as closing, hole filling, and border clearing.
-
 This function is particularly useful in contexts where binary images derived from
 thresholding or other segmentation methods contain noise, small holes, or artifacts
 that can interfere with further analysis. By using operations like closing to connect
