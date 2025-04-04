@@ -6,7 +6,7 @@
 
 ## Overview
 
-Bubble Analyser is a Python application for detecting, measuring, and analyzing bubbles in images. It provides advanced image processing capabilities using watershed segmentation algorithms to accurately identify and measure bubbles of various sizes and distributions.
+Bubble Analyser is a Python application for detecting, measuring, and analyzing bubbles in images. It provides advanced image processing capabilities using watershed segmentation algorithms to accurately identify and measure bubbles of various sizes and distributions. Additionally, it offers manual adjustment tools for fine-tuning segmentation results when needed.
 
 ## Features
 
