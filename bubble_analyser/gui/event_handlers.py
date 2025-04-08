@@ -837,7 +837,6 @@ class ImageProcessingTabHandler(QThread):
                 ) in enumerate(params.items()):
                     self.gui.param_sandbox1.setItem(row, 0, QTableWidgetItem(name))
                     self.gui.param_sandbox1.setItem(row, 1, QTableWidgetItem(str(value)))
-                    # self.temp_param_dict[name] = value
 
                 break
 
