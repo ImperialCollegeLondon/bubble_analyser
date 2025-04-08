@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 block_cipher = None
 data_files = [
-    ('bubble_analyser/gui/config.toml', 'bubble_analyser/gui/'),
+    ('bubble_analyser/config.toml', 'bubble_analyser/gui/'),
     ('bubble_analyser/methods/information.txt', 'bubble_analyser/methods/')
 ]
 
