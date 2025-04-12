@@ -42,7 +42,7 @@ jobs:
           # Install toml parser
           python -m pip install --upgrade pip
           python -m pip install toml
-          
+
           # Extract version from pyproject.toml using Python
           PYPROJECT_VERSION=$(python -c "import toml; print(toml.load('pyproject.toml')['tool']['poetry']['version'])")
           RELEASE_VERSION="${{ steps.get-version.outputs.version }}"
@@ -152,7 +152,8 @@ jobs:
           retention-days: 1
 
   create-release:
-    needs: [validate-version, build-windows-standalone, build-macos, build-package]
+    needs:
+      [validate-version, build-windows-standalone, build-macos, build-package]
     runs-on: ubuntu-latest
     permissions:
       contents: write
