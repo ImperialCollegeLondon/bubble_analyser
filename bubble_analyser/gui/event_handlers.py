@@ -254,8 +254,7 @@ class FolderTabHandler:
 
         # Set a filter to show image files
         dialog.setNameFilter(
-            "Image Files (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.\
-                PNG *.JPG *.JPEG *.BMP *.TIF *.TIFF);;All Files (*)"
+            "Image Files (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.PNG *.JPG *.JPEG *.BMP *.TIF *.TIFF);;All Files (*)"
         )
 
         if dialog.exec():

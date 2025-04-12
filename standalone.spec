@@ -2,7 +2,8 @@
 block_cipher = None
 data_files = [
     ('bubble_analyser/config.toml', 'bubble_analyser/'),
-    ('bubble_analyser/methods/information.txt', 'bubble_analyser/methods/')
+    ('bubble_analyser/methods/information.txt', 'bubble_analyser/methods/'),
+    ('bubble_analyser/methods/watershed_methods.py', 'bubble_analyser/methods/')
 ]
 
 a = Analysis(
@@ -13,7 +14,6 @@ a = Analysis(
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
     excludes=[],
     noarchive=False,
     optimize=0,
