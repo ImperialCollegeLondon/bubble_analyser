@@ -1,0 +1,209 @@
+name: Release Workflow
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (without v prefix)'
+        required: true
+        type: string
+
+jobs:
+  validate-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version from tag or input
+        id: get-version
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            # Extract version from tag (remove 'v' prefix)
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            # Use the version from workflow_dispatch input
+            VERSION=${{ github.event.inputs.version }}
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Using version: $VERSION"
+
+      - name: Install poetry
+        run: pipx install poetry==1.8.4
+
+      - name: Validate version matches pyproject.toml
+        run: |
+          POETRY_VERSION=$(poetry version -s)
+          RELEASE_VERSION="${{ steps.get-version.outputs.version }}"
+          echo "Poetry version: $POETRY_VERSION"
+          echo "Release version: $RELEASE_VERSION"
+          if [[ "$POETRY_VERSION" != "$RELEASE_VERSION" ]]; then
+            echo "Error: Version mismatch between tag/input ($RELEASE_VERSION) and pyproject.toml ($POETRY_VERSION)"
+            exit 1
+          fi
+
+  build-windows:
+    needs: validate-version
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install poetry
+        run: pipx install poetry==1.8.4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.12.3
+          cache: poetry
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Build Windows executable
+        run: poetry run pyinstaller standalone.spec
+
+      - name: Create ZIP archive
+        run: |
+          cd dist
+          Compress-Archive -Path bubble_analyser -DestinationPath bubble_analyser-${{ needs.validate-version.outputs.version }}-windows.zip
+
+      - name: Upload Windows build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: dist/bubble_analyser-${{ needs.validate-version.outputs.version }}-windows.zip
+          retention-days: 1
+          
+  build-macos:
+    needs: validate-version
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install poetry
+        run: pipx install poetry==1.8.4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.12.3
+          cache: poetry
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Build macOS executable
+        run: poetry run pyinstaller standalone.spec
+
+      - name: Create ZIP archive
+        run: |
+          cd dist
+          zip -r bubble_analyser-${{ needs.validate-version.outputs.version }}-macos.zip bubble_analyser
+
+      - name: Upload macOS build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build
+          path: dist/bubble_analyser-${{ needs.validate-version.outputs.version }}-macos.zip
+          retention-days: 1
+
+  build-package:
+    needs: validate-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install poetry
+        run: pipx install poetry==1.8.4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.12.3
+          cache: poetry
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Build package
+        run: poetry build
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package
+          path: dist/*.tar.gz
+          retention-days: 1
+
+  create-release:
+    needs: [validate-version, build-windows, build-macos, build-package]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREVIOUS_TAG" ]; then
+            # If no previous tag exists, use the first commit
+            PREVIOUS_TAG=$(git rev-list --max-parents=0 HEAD)
+          fi
+          
+          echo "Generating changelog from $PREVIOUS_TAG to current tag"
+          
+          # Generate changelog
+          CHANGELOG=$(git log --pretty=format:"* %s (%h)" $PREVIOUS_TAG..HEAD | grep -v "Merge pull request")
+          
+          # Save changelog to a file with proper formatting
+          echo "## Changes in v${{ needs.validate-version.outputs.version }}" > changelog.md
+          echo "" >> changelog.md
+          echo "$CHANGELOG" >> changelog.md
+          echo "" >> changelog.md
+          
+          # Set multiline output for GitHub Actions
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "changelog<<$EOF" >> $GITHUB_OUTPUT
+          cat changelog.md >> $GITHUB_OUTPUT
+          echo "$EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release v${{ needs.validate-version.outputs.version }}
+          tag_name: v${{ needs.validate-version.outputs.version }}
+          body: ${{ steps.changelog.outputs.changelog }}
+          files: |
+            artifacts/windows-build/bubble_analyser-${{ needs.validate-version.outputs.version }}-windows.zip
+            artifacts/macos-build/bubble_analyser-${{ needs.validate-version.outputs.version }}-macos.zip
+            artifacts/python-package/*.tar.gz
+          draft: false
+          prerelease: false
+
+  # Uncomment this job if you want to publish to PyPI
+  # publish-pypi:
+  #   needs: [validate-version, create-release]
+  #   runs-on: ubuntu-latest
+  #   environment: pypi
+  #   permissions:
+  #     id-token: write
+  #   steps:
+  #     - name: Download package artifact
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: python-package
+  #         path: dist
+  #
+  #     - name: Publish to PyPI
+  #       uses: pypa/gh-action-pypi-publish@release/v1
