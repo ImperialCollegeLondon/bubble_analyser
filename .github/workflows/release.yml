@@ -79,14 +79,13 @@ jobs:
           python -m pip install .
 
       - name: Build Windows executable
-        run: pyinstaller standalone.spec
+        run: pyinstaller standalone.spec --distpath standalone
 
       - name: Upload Windows build artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: dist/bubble_analyser
-          retention-days: 1
+          path: standalone/bubble_analyser*
 
   build-macos:
     needs: validate-version
