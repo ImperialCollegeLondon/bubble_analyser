@@ -3,11 +3,11 @@ name: Release Workflow
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release (without v prefix)'
+        description: "Version to release (without v prefix)"
         required: true
         type: string
 
@@ -77,7 +77,7 @@ jobs:
           name: windows-build
           path: dist/bubble_analyser-${{ needs.validate-version.outputs.version }}-windows.zip
           retention-days: 1
-          
+
   build-macos:
     needs: validate-version
     runs-on: macos-latest
@@ -160,18 +160,18 @@ jobs:
             # If no previous tag exists, use the first commit
             PREVIOUS_TAG=$(git rev-list --max-parents=0 HEAD)
           fi
-          
+
           echo "Generating changelog from $PREVIOUS_TAG to current tag"
-          
+
           # Generate changelog
           CHANGELOG=$(git log --pretty=format:"* %s (%h)" $PREVIOUS_TAG..HEAD | grep -v "Merge pull request")
-          
+
           # Save changelog to a file with proper formatting
           echo "## Changes in v${{ needs.validate-version.outputs.version }}" > changelog.md
           echo "" >> changelog.md
           echo "$CHANGELOG" >> changelog.md
           echo "" >> changelog.md
-          
+
           # Set multiline output for GitHub Actions
           EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
           echo "changelog<<$EOF" >> $GITHUB_OUTPUT
