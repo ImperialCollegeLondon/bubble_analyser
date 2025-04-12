@@ -81,16 +81,11 @@ jobs:
       - name: Build Windows executable
         run: pyinstaller standalone.spec
 
-      - name: Create ZIP archive
-        run: |
-          cd dist
-          Compress-Archive -Path bubble_analyser -DestinationPath bubble_analyser-${{ needs.validate-version.outputs.version }}-windows.zip
-
       - name: Upload Windows build artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: dist/bubble_analyser-${{ needs.validate-version.outputs.version }}-windows.zip
+          path: dist/bubble_analyser
           retention-days: 1
 
   build-macos:
@@ -113,16 +108,11 @@ jobs:
       - name: Build macOS executable
         run: pyinstaller standalone.spec
 
-      - name: Create ZIP archive
-        run: |
-          cd dist
-          zip -r bubble_analyser-${{ needs.validate-version.outputs.version }}-macos.zip bubble_analyser
-
       - name: Upload macOS build artifact
         uses: actions/upload-artifact@v4
         with:
           name: macos-build
-          path: dist/bubble_analyser-${{ needs.validate-version.outputs.version }}-macos.zip
+          path: dist/bubble_analyser
           retention-days: 1
 
   build-package:
@@ -200,8 +190,8 @@ jobs:
           tag_name: v${{ needs.validate-version.outputs.version }}
           body: ${{ steps.changelog.outputs.changelog }}
           files: |
-            artifacts/windows-build/bubble_analyser-${{ needs.validate-version.outputs.version }}-windows.zip
-            artifacts/macos-build/bubble_analyser-${{ needs.validate-version.outputs.version }}-macos.zip
+            artifacts/windows-build/**
+            artifacts/macos-build/**
             artifacts/python-package/*.tar.gz
           draft: false
           prerelease: false
