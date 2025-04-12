@@ -33,16 +33,19 @@ from pydantic import ValidationError
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QApplication,
     QCheckBox,
     QDialog,
     QFileDialog,
     QHBoxLayout,
     QLineEdit,
+    QListView,
     QMessageBox,
     QProgressBar,
     QPushButton,
     QTableWidgetItem,
+    QTreeView,
     QVBoxLayout,
 )
 
@@ -129,7 +132,9 @@ images (optional) set as: {self.save_path}"
 
         Updates the text field with the selected folder path.
         """
-        folder_path = QFileDialog.getExistingDirectory(self, "Select Folder")
+        folder_path = QFileDialog.getExistingDirectory(
+            self, "Select Folder", "", QFileDialog.Option.ShowDirsOnly | QFileDialog.Option.DontResolveSymlinks
+        )
         if folder_path:
             self.default_path_edit.setText(folder_path)
 
@@ -241,24 +246,39 @@ class FolderTabHandler:
         """Handle the folder selection process.
 
         Opens a file dialog for the user to select a folder containing images.
+        The dialog shows both folders and image files to help with selection.
         If a folder has already been confirmed, displays a warning instead.
         """
         if self.model.sample_images_confirmed:
             self._show_warning("Selection Locked", "You have already confirmed the folder selection.")
             return
 
-        # Use QFileDialog with options to show files but still select a folder
-        dialog = QFileDialog(self.gui, "Select Folder")
-        dialog.setFileMode(QFileDialog.FileMode.Directory)
-        dialog.setOption(QFileDialog.Option.ShowDirsOnly, False)  # Show files as well as directories
-
-        # Set a filter to show image files
-        dialog.setNameFilter(
-            "Image Files (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.PNG *.JPG *.JPEG *.BMP *.TIF *.TIFF);;All Files (*)"
+        # Create a custom file dialog that shows both folders and image files
+        file_dialog = QFileDialog(self.gui, "Select Folder Containing Images")
+        file_dialog.setFileMode(QFileDialog.FileMode.Directory)
+        file_dialog.setOption(QFileDialog.Option.DontUseNativeDialog, True)
+        file_dialog.setNameFilter(
+            "Image Files (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.PNG *.JPG *.JPEG *.BMP *.TIF *.TIFF)"
         )
 
-        if dialog.exec():
-            folder_path = dialog.selectedFiles()[0]
+        # Show files as well as folders
+        file_view = file_dialog.findChild(QListView, "listView")
+        if file_view:
+            file_view.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+
+        # Also set this for the tree view
+        tree_view = file_dialog.findChild(QTreeView)
+        if tree_view:
+            tree_view.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+
+        # Initialize folder_path to None
+        folder_path = None
+
+        # Execute the dialog
+        if file_dialog.exec():
+            folder_path = file_dialog.selectedFiles()[0]
+
+        if folder_path:
             self._update_folder_path(folder_path)
             self._populate_image_list(folder_path)
             logging.info(f"Raw image path set as: {folder_path}")
@@ -393,11 +413,13 @@ class CalibrationTabHandler:
             )
             return False
 
+        # Use getOpenFileName with explicit options for better Windows compatibility
         image_path, _ = QFileDialog.getOpenFileName(
             self.gui,
             "Select Ruler Image",
             "",
             "Image Files (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.PNG *.JPG *.JPEG *.BMP *.TIF *.TIFF)",
+            options=QFileDialog.Option.ReadOnly,
         )
 
         if image_path:
@@ -455,11 +477,13 @@ class CalibrationTabHandler:
             )
             return
 
+        # Use getOpenFileName with explicit options for better Windows compatibility
         image_path, _ = QFileDialog.getOpenFileName(
             self.gui,
             "Select Background Image",
             "",
             "Image Files (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.PNG *.JPG *.JPEG *.BMP *.TIF *.TIFF)",
+            options=QFileDialog.Option.ReadOnly,
         )
 
         if image_path:
