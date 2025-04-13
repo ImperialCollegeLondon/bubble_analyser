@@ -46,12 +46,29 @@ if platform.system() == 'Windows':
 
 # For macOS build
 if platform.system() == 'Darwin':
-    app = BUNDLE(
+    exe = EXE(
         pyz,
         a.scripts,
         a.binaries,
         a.datas,
         [],
+        name='bubble_analyser',
+        debug=False,
+        bootloader_ignore_signals=False,
+        strip=False,
+        upx=True,
+        upx_exclude=[],
+        runtime_tmpdir=None,
+        console=False,
+        disable_windowed_traceback=False,
+        argv_emulation=True,  # Enable argv emulation for macOS
+        target_arch=None,
+        codesign_identity=None,
+        entitlements_file=None,
+    )
+    
+    app = BUNDLE(
+        exe,
         name='Bubble Analyser.app',
         icon=None,  # Add your .icns file path here if available
         bundle_identifier='com.imperial.bubble-analyser',

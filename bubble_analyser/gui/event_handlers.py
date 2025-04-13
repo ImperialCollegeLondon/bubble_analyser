@@ -2207,19 +2207,26 @@ class MainHandler:
         self.results_tab_handler.generate_histogram()
 
     def setup_logging(self) -> None:
-        """Set up logging to capture terminal output to a file.
-
-        This method configures a logging system that captures all print statements
-        and other terminal outputs to a timestamped log file in the 'logs' directory.
-        """
-        # Create logs directory if it doesn't exist
-        logs_dir = Path("logs")
-        logs_dir.mkdir(exist_ok=True)
-
-        # Create a timestamped log filename
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_file = logs_dir / f"bubble_analyser_{timestamp}.log"
-
+        """Set up logging to capture terminal output."""
+        # Use user's home directory or temporary directory for logs
+        import os
+        import tempfile
+        
+        # Try to use the user's application data directory first
+        user_home = Path.home()
+        app_data_dir = user_home / "Library" / "Application Support" / "BubbleAnalyser"
+        
+        try:
+            app_data_dir.mkdir(parents=True, exist_ok=True)
+            logs_dir = app_data_dir / "logs"
+            logs_dir.mkdir(exist_ok=True)
+        except OSError:
+            # Fallback to temp directory if we can't write to app data dir
+            logs_dir = Path(tempfile.gettempdir()) / "BubbleAnalyser" / "logs"
+            logs_dir.mkdir(parents=True, exist_ok=True)
+        
+        log_file = logs_dir / "bubble_analyser.log"
+        
         # Configure logging
         logging.basicConfig(
             level=logging.INFO,
@@ -2229,9 +2236,9 @@ class MainHandler:
                 logging.StreamHandler(),
             ],
         )
-
-        logging.info(f"Starting Bubble Analyser application. Log file: {log_file}")
-
+        
+        logging.info("Logging initialized")
+        logging.info("******************************Folder Selection Session******************************")
 
 if __name__ == "__main__":
     main_handler = MainHandler()
