@@ -10,13 +10,12 @@ from pathlib import Path
 def setup_basic_logging() -> None:
     """Set up basic logging to ensure errors are captured before main logging is configured."""
     # Use user's home directory or temporary directory for logs
-    import os
     import tempfile
-    
+
     # Try to use the user's application data directory first
     user_home = Path.home()
     app_data_dir = user_home / "Library" / "Application Support" / "BubbleAnalyser"
-    
+
     try:
         app_data_dir.mkdir(parents=True, exist_ok=True)
         logs_dir = app_data_dir / "logs"
@@ -25,7 +24,7 @@ def setup_basic_logging() -> None:
         # Fallback to temp directory if we can't write to app data dir
         logs_dir = Path(tempfile.gettempdir()) / "BubbleAnalyser" / "logs"
         logs_dir.mkdir(parents=True, exist_ok=True)
-    
+
     log_file = logs_dir / "bubble_analyser.log"
 
     logging.basicConfig(

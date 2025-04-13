@@ -66,7 +66,7 @@ if platform.system() == 'Darwin':
         codesign_identity=None,
         entitlements_file=None,
     )
-    
+
     app = BUNDLE(
         exe,
         name='Bubble Analyser.app',

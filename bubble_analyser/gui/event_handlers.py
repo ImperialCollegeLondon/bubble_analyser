@@ -2209,13 +2209,12 @@ class MainHandler:
     def setup_logging(self) -> None:
         """Set up logging to capture terminal output."""
         # Use user's home directory or temporary directory for logs
-        import os
         import tempfile
-        
+
         # Try to use the user's application data directory first
         user_home = Path.home()
         app_data_dir = user_home / "Library" / "Application Support" / "BubbleAnalyser"
-        
+
         try:
             app_data_dir.mkdir(parents=True, exist_ok=True)
             logs_dir = app_data_dir / "logs"
@@ -2224,9 +2223,9 @@ class MainHandler:
             # Fallback to temp directory if we can't write to app data dir
             logs_dir = Path(tempfile.gettempdir()) / "BubbleAnalyser" / "logs"
             logs_dir.mkdir(parents=True, exist_ok=True)
-        
+
         log_file = logs_dir / "bubble_analyser.log"
-        
+
         # Configure logging
         logging.basicConfig(
             level=logging.INFO,
@@ -2236,9 +2235,10 @@ class MainHandler:
                 logging.StreamHandler(),
             ],
         )
-        
+
         logging.info("Logging initialized")
         logging.info("******************************Folder Selection Session******************************")
+
 
 if __name__ == "__main__":
     main_handler = MainHandler()
