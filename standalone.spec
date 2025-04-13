@@ -1,4 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
+import platform
 block_cipher = None
 data_files = [
     ('bubble_analyser/config.toml', 'bubble_analyser/'),
@@ -20,23 +21,54 @@ a = Analysis(
 )
 pyz = PYZ(a.pure, a.zipped_data, cypher=block_cipher)
 
-exe = EXE(
-    pyz,
-    a.scripts,
-    a.binaries,
-    a.datas,
-    [],
-    name='bubble_analyser',
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
-    console=False,
-    disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-)
+# For Windows build
+if platform.system() == 'Windows':
+    exe = EXE(
+        pyz,
+        a.scripts,
+        a.binaries,
+        a.datas,
+        [],
+        name='bubble_analyser',
+        debug=False,
+        bootloader_ignore_signals=False,
+        strip=False,
+        upx=True,
+        upx_exclude=[],
+        runtime_tmpdir=None,
+        console=False,
+        disable_windowed_traceback=False,
+        argv_emulation=False,
+        target_arch=None,
+        codesign_identity=None,
+        entitlements_file=None,
+    )
+
+# For macOS build
+if platform.system() == 'Darwin':
+    app = BUNDLE(
+        pyz,
+        a.scripts,
+        a.binaries,
+        a.datas,
+        [],
+        name='Bubble Analyser.app',
+        icon=None,  # Add your .icns file path here if available
+        bundle_identifier='com.imperial.bubble-analyser',
+        version='0.2.0',  # Match version from pyproject.toml
+        info_plist={
+            'NSHighResolutionCapable': 'True',
+            'NSPrincipalClass': 'NSApplication',
+            'CFBundleName': 'Bubble Analyser',
+            'CFBundleDisplayName': 'Bubble Analyser',
+            'CFBundleGetInfoString': 'Bubble image analysis tool',
+            'CFBundleShortVersionString': '0.2.0',
+        },
+        debug=False,
+        strip=False,
+        upx=True,
+        upx_exclude=[],
+        argv_emulation=True,  # Enable argv emulation for macOS
+        codesign_identity=None,  # Set to your Developer ID for distribution
+        entitlements_file=None,
+    )
