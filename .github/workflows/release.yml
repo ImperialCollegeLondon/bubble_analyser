@@ -66,7 +66,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -98,14 +97,22 @@ jobs:
         with:
           python-version: 3.12.3
 
-      - name: Install dependencies
+      - name: Install Poetry
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install pyinstaller
-          python -m pip install .
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Build macOS executable
-        run: pyinstaller standalone.spec
+      - name: Configure Poetry
+        run: |
+          poetry config virtualenvs.in-project true
+
+      - name: Install dependencies with Poetry
+        run: |
+          poetry install --with dev
+
+      - name: Build macOS executable with Poetry
+        run: |
+          poetry run pyinstaller standalone.spec
 
       - name: Upload macOS build artifact
         uses: actions/upload-artifact@v4
