@@ -106,13 +106,16 @@ jobs:
       #   run: |
       #     poetry config virtualenvs.in-project true
 
-      - name: Install dependencies with Poetry
+      - name: Install dependencies with pip (extract from pyproject file)
         run: |
-          poetry install
+            poetry export -f requirements.txt --output requirements.txt
+            python -m pip install -r requirements.txt
 
       - name: Build macOS executable with Poetry
         run: |
-          poetry run pyinstaller standalone.spec --distpath dist
+          # poetry run pyinstaller standalone.spec --distpath dist
+          python -m pip install pyinstaller
+          pyinstaller standalone.spec --distpath dist
 
       - name: Upload macOS build artifact
         uses: actions/upload-artifact@v4
