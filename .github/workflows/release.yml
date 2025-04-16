@@ -148,7 +148,7 @@ jobs:
 
   create-release:
     needs:
-      [validate-version, build-windows-standalone, build-macos, build-package]
+      [validate-version, build-macos, build-package]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -195,7 +195,7 @@ jobs:
           tag_name: v${{ needs.validate-version.outputs.version }}
           body: ${{ steps.changelog.outputs.changelog }}
           files: |
-            artifacts/windows-build/bubble_analyser_win*
+            # artifacts/windows-build/bubble_analyser_win*
             artifacts/macos-build/bubble_analyser_mac*
           draft: false
           prerelease: false
