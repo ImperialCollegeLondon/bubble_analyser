@@ -53,38 +53,38 @@ jobs:
             exit 1
           fi
 
-  build-windows-standalone:
-    needs: validate-version
-    name: Build standalone executables
-    runs-on: ${{ matrix.os }}
+  # build-windows-standalone:
+  #   needs: validate-version
+  #   name: Build standalone executables
+  #   runs-on: ${{ matrix.os }}
 
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest]
-        python-version: ["3.12.3"]
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       os: [windows-latest]
+  #       python-version: ["3.12.3"]
 
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Set up Python ${{ matrix.python-version }}
+  #       uses: actions/setup-python@v5
+  #       with:
+  #         python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install pyinstaller
-          python -m pip install .
+  #     - name: Install dependencies
+  #       run: |
+  #         python -m pip install --upgrade pip
+  #         python -m pip install pyinstaller
+  #         python -m pip install .
 
-      - name: Build Windows executable
-        run: pyinstaller standalone.spec --distpath standalone
+  #     - name: Build Windows executable
+  #       run: pyinstaller standalone.spec --distpath standalone
 
-      - name: Upload Windows build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-build
-          path: standalone/bubble_analyser_win*
+  #     - name: Upload Windows build artifact
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: windows-build
+  #         path: dist/bubble_analyser_win*
 
   build-macos:
     needs: validate-version
@@ -118,7 +118,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: macos-build
-          path: standalone/bubble_analyser_mac*
+          path: dist/bubble_analyser_mac
 
   build-package:
     needs: validate-version
