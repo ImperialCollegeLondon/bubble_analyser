@@ -102,13 +102,13 @@ jobs:
           curl -sSL https://install.python-poetry.org | python3 -
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Configure Poetry
-        run: |
-          poetry config virtualenvs.in-project true
+      # - name: Configure Poetry
+      #   run: |
+      #     poetry config virtualenvs.in-project true
 
       - name: Install dependencies with Poetry
         run: |
-          poetry install --with dev
+          poetry install
 
       - name: Build macOS executable with Poetry
         run: |
@@ -118,7 +118,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: macos-build
-          path: dist/bubble_analyser
+          path: dist/bubble_analyser.app
 
   build-package:
     needs: validate-version
@@ -146,8 +146,7 @@ jobs:
           path: dist/*.tar.gz
 
   create-release:
-    needs:
-      [validate-version, build-macos, build-package]
+    needs: [validate-version, build-macos, build-package]
     runs-on: ubuntu-latest
     permissions:
       contents: write
