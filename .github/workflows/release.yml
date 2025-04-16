@@ -84,7 +84,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: standalone/bubble_analyser*
+          path: standalone/bubble_analyser_win*
 
   build-macos:
     needs: validate-version
@@ -118,8 +118,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: macos-build
-          path: dist/bubble_analyser
-          retention-days: 1
+          path: standalone/bubble_analyser_mac*
 
   build-package:
     needs: validate-version
@@ -196,8 +195,8 @@ jobs:
           tag_name: v${{ needs.validate-version.outputs.version }}
           body: ${{ steps.changelog.outputs.changelog }}
           files: |
-            artifacts/windows-build.zip
-            artifacts/macos-build.zip
+            artifacts/windows-build/bubble_analyser_win*
+            artifacts/macos-build/bubble_analyser_mac*
           draft: false
           prerelease: false
 
