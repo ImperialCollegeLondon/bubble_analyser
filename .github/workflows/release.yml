@@ -194,7 +194,7 @@ jobs:
           body: ${{ steps.changelog.outputs.changelog }}
           files: |
             # artifacts/windows-build/**
-            artifacts/macos-build/bubble_analyser.app
+            artifacts/macos-build/**
           draft: false
           prerelease: false
 
