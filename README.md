@@ -20,11 +20,11 @@ Bubble Analyser is a Python application for detecting, measuring, and analyzing 
 
 ## Installation
 
-### Using the Executable (Windows)
+### Using the Executable (Windows and MacOS)
 
-For Windows users, a standalone executable is available in the release:
+For users on either Windows or MacOS platform, a standalone executable is available for each one in the release:
 
-v0.1.0 <https://github.com/ImperialCollegeLondon/bubble_analyser/releases/tag/v0.1.0>
+v0.2.0 <https://github.com/ImperialCollegeLondon/bubble_analyser/releases/tag/v0.2.0>
 
 ### From Source
 
