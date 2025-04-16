@@ -196,8 +196,8 @@ jobs:
           tag_name: v${{ needs.validate-version.outputs.version }}
           body: ${{ steps.changelog.outputs.changelog }}
           files: |
-            artifacts/windows-build/bubble_analyser_win*
-            artifacts/macos-build/bubble_analyser_mac*
+            artifacts/windows-build.zip
+            artifacts/macos-build.zip
           draft: false
           prerelease: false
 
