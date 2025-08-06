@@ -1,10 +1,11 @@
 """The entry point for the Bubble Analyser program."""
 
-import os
 import logging
+import os
+import platform
 import tempfile
 from pathlib import Path
-import platform
+
 
 def setup_basic_logging() -> None:
     """Set up cross-platform, user-writable logging before the main app runs."""
@@ -30,11 +31,10 @@ def setup_basic_logging() -> None:
         level=logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
         handlers=[
-            logging.FileHandler(log_file, encoding='utf-8'),
+            logging.FileHandler(log_file, encoding="utf-8"),
             logging.StreamHandler(),
         ],
     )
-
 
 
 if __name__ == "__main__":
@@ -70,4 +70,3 @@ if __name__ == "__main__":
         except Exception:
             # If we can't show a dialog, at least the error is logged and printed
             pass
-
