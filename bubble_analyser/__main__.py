@@ -1,27 +1,27 @@
 """The entry point for the Bubble Analyser program."""
 
 import logging
-import sys
-import traceback
+import os
+import platform
+import tempfile
 from pathlib import Path
 
 
-# Set up basic logging in case an error occurs before the main logging is configured
 def setup_basic_logging() -> None:
-    """Set up basic logging to ensure errors are captured before main logging is configured."""
-    # Use user's home directory or temporary directory for logs
-    import tempfile
-
-    # Try to use the user's application data directory first
-    user_home = Path.home()
-    app_data_dir = user_home / "Library" / "Application Support" / "BubbleAnalyser"
-
+    """Set up cross-platform, user-writable logging before the main app runs."""
     try:
-        app_data_dir.mkdir(parents=True, exist_ok=True)
+        system = platform.system()
+        if system == "Windows":
+            app_data_dir = Path(os.getenv("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "BubbleAnalyser"
+        elif system == "Darwin":
+            app_data_dir = Path.home() / "Library" / "Application Support" / "BubbleAnalyser"
+        else:  # Linux or other Unix-like
+            app_data_dir = Path(os.getenv("XDG_DATA_HOME", Path.home() / ".local" / "share")) / "BubbleAnalyser"
+
         logs_dir = app_data_dir / "logs"
-        logs_dir.mkdir(exist_ok=True)
-    except OSError:
-        # Fallback to temp directory if we can't write to app data dir
+        logs_dir.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        # Fallback to temporary directory
         logs_dir = Path(tempfile.gettempdir()) / "BubbleAnalyser" / "logs"
         logs_dir.mkdir(parents=True, exist_ok=True)
 
@@ -31,7 +31,7 @@ def setup_basic_logging() -> None:
         level=logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
         handlers=[
-            logging.FileHandler(log_file),
+            logging.FileHandler(log_file, encoding="utf-8"),
             logging.StreamHandler(),
         ],
     )
