@@ -51,6 +51,7 @@ if __name__ == "__main__":
     except Exception as e:
         # Catch any exceptions during startup
         import traceback
+
         error_details = traceback.format_exc()
         logging.error(f"Error during application startup: {error_details}")
 
@@ -59,8 +60,9 @@ if __name__ == "__main__":
 
         # Try to show a basic error dialog if possible
         try:
-            from PySide6.QtWidgets import QApplication, QMessageBox
             import sys
+
+            from PySide6.QtWidgets import QApplication, QMessageBox
 
             app = QApplication.instance() or QApplication(sys.argv)
             error_box = QMessageBox()
