@@ -451,7 +451,10 @@ class CalibrationTabHandler:
             px2mm, img_drawed_line = self.calibration_model.get_px2mm_ratio(
                 pixel_img_path=img_path, img_resample=self.img_resample, gui=self.gui
             )
-            self.gui.manual_px_mm_input.setText(f"{px2mm:.3f}")
+
+            px2mm_display = px2mm/self.img_resample
+
+            self.gui.manual_px_mm_input.setText(f"{px2mm_display:.3f}")
 
             pixmap = cv2_to_qpixmap(img_drawed_line)
             self.gui.pixel_img_preview.setPixmap(
@@ -515,7 +518,9 @@ class CalibrationTabHandler:
             return
 
         self.calibration_model.bknd_img_path = Path(self.gui.bg_corr_image_name.text())
-        self.calibration_model.px2mm = float(self.gui.manual_px_mm_input.text())
+        px2mm_display = float(self.gui.manual_px_mm_input.text())
+        self.calibration_model.px2mm = px2mm_display * self.img_resample
+
         self.calibration_model.confirm_calibration()
 
         self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.image_processing_tab))
