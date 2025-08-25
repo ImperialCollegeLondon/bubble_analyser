@@ -452,7 +452,7 @@ class CalibrationTabHandler:
                 pixel_img_path=img_path, img_resample=self.img_resample, gui=self.gui
             )
 
-            px2mm_display = px2mm/self.img_resample
+            px2mm_display = px2mm / self.img_resample
 
             self.gui.manual_px_mm_input.setText(f"{px2mm_display:.3f}")
 
