@@ -452,7 +452,7 @@ class CalibrationTabHandler:
                 pixel_img_path=img_path, img_resample=self.img_resample, gui=self.gui
             )
 
-            px2mm_display = px2mm/self.img_resample
+            px2mm_display = px2mm / self.img_resample
 
             self.gui.manual_px_mm_input.setText(f"{px2mm_display:.3f}")
 
@@ -525,7 +525,8 @@ class CalibrationTabHandler:
 
         self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.image_processing_tab))
         self.preview_image_intialize()
-        logging.info(f"Pixel to millimeter ratio locked as: {self.calibration_model.px2mm:.3f}")
+        logging.info(f"Pixel to millimeter ratio locked as: {px2mm_display:.3f}")
+        logging.info(f"Real pixel")
         logging.info(f"Background image path locked as: {self.calibration_model.bknd_img_path}")
         logging.info("Calibration confirmed and locked.")
         logging.info("******************************Parameter Adjustment Session******************************")
@@ -548,6 +549,14 @@ class CalibrationTabHandler:
                 Qt.AspectRatioMode.KeepAspectRatio,
             )
         )
+        
+        # Update the image info display for the initial image
+        if hasattr(self.gui, 'sample_image_info_label'):
+            filename = selected_image
+            current_index = 1  # First image
+            total_images = self.gui.image_list.count()
+            info_text = f"Image {current_index} of {total_images}: {filename}"
+            self.gui.sample_image_info_label.setText(info_text)
 
     def _show_warning(self, title: str, message: str) -> None:
         """Display a warning message box to the user.
@@ -636,6 +645,9 @@ class ImageProcessingTabHandler(QThread):
                 Qt.AspectRatioMode.KeepAspectRatio,
             )
         )
+        
+        # Update the filename and index display
+        self.update_image_info_display()
 
     def check_params(self, name: str, value: int | float | str) -> bool:
         """Validate a parameter value against the configuration schema.
@@ -796,6 +808,28 @@ class ImageProcessingTabHandler(QThread):
 
         self.preview_image()
         self.update_preview_procsd_img_button()
+
+    def update_image_info_display(self) -> None:
+        """Update the display of filename and index information under the sample image preview.
+        
+        Shows the current image filename and its index in the format:
+        "Image X of Y: filename.ext"
+        """
+        if self.gui.image_list.count() == 0:
+            self.gui.sample_image_info_label.setText("No images loaded")
+            return
+            
+        current_item = self.gui.image_list.currentItem()
+        if current_item is None:
+            self.gui.sample_image_info_label.setText("No image selected")
+            return
+            
+        filename = current_item.text()
+        current_index = self.gui.image_list.currentRow() + 1  # 1-based index for display
+        total_images = self.gui.image_list.count()
+        
+        info_text = f"Image {current_index} of {total_images}: {filename}"
+        self.gui.sample_image_info_label.setText(info_text)
 
     def update_preview_procsd_img_button(self) -> None:
         """Check if the current image are being processed with segmentation and filtering.
@@ -1729,7 +1763,7 @@ class MainHandler:
         self.gui: MainWindow
 
         # Set up logging to capture terminal output
-        self.setup_logging()
+        # self.setup_logging()
 
         # Get the base directory for the application
         if getattr(sys, "frozen", False):
@@ -1834,6 +1868,7 @@ class MainHandler:
         # menubar
         self.gui.export_setting_action.triggered.connect(self.menubar_open_export_settings_dialog)
         self.gui.restart_action.triggered.connect(self.menubar_ask_if_restart)
+        self.gui.restart_button.clicked.connect(self.menubar_ask_if_restart)
 
         # folder tab
         self.gui.folder_path_edit.setText(str(self.folder_tab_handler.image_path))
@@ -1877,7 +1912,8 @@ class MainHandler:
         # menubar
         self.gui.export_setting_action.triggered.disconnect(self.menubar_open_export_settings_dialog)
         self.gui.restart_action.triggered.disconnect(self.menubar_ask_if_restart)
-
+        self.gui.restart_button.clicked.disconnect(self.menubar_ask_if_restart)
+        
         # folder tab
         self.gui.folder_path_edit.setText(str(self.folder_tab_handler.image_path))
         self.gui.select_folder_button.clicked.disconnect(self.tab1_select_folder)
@@ -2211,38 +2247,38 @@ class MainHandler:
         )
         self.results_tab_handler.generate_histogram()
 
-    def setup_logging(self) -> None:
-        """Set up logging to capture terminal output."""
-        # Use user's home directory or temporary directory for logs
-        import tempfile
+    # def setup_logging(self) -> None:
+    #     """Set up logging to capture terminal output."""
+    #     # Use user's home directory or temporary directory for logs
+    #     import tempfile
 
-        # Try to use the user's application data directory first
-        user_home = Path.home()
-        app_data_dir = user_home / "Library" / "Application Support" / "BubbleAnalyser"
+    #     # Try to use the user's application data directory first
+    #     user_home = Path.home()
+    #     app_data_dir = user_home / "Library" / "Application Support" / "BubbleAnalyser"
 
-        try:
-            app_data_dir.mkdir(parents=True, exist_ok=True)
-            logs_dir = app_data_dir / "logs"
-            logs_dir.mkdir(exist_ok=True)
-        except OSError:
-            # Fallback to temp directory if we can't write to app data dir
-            logs_dir = Path(tempfile.gettempdir()) / "BubbleAnalyser" / "logs"
-            logs_dir.mkdir(parents=True, exist_ok=True)
+    #     try:
+    #         app_data_dir.mkdir(parents=True, exist_ok=True)
+    #         logs_dir = app_data_dir / "logs"
+    #         logs_dir.mkdir(exist_ok=True)
+    #     except OSError:
+    #         # Fallback to temp directory if we can't write to app data dir
+    #         logs_dir = Path(tempfile.gettempdir()) / "BubbleAnalyser" / "logs"
+    #         logs_dir.mkdir(parents=True, exist_ok=True)
 
-        log_file = logs_dir / "bubble_analyser.log"
+    #     log_file = logs_dir / "bubble_analyser.log"
 
-        # Configure logging
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s - %(levelname)s - %(message)s",
-            handlers=[
-                logging.FileHandler(log_file),
-                logging.StreamHandler(),
-            ],
-        )
+    #     # Configure logging
+    #     logging.basicConfig(
+    #         level=logging.INFO,
+    #         format="%(asctime)s - %(levelname)s - %(message)s",
+    #         handlers=[
+    #             logging.FileHandler(log_file),
+    #             logging.StreamHandler(),
+    #         ],
+    #     )
 
-        logging.info("Logging initialized")
-        logging.info("******************************Folder Selection Session******************************")
+    #     logging.info("Logging initialized")
+    #     logging.info("******************************Folder Selection Session******************************")
 
 
 if __name__ == "__main__":

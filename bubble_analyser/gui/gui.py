@@ -353,6 +353,12 @@ class MainWindow(QMainWindow):
 
         first_column_layout.addWidget(QLabel("Select image and preview"))
         first_column_layout.addWidget(self.sample_image_preview)
+        
+        # Add filename and index display label
+        self.sample_image_info_label = QLabel("No image selected")
+        self.sample_image_info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.sample_image_info_label.setStyleSheet("color: #666; font-size: 12px; padding: 5px;")
+        first_column_layout.addWidget(self.sample_image_info_label)
 
         # Prev/Next Buttons
         first_column_buttons_layout = QHBoxLayout()
@@ -553,10 +559,15 @@ class MainWindow(QMainWindow):
         # Save button
         self.save_button = QPushButton("Save graph and data")
 
+        # Restart button (new addition)
+        self.restart_button = QPushButton("Restart New Mission")
+        self.restart_button.setStyleSheet("background-color: #ff6b6b; color: white; font-weight: bold;")
+
         # Add folder selection and save button to the layout
         save_layout.addWidget(graph_frame)
         save_layout.addWidget(csv_filename_frame)
         save_layout.addWidget(self.save_button)
+        save_layout.addWidget(self.restart_button)  # Add restart button under save button
 
         # Assemble controls layout
         controls_layout.addWidget(histogram_by_label)

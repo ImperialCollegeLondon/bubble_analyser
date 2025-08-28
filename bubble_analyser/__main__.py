@@ -3,7 +3,9 @@
 import logging
 import os
 import platform
+import sys
 import tempfile
+from datetime import datetime
 from pathlib import Path
 
 
@@ -21,11 +23,16 @@ def setup_basic_logging() -> None:
         logs_dir = app_data_dir / "logs"
         logs_dir.mkdir(parents=True, exist_ok=True)
     except Exception:
-        # Fallback to temporary directory
+        # Fallback to temp directory
         logs_dir = Path(tempfile.gettempdir()) / "BubbleAnalyser" / "logs"
         logs_dir.mkdir(parents=True, exist_ok=True)
 
-    log_file = logs_dir / "bubble_analyser.log"
+    # Generate timestamp for unique log file names
+    now = datetime.now()
+    date_str = now.strftime("%d%m%Y")  # DDMMYYYY format
+    timestamp_str = now.strftime("%H%M%S")  # HHMMSS format
+    log_filename = f"bubble_analyser_{date_str}_{timestamp_str}.log"
+    log_file = logs_dir / log_filename
 
     logging.basicConfig(
         level=logging.INFO,
@@ -51,6 +58,7 @@ if __name__ == "__main__":
     except Exception as e:
         # Catch any exceptions during startup
         import traceback
+
         error_details = traceback.format_exc()
         logging.error(f"Error during application startup: {error_details}")
 
@@ -59,8 +67,9 @@ if __name__ == "__main__":
 
         # Try to show a basic error dialog if possible
         try:
-            from PySide6.QtWidgets import QApplication, QMessageBox
             import sys
+
+            from PySide6.QtWidgets import QApplication, QMessageBox
 
             app = QApplication.instance() or QApplication(sys.argv)
             error_box = QMessageBox()
