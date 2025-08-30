@@ -24,6 +24,8 @@ datetime = "^5.5"
 numba = "^0.60.0"
 opencv-python = "^4.11.0.86"
 mkdocstrings-python = ">=0.18"
+pandas = "^2.3.2"
+openpyxl = "^3.1.5"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.6.1"

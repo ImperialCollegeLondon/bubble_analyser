@@ -219,7 +219,7 @@ class Image:
 
     def __init__(
         self,
-        px2mm: float,
+        px2mm_display: float,
         raw_img_path: Path,
         all_methods_n_params: dict[str, dict[str, float | int]],
         methods_handler: MethodsHandler,
@@ -240,7 +240,8 @@ class Image:
         """
         self.filter_param_dict: dict[str, float | str]
 
-        self.px2mm: float = px2mm
+        self.px2mm_display: float = px2mm_display
+        self.resample = 0.5
         self.raw_img_path = raw_img_path
         logging.info(f"Initialzing image: {raw_img_path}")
         self.if_bknd_img: bool = False
@@ -260,7 +261,7 @@ class Image:
         self.labels_after_filter: npt.NDArray[np.int_]
         self.labelled_ellipses_mask: npt.NDArray[np.int_]
         self.ellipses: list[tuple[tuple[float, float], tuple[int, int], float]] = []
-        self.ellipses_properties: list[dict[str, float]]
+        self.ellipses_properties: list[dict[str, float | str]]
         self.ellipses_on_images: npt.NDArray[np.int_]
 
         self.all_methods_n_params: dict[str, dict[str, float | int]] = all_methods_n_params
@@ -325,7 +326,9 @@ class Image:
                     processing_instance,
                 ) in self.methods_handler.all_classes.items():
                     if name == algorithm_name:
-                        self._img_preprocess(params["resample"])
+                        self.resample = params["resample"]
+                        self._img_preprocess(self.resample)
+                        logging.info(f"Resample used: {self.resample}")
                         # processing_instance
                         processing_instance.initialize_processing(  # type: ignore
                             params=params,
@@ -354,7 +357,7 @@ class Image:
         if self.new_circle_handler is not None:
             del self.new_circle_handler
 
-        self.new_circle_handler = CircleHandler(labels_before_filter, rgb_img, self.px2mm)
+        self.new_circle_handler = CircleHandler(labels_before_filter, rgb_img, self.px2mm_display, resample = self.resample)
         self.new_circle_handler.load_filter_params(self.filter_param_dict_1, self.filter_param_dict_2)
 
     def labels_filtering(self) -> None:
@@ -404,6 +407,8 @@ class Image:
             None
         """
         self.ellipses_properties = self.new_circle_handler.calculate_circle_properties()  # type: ignore
+        for ellipse in self.ellipses_properties:
+            ellipse["filename"] = self.raw_img_path.name 
 
     def overlay_ellipses_on_images(self) -> None:
         """Overlay the detected ellipses onto the RGB image.
