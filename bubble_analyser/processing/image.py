@@ -232,7 +232,7 @@ class Image:
         Additionally, it stores the provided methods and parameters for subsequent processing.
 
         Args:
-            px2mm (float): Conversion factor from pixels to millimeters.
+            px2mm_display (float): Conversion factor from pixels to millimeters for display purposes.
             raw_img_path (Path): File path to the raw image to be processed.
             all_methods_n_params (dict): Dictionary mapping algorithm names to their processing parameters.
             methods_handler (MethodsHandler): An instance of MethodsHandler to access processing routines.
@@ -357,7 +357,9 @@ class Image:
         if self.new_circle_handler is not None:
             del self.new_circle_handler
 
-        self.new_circle_handler = CircleHandler(labels_before_filter, rgb_img, self.px2mm_display, resample = self.resample)
+        self.new_circle_handler = CircleHandler(
+            labels_before_filter, rgb_img, self.px2mm_display, resample=self.resample
+        )
         self.new_circle_handler.load_filter_params(self.filter_param_dict_1, self.filter_param_dict_2)
 
     def labels_filtering(self) -> None:
@@ -408,7 +410,7 @@ class Image:
         """
         self.ellipses_properties = self.new_circle_handler.calculate_circle_properties()  # type: ignore
         for ellipse in self.ellipses_properties:
-            ellipse["filename"] = self.raw_img_path.name 
+            ellipse["filename"] = self.raw_img_path.name
 
     def overlay_ellipses_on_images(self) -> None:
         """Overlay the detected ellipses onto the RGB image.

@@ -355,7 +355,7 @@ class ImageProcessingModel:
         """Update the pixel-to-millimeter conversion ratio.
 
         Args:
-            px2mm (float): The new pixel-to-millimeter conversion ratio.
+            px2mm_display (float): The new pixel-to-millimeter conversion ratio for display.
         """
         self.px2mm_display = px2mm_display
 

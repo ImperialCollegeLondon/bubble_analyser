@@ -18,7 +18,6 @@ the GUI and the underlying processing logic.
 
 from __future__ import annotations
 
-import csv
 import logging
 import os
 import sys
@@ -151,30 +150,30 @@ class ExportSettingsHandler(QDialog):
         if not path_text:
             QMessageBox.warning(self, "Error in Export Path setting: ", "No path selected")
             return False
-        
+
         try:
             # Convert to Path object and resolve it
             path_obj = Path(path_text).resolve()
-            
+
             # Check if the path actually exists
             if not path_obj.exists():
                 QMessageBox.warning(self, "Error in Export Path setting: ", f"Path does not exist: {path_obj}")
                 return False
-            
+
             # Check if it's a directory (not a file)
             if not path_obj.is_dir():
                 QMessageBox.warning(self, "Error in Export Path setting: ", f"Path is not a directory: {path_obj}")
                 return False
-            
+
             # Check if the directory is writable
             if not os.access(path_obj, os.W_OK):
                 QMessageBox.warning(self, "Error in Export Path setting: ", f"Directory is not writable: {path_obj}")
                 return False
-            
+
             return True
-            
+
         except (OSError, ValueError) as e:
-            error_str = f"Invalid path: {str(e)}"
+            error_str = f"Invalid path: {e!s}"
             QMessageBox.warning(self, "Error in Export Path setting: ", error_str)
             return False
 
@@ -576,9 +575,9 @@ class CalibrationTabHandler:
                 Qt.AspectRatioMode.KeepAspectRatio,
             )
         )
-        
+
         # Update the image info display for the initial image
-        if hasattr(self.gui, 'sample_image_info_label'):
+        if hasattr(self.gui, "sample_image_info_label"):
             filename = selected_image
             current_index = 1  # First image
             total_images = self.gui.image_list.count()
@@ -672,7 +671,7 @@ class ImageProcessingTabHandler(QThread):
                 Qt.AspectRatioMode.KeepAspectRatio,
             )
         )
-        
+
         # Update the filename and index display
         self.update_image_info_display()
 
@@ -838,23 +837,23 @@ class ImageProcessingTabHandler(QThread):
 
     def update_image_info_display(self) -> None:
         """Update the display of filename and index information under the sample image preview.
-        
+
         Shows the current image filename and its index in the format:
         "Image X of Y: filename.ext"
         """
         if self.gui.image_list.count() == 0:
             self.gui.sample_image_info_label.setText("No images loaded")
             return
-            
+
         current_item = self.gui.image_list.currentItem()
         if current_item is None:
             self.gui.sample_image_info_label.setText("No image selected")
             return
-            
+
         filename = current_item.text()
         current_index = self.gui.image_list.currentRow() + 1  # 1-based index for display
         total_images = self.gui.image_list.count()
-        
+
         info_text = f"Image {current_index} of {total_images}: {filename}"
         self.gui.sample_image_info_label.setText(info_text)
 
@@ -1384,7 +1383,7 @@ class ResultsTabHandler(QThread):
         self.px2mm_display = 0.0
         self.params = params
         self.bknd_img_path = cast(Path, None)
-        
+
         # Parameters handling export settings
         self.export_handler: ExportSettingsHandler
         self.if_dinf_displayed: bool = False
@@ -1426,7 +1425,7 @@ class ResultsTabHandler(QThread):
         param_dict_1: dict[str, float | str],
         param_dict_2: dict[str, float | str],
         px2mm_display: float,
-        bknd_img_path = cast(Path, None),
+        bknd_img_path: Path = cast(Path, None),
     ) -> None:
         """Load the properties of detected ellipses for display and analysis.
 
@@ -1439,6 +1438,8 @@ class ResultsTabHandler(QThread):
                 first algorithm.
             param_dict_2 (dict[str, float | str]): Dictionary containing parameters for the
                 second algorithm.
+            px2mm_display (float): The pixel-to-millimeter conversion ratio for display purposes.
+            bknd_img_path (Path): Path to the background image file. Defaults to None.
         """
         self.ellipses_properties = properties
         self.algorithm = algorithm
@@ -1447,7 +1448,6 @@ class ResultsTabHandler(QThread):
         self.param_dict_2 = param_dict_2
         self.px2mm_display = px2mm_display
         self.bknd_img_path = bknd_img_path
-        pass
 
     def generate_histogram(self) -> None:
         """Generate and display a histogram of bubble sizes.
@@ -1520,19 +1520,19 @@ class ResultsTabHandler(QThread):
             self.gui.histogram_canvas.axes.set_xlabel("Equivalent diameter [mm]")
             self.gui.histogram_canvas.axes.set_ylabel("Count [#]")
 
-
         dxy_x_power: int = int(self.gui.dxy_x_input.text())
         dxy_y_power: int = int(self.gui.dxy_y_input.text())
         # Calculate descriptive sizes
-        d32, d_mean, dxy = self.calculate_descriptive_sizes(equivalent_diameters_array,
-        dxy_x_power, dxy_y_power)
+        d32, d_mean, dxy = self.calculate_descriptive_sizes(equivalent_diameters_array, dxy_x_power, dxy_y_power)
 
         if not self.if_dinf_displayed:
             logging.info(f"d32: {d32}, d_mean: {d_mean}, d{dxy_x_power}{dxy_y_power}: {dxy}")
             self.if_dinf_displayed = True
 
         # Update descriptive size label
-        desc_text = f"Results:\nd32 = {d32:.2f} mm\ndmean = {d_mean:.2f} mm\n d{dxy_x_power}{dxy_y_power} = {dxy:.2f} mm"
+        desc_text = (
+            f"Results:\nd32 = {d32:.2f} mm\ndmean = {d_mean:.2f} mm\n d{dxy_x_power}{dxy_y_power} = {dxy:.2f} mm"
+        )
         self.gui.descriptive_size_label.setText(desc_text)
 
         # Optionally add CDF and PDF
@@ -1565,7 +1565,9 @@ class ResultsTabHandler(QThread):
             self.gui.histogram_canvas.axes.axvline(x=d_mean, color="g", linestyle="--", label="dmean")
 
         if show_dxy:
-            self.gui.histogram_canvas.axes.axvline(x=dxy, color="b", linestyle="--", label=f"d{dxy_x_power}{dxy_y_power}")
+            self.gui.histogram_canvas.axes.axvline(
+                x=dxy, color="b", linestyle="--", label=f"d{dxy_x_power}{dxy_y_power}"
+            )
 
         # Apply Legend Options
         legend_position = self.gui.legend_position_combobox.currentText()
@@ -1600,12 +1602,15 @@ class ResultsTabHandler(QThread):
         self.current_d_y_power = dxy_y_power
         return
 
-    def calculate_descriptive_sizes(self, equivalent_diameters: npt.NDArray[np.float64],
-                                    dxy_x_power, dxy_y_power) -> tuple[float, float, float]:
+    def calculate_descriptive_sizes(
+        self, equivalent_diameters: npt.NDArray[np.float64], dxy_x_power: float, dxy_y_power: float
+    ) -> tuple[float, float, float]:
         """Calculate characteristic diameters from the equivalent diameters.
 
         Args:
             equivalent_diameters (npt.NDArray[np.float64]): Array of equivalent diameters.
+            dxy_x_power (float): Power for x component in general mean diameter calculation.
+            dxy_y_power (float): Power for y component in general mean diameter calculation.
 
         Returns:
             tuple[float, float, float]: A tuple containing (d32, d_mean, dxy) where:
@@ -1639,10 +1644,10 @@ class ResultsTabHandler(QThread):
 
     def save_results(self) -> None:
         """Saves histogram and data to the selected folder."""
-        if self.export_handler.check_if_path_valid() == False:
+        if not self.export_handler.check_if_path_valid():
             self.export_handler.exec()
             # self.save_results()
-            # return 
+            # return
 
         folder_path = self.export_handler.save_path
         if folder_path == "" or not os.path.exists(folder_path):
@@ -1679,7 +1684,6 @@ class ResultsTabHandler(QThread):
 
     def save_combined_data(self, export_path: str) -> None:
         """Save both ellipse data and config data to a single Excel file with multiple sheets."""
-        
         # Prepare ellipse data
         ellipse_headers = [
             "major_axis_length(mm)",
@@ -1688,9 +1692,9 @@ class ResultsTabHandler(QThread):
             "area(mm2)",
             "perimeter(mm)",
             "eccentricity",
-            "image name"
+            "image name",
         ]
-        
+
         ellipse_rows = []
         number_of_bubbles = 0
         number_of_photos = 0
@@ -1698,57 +1702,55 @@ class ResultsTabHandler(QThread):
             number_of_photos += 1
             for circle in image:
                 number_of_bubbles += 1
-                ellipse_rows.append([
-                    circle["major_axis_length"],
-                    circle["minor_axis_length"],
-                    circle["equivalent_diameter"],
-                    circle["area"],
-                    circle["perimeter"],
-                    circle["eccentricity"],
-                    circle["filename"],
-                ])
-        
+                ellipse_rows.append(
+                    [
+                        circle["major_axis_length"],
+                        circle["minor_axis_length"],
+                        circle["equivalent_diameter"],
+                        circle["area"],
+                        circle["perimeter"],
+                        circle["eccentricity"],
+                        circle["filename"],
+                    ]
+                )
+
         # Create ellipse DataFrame
-        ellipse_df = pd.DataFrame(data=ellipse_rows, columns=ellipse_headers) # type: ignore
-        
+        ellipse_df = pd.DataFrame(data=ellipse_rows, columns=ellipse_headers)  # type: ignore
+
         # Prepare config data
         config_data = []
-        
+
         # Add segmentation parameters
         config_data.append(["Section", "Parameter", "Value"])
         # config_data.append(["Calibration", "px/mm(raw)", self.px2mm])
-        config_data.append(["Calibration", "px/mm(display)", self.px2mm_display])
+        config_data.append(["Calibration", "px/mm(display)", str(self.px2mm_display)])
         config_data.append(["Segmentation", "Algorithm", self.algorithm])
-        
+
         for algorithm_name, params in self.all_methods_n_params.items():
             if algorithm_name == self.algorithm:
                 for key, value in params.items():
                     config_data.append(["Segmentation", key, str(value)])
 
-        
         # Add filtering parameters
         for key, value in self.param_dict_1.items():  # type: ignore
             config_data.append(["Filtering", key, str(value)])
-        
+
         # Add circle detection parameters if enabled
         if_find_circles: bool = self.param_dict_1.get("find_circles(Y/N)") == "Y"
         if self.param_dict_2.get("find_circles(Y/N)") == "Y":
             if_find_circles = True
-            
+
         if if_find_circles:
             for key, value in self.param_dict_2.items():  # type: ignore
                 config_data.append(["Circle Detection", key, str(value)])
-        
+
         # Add timestamp
         config_data.append(["Metadata", "Generated on", datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
-        
+
         # Create config DataFrame
         config_df = pd.DataFrame(config_data[1:], columns=config_data[0])  # Skip header row
-        
-        summary_headers = [
-            "Properties",
-            "Value"
-        ]
+
+        summary_headers = ["Properties", "Value"]
 
         summary_data = [
             ["d32", self.current_d32],
@@ -1760,14 +1762,14 @@ class ResultsTabHandler(QThread):
             ["number of photos", number_of_photos],
         ]
 
-        summary_df = pd.DataFrame(data=summary_data, columns=summary_headers) # type: ignore
+        summary_df = pd.DataFrame(data=summary_data, columns=summary_headers)  # type: ignore
 
         # Save to Excel with multiple sheets
-        with pd.ExcelWriter(export_path, engine='openpyxl') as writer:
-            ellipse_df.to_excel(writer, sheet_name='Ellipse_Data', index=False)
-            config_df.to_excel(writer, sheet_name='Configuration', index=False)
-            summary_df.to_excel(writer, sheet_name='Summary', index=False)
-        
+        with pd.ExcelWriter(export_path, engine="openpyxl") as writer:
+            ellipse_df.to_excel(writer, sheet_name="Ellipse_Data", index=False)
+            config_df.to_excel(writer, sheet_name="Configuration", index=False)
+            summary_df.to_excel(writer, sheet_name="Summary", index=False)
+
         logging.info(f"Combined data saved to {export_path}")
 
     def _show_warning(self, title: str, message: str) -> None:
@@ -1965,7 +1967,7 @@ class MainHandler:
         self.gui.export_setting_action.triggered.disconnect(self.menubar_open_export_settings_dialog)
         self.gui.restart_action.triggered.disconnect(self.menubar_ask_if_restart)
         self.gui.restart_button.clicked.disconnect(self.menubar_ask_if_restart)
-        
+
         # folder tab
         self.gui.folder_path_edit.setText(str(self.folder_tab_handler.image_path))
         self.gui.select_folder_button.clicked.disconnect(self.tab1_select_folder)
@@ -2082,7 +2084,6 @@ class MainHandler:
     def check_before_batch(self) -> None:
         """Check if batch processing can proceed."""
         if self.image_processing_tab_handler.if_save_processed_images:
-
             if not self.export_handler.check_if_path_valid():
                 self.menubar_open_export_settings_dialog()
 
@@ -2297,7 +2298,7 @@ class MainHandler:
             self.image_processing_model.filter_param_dict_2,
             # self.calibration_model.px2mm,
             self.calibration_model.px2mm_display,
-            self.calibration_model.bknd_img_path, 
+            self.calibration_model.bknd_img_path,
         )
         self.results_tab_handler.generate_histogram()
 

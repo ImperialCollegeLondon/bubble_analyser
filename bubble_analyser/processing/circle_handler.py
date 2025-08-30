@@ -114,7 +114,8 @@ class EllipseHandler:
         Args:
             labels_before_filtering (npt.NDArray[np.int_]): The labeled image before filtering.
             img_rgb (npt.NDArray[np.int_]): The RGB image corresponding to the labeled image.
-            px2mm (float, optional): Conversion factor from pixels to millimeters. Defaults to 90.0.
+            px2mm_display (float, optional): Conversion factor from pixels to millimeters for display. Defaults to 90.0.
+            resample (float, optional): Image resampling factor. Defaults to 0.5.
         """
         self.filter_param_dict_1: dict[str, float | str]
         self.filter_param_dict_2: dict[str, float | str]
@@ -126,7 +127,7 @@ class EllipseHandler:
         self.px2mm_display: float = px2mm_display
         self.resample: float = resample
         self.real_px2mm = self.px2mm_display * self.resample
-        self.mm2px = 1/self.real_px2mm
+        self.mm2px = 1 / self.real_px2mm
         logging.info(f"Real px2mm: {self.real_px2mm} = ({self.px2mm_display}*{self.resample})")
 
         self.ellipses: list[tuple[tuple[float, float], tuple[int, int], float]]
@@ -317,7 +318,6 @@ more of the following parameter(s) are not qualified:"
             list[dict[str, float | Sequence[float]]]: A list of dictionaries, each containing
                 the properties of one ellipse.
         """
-
         ellipse_properties = []
         mm2px = self.mm2px
 
