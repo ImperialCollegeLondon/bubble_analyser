@@ -106,7 +106,8 @@ class EllipseHandler:
         self,
         labels_before_filtering: npt.NDArray[np.int_] | None = None,
         img_rgb: npt.NDArray[np.int_] | None = None,
-        px2mm: float = 90.0,
+        px2mm_display: float = 90.0,
+        resample: float = 0.5,
     ) -> None:
         """Initialize the CircleHandler with labeled image data and conversion factor.
 
@@ -122,7 +123,11 @@ class EllipseHandler:
         self.labels_after_filtering: npt.NDArray[np.int_]
         self.labels_for_calculations: npt.NDArray[np.int_]
 
-        self.px2mm: float = px2mm
+        self.px2mm_display: float = px2mm_display
+        self.resample: float = resample
+        self.real_px2mm = self.px2mm_display * self.resample
+        self.mm2px = 1/self.real_px2mm
+        logging.info(f"Real px2mm: {self.real_px2mm} = ({self.px2mm_display}*{self.resample})")
 
         self.ellipses: list[tuple[tuple[float, float], tuple[int, int], float]]
         self.ellipses_on_image: npt.NDArray[np.int_]
@@ -157,11 +162,10 @@ class EllipseHandler:
             Updated labels array where regions not meeting the thresholds are removed.
         """
         labels = self.labels_before_filtering
-        px2mm = self.px2mm
 
         properties = measure.regionprops(labels)
         new_labels = np.copy(labels) if labels is not None else np.array([])
-        mm2px = 1 / px2mm
+        mm2px = self.mm2px
 
         cast(float, self.filter_param_dict_1["max_eccentricity"])
         max_eccentricity = float(self.filter_param_dict_1["max_eccentricity"])
@@ -313,10 +317,9 @@ more of the following parameter(s) are not qualified:"
             list[dict[str, float | Sequence[float]]]: A list of dictionaries, each containing
                 the properties of one ellipse.
         """
-        px2mm = self.px2mm
 
         ellipse_properties = []
-        mm2px = 1 / px2mm
+        mm2px = self.mm2px
 
         for ellipse in self.ellipses:
             center, axes, angle = ellipse

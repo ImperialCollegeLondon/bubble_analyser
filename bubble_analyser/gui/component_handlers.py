@@ -212,6 +212,7 @@ class CalibrationModel:
         self.pixel_img: npt.NDArray[np.int_]
 
         self.px2mm: float
+        self.px2mm_display: float
         self.calibration_confirmed: bool = False
 
     def get_px2mm_ratio(  # type: ignore
@@ -291,7 +292,7 @@ class ImageProcessingModel:
         self.filter_param_dict_1: dict[str, float | str]
         self.filter_param_dict_2: dict[str, float | str]
 
-        self.px2mm: float
+        self.px2mm_display: float
         self.if_bknd: bool
         self.bknd_img_path: Path = cast(Path, None)
 
@@ -299,7 +300,7 @@ class ImageProcessingModel:
         self.img_dict: dict[Path, Image] = {}
 
         self.adjuster: EllipseAdjuster
-        self.ellipses_properties: list[list[dict[str, float]]] = []
+        self.ellipses_properties: list[list[dict[str, float | str]]] = []
 
         logging.info("------------------------------Intializing Parameters------------------------------")
         self.methods_handler: MethodsHandler
@@ -350,13 +351,13 @@ class ImageProcessingModel:
         """
         self.bknd_img_path = Path(bknd_img_path)
 
-    def update_px2mm(self, px2mm: float) -> None:
+    def update_px2mm_display(self, px2mm_display: float) -> None:
         """Update the pixel-to-millimeter conversion ratio.
 
         Args:
             px2mm (float): The new pixel-to-millimeter conversion ratio.
         """
-        self.px2mm = px2mm
+        self.px2mm_display = px2mm_display
 
     def preview_processed_image(self, index: int) -> tuple[bool, npt.NDArray[np.int_], npt.NDArray[np.int_]]:
         """Retrieve the processed images for preview.
@@ -409,7 +410,7 @@ class ImageProcessingModel:
         """
         if name not in self.img_dict:
             self.img_dict[name] = Image(
-                self.px2mm,
+                self.px2mm_display,
                 raw_img_path=cast(Path, name),
                 all_methods_n_params=self.all_methods_n_params,
                 methods_handler=self.methods_handler,
