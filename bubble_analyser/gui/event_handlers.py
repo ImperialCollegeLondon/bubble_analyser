@@ -1508,14 +1508,19 @@ class ResultsTabHandler(QThread):
             self.gui.histogram_canvas.axes.set_xlabel("Equivalent diameter [mm]")
             self.gui.histogram_canvas.axes.set_ylabel("Count [#]")
 
+
+        dxy_x_power: int = int(self.gui.dxy_x_input.text())
+        dxy_y_power: int = int(self.gui.dxy_y_input.text())
         # Calculate descriptive sizes
-        d32, d_mean, dxy = self.calculate_descriptive_sizes(equivalent_diameters_array)
+        d32, d_mean, dxy = self.calculate_descriptive_sizes(equivalent_diameters_array,
+        dxy_x_power, dxy_y_power)
+
         if not self.if_dinf_displayed:
-            logging.info(f"d32: {d32}, d_mean: {d_mean}, dxy: {dxy}")
+            logging.info(f"d32: {d32}, d_mean: {d_mean}, d{dxy_x_power}{dxy_y_power}: {dxy}")
             self.if_dinf_displayed = True
 
         # Update descriptive size label
-        desc_text = f"Results:\nd32 = {d32:.2f} mm\ndmean = {d_mean:.2f} mm\ndxy = {dxy:.2f} mm"
+        desc_text = f"Results:\nd32 = {d32:.2f} mm\ndmean = {d_mean:.2f} mm\n d{dxy_x_power}{dxy_y_power} = {dxy:.2f} mm"
         self.gui.descriptive_size_label.setText(desc_text)
 
         # Optionally add CDF and PDF
@@ -1548,7 +1553,7 @@ class ResultsTabHandler(QThread):
             self.gui.histogram_canvas.axes.axvline(x=d_mean, color="g", linestyle="--", label="dmean")
 
         if show_dxy:
-            self.gui.histogram_canvas.axes.axvline(x=dxy, color="b", linestyle="--", label="dxy")
+            self.gui.histogram_canvas.axes.axvline(x=dxy, color="b", linestyle="--", label=f"d{dxy_x_power}{dxy_y_power}")
 
         # Apply Legend Options
         legend_position = self.gui.legend_position_combobox.currentText()
@@ -1577,7 +1582,8 @@ class ResultsTabHandler(QThread):
         self.gui.histogram_canvas.draw()
         return
 
-    def calculate_descriptive_sizes(self, equivalent_diameters: npt.NDArray[np.float64]) -> tuple[float, float, float]:
+    def calculate_descriptive_sizes(self, equivalent_diameters: npt.NDArray[np.float64],
+                                    dxy_x_power, dxy_y_power) -> tuple[float, float, float]:
         """Calculate characteristic diameters from the equivalent diameters.
 
         Args:
@@ -1589,8 +1595,6 @@ class ResultsTabHandler(QThread):
                 - d_mean: Arithmetic mean diameter
                 - dxy: General mean diameter with user-specified powers
         """
-        dxy_x_power: int = int(self.gui.dxy_x_input.text())
-        dxy_y_power: int = int(self.gui.dxy_y_input.text())
         d32: float = np.sum(equivalent_diameters**3) / np.sum(equivalent_diameters**2)  # type: ignore
 
         # d32, Sauter diameter, should be calculated based on the area, and volume
