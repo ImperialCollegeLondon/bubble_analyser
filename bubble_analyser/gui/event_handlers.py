@@ -123,7 +123,7 @@ class ExportSettingsHandler(QDialog):
         self.save_path = cast(Path, self.default_path_edit.text())
         logging.info(
             f"Export path for final graph, csv datafile, and processed\
-images (optional) set as: {self.save_path}"
+                images (optional) set as: {self.save_path}"
         )
         self.if_save_path = True
 
@@ -144,12 +144,37 @@ images (optional) set as: {self.save_path}"
         Returns:
             bool: True if the path is valid, False otherwise.
         """
+        path_text = cast(Path, self.default_path_edit.text())
+
+        # Check if the text field is empty
+        if not path_text:
+            QMessageBox.warning(self, "Error in Export Path setting: ", "No path selected")
+            return False
+        
         try:
-            Path(self.save_path).resolve()
+            # Convert to Path object and resolve it
+            path_obj = Path(path_text).resolve()
+            
+            # Check if the path actually exists
+            if not path_obj.exists():
+                QMessageBox.warning(self, "Error in Export Path setting: ", f"Path does not exist: {path_obj}")
+                return False
+            
+            # Check if it's a directory (not a file)
+            if not path_obj.is_dir():
+                QMessageBox.warning(self, "Error in Export Path setting: ", f"Path is not a directory: {path_obj}")
+                return False
+            
+            # Check if the directory is writable
+            if not os.access(path_obj, os.W_OK):
+                QMessageBox.warning(self, "Error in Export Path setting: ", f"Directory is not writable: {path_obj}")
+                return False
+            
             return True
-        except FileNotFoundError as e:
-            error_str = str(e)
-            QMessageBox.warning(self, "Error", error_str)
+            
+        except (OSError, ValueError) as e:
+            error_str = f"Invalid path: {str(e)}"
+            QMessageBox.warning(self, "Error in Export Path setting: ", error_str)
             return False
 
 
@@ -1592,6 +1617,11 @@ class ResultsTabHandler(QThread):
 
     def save_results(self) -> None:
         """Saves histogram and data to the selected folder."""
+        print(self.export_handler.check_if_path_valid())
+        if self.export_handler.check_if_path_valid() == False:
+            self.export_handler.exec()
+            return 
+
         folder_path = self.export_handler.save_path
         if folder_path == "" or not os.path.exists(folder_path):
             self._show_warning("Folder Not Found", "Please select a valid folder in export settings.")
@@ -2030,36 +2060,50 @@ class MainHandler:
     def check_before_batch(self) -> None:
         """Check if batch processing can proceed."""
         if self.image_processing_tab_handler.if_save_processed_images:
-            if self.check_if_export_settings_loaded():
-                self.image_processing_tab_handler.batch_process_images()
-            else:
-                return
-        else:
+
+            if not self.export_handler.check_if_path_valid():
+                self.menubar_open_export_settings_dialog()
+
+        try:
             self.image_processing_tab_handler.batch_process_images()
+        except Exception as e:
+            logging.error(f"Error batch processing images: {e}")
+            self._show_warning(
+                "Error Batch Processing Images",
+                f"An error occurred while batch processing images: {e}",
+            )
 
     def check_before_saving_results(self) -> None:
         """Check if saving results can proceed."""
-        if self.check_if_export_settings_loaded():
-            self.results_tab_handler.save_results()
-        else:
+        if not self.export_handler.check_if_path_valid():
+            self.menubar_open_export_settings_dialog()
             return
 
-    def check_if_export_settings_loaded(self) -> bool:
-        """Check if export settings have been loaded.
-
-        Returns:
-            bool: True if export settings have been loaded, False otherwise.
-        """
-        if not self.export_handler.if_save_path:
+        try:
+            self.results_tab_handler.save_results()
+        except Exception as e:
+            logging.error(f"Error saving results: {e}")
             self._show_warning(
-                "Export Path Not Configured",
-                "Please finish export settings first from menu bar (settings -> export setting).",
+                "Error Saving Results",
+                f"An error occurred while batch processing images: {e}",
             )
-            logging.info("Export Settings not loaded.")
-            return False
-        else:
-            logging.info("Export Settings loaded.")
-            return True
+
+    # def check_if_export_settings_loaded(self) -> bool:
+    #     """Check if export settings have been loaded.
+
+    #     Returns:
+    #         bool: True if export settings have been loaded, False otherwise.
+    #     """
+    #     if not self.export_handler.if_save_path:
+    #         self._show_warning(
+    #             "Export Path Not Configured",
+    #             "Please finish export settings first from menu bar (settings -> export setting).",
+    #         )
+    #         logging.info("Export Settings not loaded.")
+    #         return False
+    #     else:
+    #         logging.info("Export Settings loaded.")
+    #         return True
 
     def menubar_open_export_settings_dialog(self) -> None:
         """Open the export settings dialog from the menu bar.
