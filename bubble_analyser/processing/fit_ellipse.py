@@ -92,6 +92,7 @@ class EllipseAdjuster(QMainWindow):
 
         self.ellipses: list[tuple[tuple[float, float], tuple[int, int], float]] = ellipse_list.copy()
         self.B = img_rgb.copy()
+        self.window_width = 800
 
         # Control panel setup
         control_panel = QWidget()
@@ -126,13 +127,17 @@ class EllipseAdjuster(QMainWindow):
         )  # Last recorded mouse position (in image coordinates).
         self.selected_axis: int = cast(int, None)  # 0-3 for endpoints, 4 for center, 5 for rotation handle.
         self.adding_new_circle = False  # Flag for adding a new circle.
+        
+        # New variables for drag-to-create functionality
+        self.creating_new_circle = False  # Flag for drag-to-create mode
+        self.new_circle_center: tuple[float, float] = cast(tuple[float, float], None)  # Center of the circle being created
+        self.temp_circle_index: int = cast(int, None)  # Index of temporary circle
+        
         self.scale_factor = 1.0
 
         # For rotation handling:
         self.initial_handle_angle = 0.0  # Angle between center and mouse when rotation started (radians).
         self.initial_ellipse_angle = 0.0  # Ellipse's original angle at start of rotation (degrees).
-
-        # Default new ellipse parameters (a circle)
         self.default_axes = (100, 100)  # Both axes the same for a circle.
         self.default_angle = 0
 
@@ -142,16 +147,16 @@ class EllipseAdjuster(QMainWindow):
         """Updates the displayed image with the current list of ellipses.
 
         Copies the stored image (self.B) and draws the ellipses on it.
-        Then scales the image to a fixed width of 1500 pixels while maintaining aspect ratio.
+        Then scales the image to a fixed width of 800 pixels while maintaining aspect ratio.
         Finally, converts the image to a QImage and displays it in the QLabel.
         """
         display_image = self.B.copy()
         self.draw_ellipses(display_image, self.ellipses)
 
-        # Scale the image to a fixed width (1500 pixels) while maintaining aspect ratio.
+        # Scale the image to a fixed width (800 pixels) while maintaining aspect ratio.
         height, width, _ = display_image.shape
-        self.scale_factor = 1500 / width
-        new_size = (1500, int(height * self.scale_factor))
+        self.scale_factor = self.window_width / width
+        new_size = (self.window_width, int(height * self.scale_factor))
         scaled_image = cv2.resize(display_image, new_size, interpolation=cv2.INTER_AREA)
 
         bytes_per_line = 3 * new_size[0]
@@ -261,25 +266,23 @@ class EllipseAdjuster(QMainWindow):
         self.add_circle_btn.setStyleSheet("background-color: red; color: white;")
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
-        """Called when the user presses a mouse button.
-
-        If the right button is clicked, any selection is cancelled.
-
-        If the left button is clicked, it checks if the click is near any control points.
-        If so, it sets `selected_ellipse_index` and `selected_ellipse` to the index of the ellipse,
-        and `selected_point` to the coordinates of the click.
-        If the click is on an endpoint, it sets `dragging` to True.
-        If the click is on the center, it sets `moving_center` to True.
-        If the click is on a rotation handle, it sets `rotating` to True and stores
-        the initial handle angle and ellipse angle.
-        If any of the above is true, it calls `update_image` to redraw the image with the new selection.
-        """
+        """Called when the user presses a mouse button."""
         if event.button() == Qt.MouseButton.RightButton:
             self.selected_ellipse_index = cast(int, None)
             self.selected_ellipse = cast(int, None)
             self.rotating = False
             self.moving_center = False
             self.dragging = False
+            
+            # Cancel circle creation if in progress
+            if self.creating_new_circle:
+                self.creating_new_circle = False
+                self.new_circle_center = cast(tuple[float, float], None)
+                # Remove the temporary circle if it exists
+                if self.temp_circle_index is not None and self.temp_circle_index < len(self.ellipses):
+                    self.ellipses.pop(self.temp_circle_index)
+                self.temp_circle_index = cast(int, None)
+                
             self.update_image()
             return
 
@@ -288,13 +291,15 @@ class EllipseAdjuster(QMainWindow):
         x = label_pos.x() / self.scale_factor
         y = label_pos.y() / self.scale_factor
 
-        # If we're in "adding new circle" mode, create a new ellipse.
+        # If we're in "adding new circle" mode, start drag-to-create.
         if self.adding_new_circle:
-            new_ellipse = ((x, y), self.default_axes, self.default_angle)
+            self.creating_new_circle = True
+            self.new_circle_center = (x, y)
+            # Create a temporary circle with reasonable initial size
+            new_ellipse = ((x, y), (20, 20), self.default_angle)  # Start with 20px radius
             self.ellipses.append(new_ellipse)
-            self.adding_new_circle = False
-            self.add_circle_btn.setText("Add a circle")
-            self.add_circle_btn.setStyleSheet("")
+            self.temp_circle_index = len(self.ellipses) - 1
+            self.selected_point = (x, y)
             self.update_image()
             return  # Skip further processing.
 
@@ -305,6 +310,10 @@ class EllipseAdjuster(QMainWindow):
         self.rotating = False  # Reset rotation state.
 
         for i, ellipse in enumerate(self.ellipses):
+            # Skip the temporary circle being created
+            if self.creating_new_circle and self.temp_circle_index is not None and i == self.temp_circle_index:
+                continue
+                
             center, axes, angle = ellipse
             angle_rad = np.deg2rad(angle)
             cos_angle = np.cos(angle_rad)
@@ -349,21 +358,17 @@ class EllipseAdjuster(QMainWindow):
             # Check each control point.
             for j, point in enumerate(control_points):
                 if np.linalg.norm(np.array(point) - np.array((x, y))) < 20:
-                    self.selected_ellipse_index = i  # type: ignore
-                    self.selected_ellipse = i  # type: ignore
-                    self.selected_point = (x, y)  # type: ignore
-                    # For indices:
-                    # 0-3: endpoints, 4: center, 5-6: rotation handles.
-                    self.selected_axis = j  # type: ignore
+                    self.selected_ellipse_index = i
+                    self.selected_ellipse = i
+                    self.selected_point = (x, y)
+                    self.selected_axis = j
                     if j == 4:
                         self.moving_center = True
                     elif j >= 5:
                         # Start rotation.
                         self.rotating = True
-                        # Store the initial handle angle and ellipse angle.
-                        # Angle from center to click in radians.
                         self.initial_handle_angle = math.atan2(y - center[1], x - center[0])
-                        self.initial_ellipse_angle = cast(float, angle)  # in degrees
+                        self.initial_ellipse_angle = cast(float, angle)
                     else:
                         self.dragging = True
                     break
@@ -374,35 +379,32 @@ class EllipseAdjuster(QMainWindow):
             self.update_image()
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
-        """Handles mouse move events for adjusting ellipses.
-
-        This method is responsible for updating the position, rotation, or axis lengths of
-        an ellipse based on mouse movement. The adjustments are made to the currently
-        selected ellipse, if any.
-
-        Parameters
-        ----------
-        event : QMouseEvent
-            The event object containing information about the mouse move event.
-
-        Behavior
-        --------
-        - If no ellipse is selected, the method returns immediately.
-        - Calculates the change in mouse position relative to the previously recorded
-        point of interaction.
-        - If an ellipse center is being moved, updates the ellipse center.
-        - If the ellipse is being rotated, calculates the new angle and updates the ellipse
-        angle.
-        - If an axis is being dragged, adjusts the axis lengths based on the control point
-        being dragged.
-        - Updates the image to reflect changes.
-        """
-        if self.selected_ellipse is cast(tuple[float, float], None):
-            return
-
-        label_pos = self.image_label.mapFromGlobal(event.globalPosition().toPoint())  # type: ignore
+        """Handles mouse move events for adjusting ellipses."""
+        label_pos = self.image_label.mapFromGlobal(event.globalPosition().toPoint())
         x = label_pos.x() / self.scale_factor
         y = label_pos.y() / self.scale_factor
+
+        # Handle drag-to-create circle - THIS MUST COME FIRST
+        if self.creating_new_circle and self.new_circle_center is not None:
+            center_x, center_y = self.new_circle_center
+            # Calculate distance from center to current mouse position
+            distance = math.sqrt((x - center_x)**2 + (y - center_y)**2)
+            # Use distance as diameter for both axes to create a circle
+            diameter = max(10, int(distance * 2))  # Minimum diameter of 10px
+            
+            # Update the temporary circle
+            if self.temp_circle_index is not None and self.temp_circle_index < len(self.ellipses):
+                self.ellipses[self.temp_circle_index] = (
+                    self.new_circle_center, 
+                    (diameter, diameter),  # Same diameter for both axes to make a circle
+                    self.default_angle
+                )
+            self.update_image()
+            return
+
+        # Existing ellipse adjustment logic
+        if self.selected_ellipse is cast(int, None):
+            return
 
         dx = x - self.selected_point[0]
         dy = y - self.selected_point[1]
@@ -417,11 +419,8 @@ class EllipseAdjuster(QMainWindow):
             self.ellipses[self.selected_ellipse] = (new_center, axes, angle)
         elif self.rotating:
             # Compute new handle angle and update the ellipse's angle.
-            # current angle from center to mouse:
             current_handle_angle = math.atan2(y - center[1], x - center[0])
-            # Change in angle (in radians)
             delta_angle = current_handle_angle - self.initial_handle_angle
-            # Update ellipse angle (in degrees)
             new_angle = self.initial_ellipse_angle + math.degrees(delta_angle)
             self.ellipses[self.selected_ellipse] = (center, axes, new_angle)
         elif self.dragging:
@@ -454,21 +453,21 @@ class EllipseAdjuster(QMainWindow):
         self.update_image()
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
-        """Handles mouse release events for adjusting ellipses.
+        """Handles mouse release events for adjusting ellipses."""
+        # Handle completion of drag-to-create circle
+        if self.creating_new_circle:
+            self.creating_new_circle = False
+            self.new_circle_center = cast(tuple[float, float], None)
+            self.adding_new_circle = False
+            self.temp_circle_index = cast(int, None)
+            
+            # Reset button appearance
+            self.add_circle_btn.setText("Add a circle")
+            self.add_circle_btn.setStyleSheet("")
+            self.update_image()
+            return
 
-        This method is responsible for resetting the state of the EllipseAdjuster to
-        indicate that no ellipse is currently being edited.
-
-        Parameters
-        ----------
-        event : QMouseEvent
-            The event object containing information about the mouse release event.
-
-        Behavior
-        --------
-        - Resets the ellipse adjustment state (dragging, moving center, rotating)
-        - Resets the selected ellipse, point, and axis to None.
-        """
+        # Existing release logic
         self.dragging = False
         self.moving_center = False
         self.rotating = False
