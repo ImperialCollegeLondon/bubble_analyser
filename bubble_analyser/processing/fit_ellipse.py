@@ -127,12 +127,14 @@ class EllipseAdjuster(QMainWindow):
         )  # Last recorded mouse position (in image coordinates).
         self.selected_axis: int = cast(int, None)  # 0-3 for endpoints, 4 for center, 5 for rotation handle.
         self.adding_new_circle = False  # Flag for adding a new circle.
-        
+
         # New variables for drag-to-create functionality
         self.creating_new_circle = False  # Flag for drag-to-create mode
-        self.new_circle_center: tuple[float, float] = cast(tuple[float, float], None)  # Center of the circle being created
+        self.new_circle_center: tuple[float, float] = cast(
+            tuple[float, float], None
+        )  # Center of the circle being created
         self.temp_circle_index: int = cast(int, None)  # Index of temporary circle
-        
+
         self.scale_factor = 1.0
 
         # For rotation handling:
@@ -273,7 +275,7 @@ class EllipseAdjuster(QMainWindow):
             self.rotating = False
             self.moving_center = False
             self.dragging = False
-            
+
             # Cancel circle creation if in progress
             if self.creating_new_circle:
                 self.creating_new_circle = False
@@ -282,7 +284,7 @@ class EllipseAdjuster(QMainWindow):
                 if self.temp_circle_index is not None and self.temp_circle_index < len(self.ellipses):
                     self.ellipses.pop(self.temp_circle_index)
                 self.temp_circle_index = cast(int, None)
-                
+
             self.update_image()
             return
 
@@ -313,7 +315,7 @@ class EllipseAdjuster(QMainWindow):
             # Skip the temporary circle being created
             if self.creating_new_circle and self.temp_circle_index is not None and i == self.temp_circle_index:
                 continue
-                
+
             center, axes, angle = ellipse
             angle_rad = np.deg2rad(angle)
             cos_angle = np.cos(angle_rad)
@@ -388,16 +390,16 @@ class EllipseAdjuster(QMainWindow):
         if self.creating_new_circle and self.new_circle_center is not None:
             center_x, center_y = self.new_circle_center
             # Calculate distance from center to current mouse position
-            distance = math.sqrt((x - center_x)**2 + (y - center_y)**2)
+            distance = math.sqrt((x - center_x) ** 2 + (y - center_y) ** 2)
             # Use distance as diameter for both axes to create a circle
             diameter = max(10, int(distance * 2))  # Minimum diameter of 10px
-            
+
             # Update the temporary circle
             if self.temp_circle_index is not None and self.temp_circle_index < len(self.ellipses):
                 self.ellipses[self.temp_circle_index] = (
-                    self.new_circle_center, 
+                    self.new_circle_center,
                     (diameter, diameter),  # Same diameter for both axes to make a circle
-                    self.default_angle
+                    self.default_angle,
                 )
             self.update_image()
             return
@@ -460,7 +462,7 @@ class EllipseAdjuster(QMainWindow):
             self.new_circle_center = cast(tuple[float, float], None)
             self.adding_new_circle = False
             self.temp_circle_index = cast(int, None)
-            
+
             # Reset button appearance
             self.add_circle_btn.setText("Add a circle")
             self.add_circle_btn.setStyleSheet("")
