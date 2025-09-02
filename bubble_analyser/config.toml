@@ -16,9 +16,9 @@ connectivity_range = [4, 8]
 Marker_size = 10
 Marker_size_range = [2, 30]
 
-# Images can be resampled to make processing faster
-resample = 0.5
-resample_range = [0.1, 1.0]
+# Images can be resampled to target width make processing faster
+target_width = 1000
+target_width_range = [500, 2000]
 
 # Batch processing flag
 do_batch = false

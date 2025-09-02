@@ -242,6 +242,7 @@ class Image:
 
         self.px2mm_display: float = px2mm_display
         self.resample = 0.5
+        self.target_width: int = 800
         self.raw_img_path = raw_img_path
         logging.info(f"Initialzing image: {raw_img_path}")
         self.if_bknd_img: bool = False
@@ -288,7 +289,7 @@ class Image:
         self.filter_param_dict_2 = dict_params_2
         return
 
-    def _img_preprocess(self, resample: float) -> None:
+    def _img_preprocess(self, target_width: int) -> None:
         """Preprocess the raw and background images by resampling and converting to grayscale and RGB formats.
 
         Uses an external function `image_preprocess` to generate both a grayscale and an RGB version of the raw image.
@@ -301,9 +302,9 @@ class Image:
             None
         """
         # Get resized grey and RGB version of the target image
-        self.img_grey, self.img_rgb = image_preprocess(self.raw_img_path, resample)
+        self.img_grey, self.img_rgb = image_preprocess(self.raw_img_path, target_width)
         if self.bknd_img_path is not None:
-            self.bknd_img, _ = image_preprocess(self.bknd_img_path, resample)
+            self.bknd_img, _ = image_preprocess(self.bknd_img_path, target_width)
 
         return
 
@@ -326,9 +327,9 @@ class Image:
                     processing_instance,
                 ) in self.methods_handler.all_classes.items():
                     if name == algorithm_name:
-                        self.resample = params["resample"]
-                        self._img_preprocess(self.resample)
-                        logging.info(f"Resample used: {self.resample}")
+                        self.target_width = cast(int, params["target_width"])
+                        self._img_preprocess(self.target_width)
+                        logging.info(f"target_width used: {self.target_width}")
                         # processing_instance
                         processing_instance.initialize_processing(  # type: ignore
                             params=params,

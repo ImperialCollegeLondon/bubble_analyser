@@ -397,7 +397,8 @@ class CalibrationTabHandler:
             params (Config): Configuration parameters containing default values.
         """
         self.calibration_model: CalibrationModel = calibration_model
-        self.img_resample: float = params.resample
+        # self.img_resample: float = params.resample
+        self.img_resample: float = 0.5
         self.px_img_path: Path = params.ruler_img_path
 
     def load_gui(self, gui: MainWindow) -> None:
@@ -704,9 +705,16 @@ class ImageProcessingTabHandler(QThread):
                 self._show_warning("Invalid Connectivity", str(e))
                 return False
 
-        if name == "resample":
+        # if name == "resample":
+        #     try:
+        #         new_checker.resample = cast(float, value)
+        #     except ValidationError as e:
+        #         self._show_warning("Invalid Resample Factor", str(e))
+        #         return False
+
+        if name == "target_width":
             try:
-                new_checker.resample = cast(float, value)
+                new_checker.target_width = cast(int, value)
             except ValidationError as e:
                 self._show_warning("Invalid Resample Factor", str(e))
                 return False
@@ -1510,14 +1518,14 @@ class ResultsTabHandler(QThread):
                 weights=volumes,  # Use volumes as weights
             )
             # Set graph labels for volume histogram
-            self.gui.histogram_canvas.axes.set_xlabel("Equivalent diameter [mm]")
-            self.gui.histogram_canvas.axes.set_ylabel("Volume [mm³]")
+            self.gui.histogram_canvas.axes.set_xlabel("Equivalent diameter [px]")
+            self.gui.histogram_canvas.axes.set_ylabel("Volume [px³]")
         else:  # Count histogram (default)
             counts, bins, patches = self.gui.histogram_canvas.axes.hist(
                 equivalent_diameters_array, bins=num_bins, range=(x_min, x_max)
             )
             # Set graph labels for count histogram
-            self.gui.histogram_canvas.axes.set_xlabel("Equivalent diameter [mm]")
+            self.gui.histogram_canvas.axes.set_xlabel("Equivalent diameter [px]")
             self.gui.histogram_canvas.axes.set_ylabel("Count [#]")
 
         dxy_x_power: int = int(self.gui.dxy_x_input.text())
@@ -1686,11 +1694,11 @@ class ResultsTabHandler(QThread):
         """Save both ellipse data and config data to a single Excel file with multiple sheets."""
         # Prepare ellipse data
         ellipse_headers = [
-            "major_axis_length(mm)",
-            "minor_axis_length(mm)",
-            "equivalent_diameter(mm)",
-            "area(mm2)",
-            "perimeter(mm)",
+            "major_axis_length(px)",
+            "minor_axis_length(px)",
+            "equivalent_diameter(px)",
+            "area(px2)",
+            "perimeter(px)",
             "eccentricity",
             "image name",
         ]

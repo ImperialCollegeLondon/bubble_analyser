@@ -214,7 +214,7 @@ class EllipseHandler:
                     if not ((L_min <= area <= L_max) or (s_min <= area <= s_max)):
                         logging.info(
                             "A circle is being filtered out because one or \
-more of the following parameter(s) are not qualified:"
+                            more of the following parameter(s) are not qualified:"
                         )
                         logging.info(f"Value of the circle's area: {area}")
                         logging.info(f"Value of the L_min: {L_min}")
@@ -255,28 +255,42 @@ more of the following parameter(s) are not qualified:"
         self.ellipses = ellipses  # type: ignore
         return ellipses  # type: ignore
 
-    def overlay_ellipses_on_image(self, thickness: int = 20) -> npt.NDArray[np.int_]:
+    def overlay_ellipses_on_image(self, thickness: int = 5) -> npt.NDArray[np.int_]:
         """Overlay detected ellipses on the RGB image.
-
+    
         Draws each detected ellipse on the RGB image with the specified thickness.
         Also creates a labeled image from the ellipses.
-
+    
         Args:
             thickness (int, optional): Thickness of the ellipse outlines. Defaults to 20.
-
+    
         Returns:
             npt.NDArray[np.int_]: The RGB image with ellipses overlaid.
         """
         if self.img_rgb is None:
             raise ValueError("img_rgb is not initialized")
         ellipse_image = self.img_rgb.copy()
-
+    
         for ellipse in self.ellipses:
-            cv2.ellipse(ellipse_image, ellipse, (0, 0, 255), thickness)  # type: ignore
+            # Validate ellipse parameters before drawing
+            center, axes, angle = ellipse
+            width, height = axes
+            
+            # Check if ellipse dimensions are valid
+            if width > 0 and height > 0 and thickness > 0:
+                try:
+                    cv2.ellipse(ellipse_image, ellipse, (0, 0, 255), thickness)  # type: ignore
+                except cv2.error as e:
+                    logging.warning(f"Failed to draw ellipse {ellipse}: {e}")
+                    continue
+            else:
+                logging.warning(f"Invalid ellipse dimensions: width={width}, height={height}, thickness={thickness}")
+                continue
+                
         self.ellipses_on_image = ellipse_image
-
+    
         self.create_labelled_image_from_ellipses()
-
+    
         return ellipse_image
 
     def create_labelled_image_from_ellipses(self) -> npt.NDArray[np.int_]:
@@ -323,8 +337,10 @@ more of the following parameter(s) are not qualified:"
 
         for ellipse in self.ellipses:
             center, axes, angle = ellipse
-            major_axis_length = max(axes) * mm2px
-            minor_axis_length = min(axes) * mm2px
+            # major_axis_length = max(axes) * mm2px
+            # minor_axis_length = min(axes) * mm2px
+            major_axis_length = max(axes)
+            minor_axis_length = min(axes)
             area = np.pi * (major_axis_length / 2) * (minor_axis_length / 2)
             perimeter = np.pi * (
                 3 * (major_axis_length + minor_axis_length)

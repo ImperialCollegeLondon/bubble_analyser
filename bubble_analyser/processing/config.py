@@ -77,8 +77,8 @@ class Config(BaseModel):  # type: ignore
     connectivity: PositiveInt
 
     # Images can be resampled to make processing faster
-    resample: PositiveFloat
-    resample_range: tuple[PositiveFloat, PositiveFloat]
+    target_width: PositiveInt
+    target_width_range: tuple[PositiveInt, PositiveInt]
 
     max_thresh: PositiveFloat
     min_thresh: PositiveFloat
@@ -261,12 +261,12 @@ class Config(BaseModel):  # type: ignore
             ValueError: If the lower bound is greater than or equal to the upper bound.
         """
         # Get the lower and upper bounds of the resample range
-        low, high = self.resample_range
+        low, high = self.target_width_range
 
         # Check if the lower bound is less than the upper bound
         if low >= high:
             # Raise a ValueError if the bounds are in the wrong order
-            raise ValueError("Limits for the resample_range are in the wrong order")
+            raise ValueError("Limits for the target_width_range are in the wrong order")
 
         # Return the instance itself for method chaining
         return self
