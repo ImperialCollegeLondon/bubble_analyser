@@ -45,7 +45,7 @@ class IterativeWatershed(WatershedSegmentation):
 
         Args:
             params (dict[str, float | int]): Dictionary containing parameters for the watershed method.
-                Must include 'resample', 'element_size', 'connectivity', 'max_thresh', 'min_thresh',
+                Must include 'target_width', 'element_size', 'connectivity', 'max_thresh', 'min_thresh',
                 and 'step_size'.
         """
         self.name = "Iterative Watershed"
@@ -64,7 +64,7 @@ class IterativeWatershed(WatershedSegmentation):
             dict[str, float | int]: Dictionary containing the required parameters and their current values.
         """
         return {
-            "resample": self.resample,
+            "target_width": self.target_width,
             "element_size": self.element_size,
             "connectivity": self.connectivity,
             "max_thresh": self.max_thresh,
@@ -108,10 +108,10 @@ class IterativeWatershed(WatershedSegmentation):
 
         Args:
             params (dict[str, float | int]): Dictionary containing parameters to update.
-                Must include 'resample', 'element_size', 'connectivity', 'max_thresh',
+                Must include 'target_width', 'element_size', 'connectivity', 'max_thresh',
                 'min_thresh', and 'step_size'.
         """
-        self.resample = params["resample"]
+        self.target_width = params["target_width"]
         self.element_size = params["element_size"]  # type: ignore
         self.connectivity = params["connectivity"]  # type: ignore
         self.max_thresh = params["max_thresh"]
@@ -229,7 +229,7 @@ class NormalWatershed(WatershedSegmentation):
         sure_bg (npt.NDArray[np.int_]): Sure background regions.
         unknown (npt.NDArray[np.int_]): Unknown regions (neither sure foreground nor background).
         threshold_value (float): Threshold value for distance transform.
-        resample (float): Resampling factor for image processing.
+        target_width (int) : Target width for image resizing.
         if_bknd_img (bool): Flag indicating if background image is used.
     """
 
@@ -238,7 +238,7 @@ class NormalWatershed(WatershedSegmentation):
 
         Args:
             params (dict[str, float | int]): Dictionary containing parameters for the watershed method.
-                Must include 'resample', 'element_size', 'connectivity', and 'threshold_value'.
+                Must include 'target_width', 'element_size', 'connectivity', and 'threshold_value'.
         """
         self.name = "Default"
         self.img_grey_dt_thresh: MatLike
@@ -246,7 +246,8 @@ class NormalWatershed(WatershedSegmentation):
         self.sure_bg: npt.NDArray[np.uint8]
         self.unknown: MatLike
         self.threshold_value: float
-        self.resample: float
+        # self.resample: float
+        self.target_width: int
         self.if_bknd_img: bool = False
         self.update_params(params)
 
@@ -257,7 +258,7 @@ class NormalWatershed(WatershedSegmentation):
             dict[str, float | int]: Dictionary containing the required parameters and their current values.
         """
         return {
-            "resample": self.resample,
+            "target_width": self.target_width,
             "high_thresh": self.high_thresh,
             "mid_thresh": self.mid_thresh,
             "low_thresh": self.low_thresh,
@@ -301,9 +302,9 @@ class NormalWatershed(WatershedSegmentation):
 
         Args:
             params (dict[str, float | int]): Dictionary containing parameters to update.
-                Must include 'resample', 'element_size', 'connectivity', and 'threshold_value'.
+                Must include 'target_width', 'element_size', 'connectivity', and 'threshold_value'.
         """
-        self.resample = params["resample"]
+        self.target_width = cast(int, params["target_width"])
         self.high_thresh = params["high_thresh"]
         self.mid_thresh = params["mid_thresh"]
         self.low_thresh = params["low_thresh"]
@@ -503,7 +504,7 @@ if __name__ == "__main__":
     bknd_img = cv2.imread(background_path, cv2.IMREAD_GRAYSCALE) if background_path else None
 
     params = {
-        "resample": 0.5,
+        "target_width": 800,
         "high_thresh": 0.9,
         "mid_thresh": 0.5,
         "low_thresh": 0.2,
