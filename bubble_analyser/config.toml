@@ -5,11 +5,11 @@
 
 # ------------------------------Segment Parameters------------------------------
 # Morphological element used for binary operations, e.g. opening, closing, etc.
-element_size = 5
+element_size = 3
 element_size_range = [3, 10]
 
 # Connectivity used, use 4 or 8
-connectivity = 8
+connectivity = 4
 connectivity_range = [4, 8]
 
 # Marker size for watershed segmentation

@@ -181,7 +181,7 @@ class IterativeWatershed(WatershedSegmentation):
         logging.info(f"Total number of no overlap occurrences: {no_overlap_count}")
         return output_mask, final_label_count
 
-    def get_results_img(self) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]:
+    def get_results_img(self) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_], npt.NDArray[np.int_]]:
         """Execute the complete iterative watershed segmentation process and return results.
 
         Performs the full sequence of operations:
@@ -212,7 +212,9 @@ class IterativeWatershed(WatershedSegmentation):
         self.labels_on_img = self._overlay_labels_on_rgb(
             self.img_rgb, cast(npt.NDArray[np.int_], self.labels_watershed_filled)
         )
-        return cast(npt.NDArray[np.int_], self.labels_on_img), cast(npt.NDArray[np.int_], self.labels_watershed_filled)
+        return cast(npt.NDArray[np.int_], self.labels_on_img), \
+            cast(npt.NDArray[np.int_], self.labels_watershed_filled), \
+            cast(npt.NDArray[np.int_], self.img_grey_morph_eroded)
 
 
 class NormalWatershed(WatershedSegmentation):
@@ -376,7 +378,7 @@ class NormalWatershed(WatershedSegmentation):
         logging.info(f"Total number of no overlap occurrences: {no_overlap_count}")
         return output_mask, final_label_count
 
-    def get_results_img(self) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]:
+    def get_results_img(self) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_], npt.NDArray[np.int_]]:
         """Execute the complete watershed segmentation process and return results.
 
         Performs the full sequence of operations for watershed segmentation:
@@ -405,7 +407,9 @@ class NormalWatershed(WatershedSegmentation):
             self.img_rgb, cast(npt.NDArray[np.int_], self.labels_watershed)
         )
 
-        return cast(npt.NDArray[np.int_], self.labels_on_img), cast(npt.NDArray[np.int_], self.labels_watershed)
+        return cast(npt.NDArray[np.int_], self.labels_on_img), \
+            cast(npt.NDArray[np.int_], self.labels_watershed),\
+                cast(npt.NDArray[np.int_], self.img_grey_morph_eroded)
 
 
 # if __name__ == "__main__":
@@ -523,7 +527,7 @@ if __name__ == "__main__":
         if_bknd_img=False,
     )
 
-    segmented_img, labels_watershed = normal_watershed.get_results_img()
+    segmented_img, labels_watershed, _ = normal_watershed.get_results_img()
     np.save("../../tests/test_labels_watershed.npy", labels_watershed)
     dist_transform = normal_watershed.img_grey_dt
     # dt_imhmin = normal_watershed.img_grey_dt_imhmin

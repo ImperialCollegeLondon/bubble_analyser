@@ -1763,9 +1763,7 @@ class ResultsTabHandler(QThread):
         summary_data = [
             ["d32", self.current_d32],
             ["d_mean", self.current_dmean],
-            ["dxy", self.current_dxy],
-            ["dxy_x_power", self.current_d_x_power],
-            ["dxy_y_power", self.current_d_y_power],
+            [f"d{self.current_d_x_power}{self.current_d_y_power}", self.current_dxy],
             ["number of bubbles", number_of_bubbles],
             ["number of photos", number_of_photos],
         ]
@@ -2095,7 +2093,7 @@ class MainHandler:
             if not self.export_handler.check_if_path_valid():
                 self.menubar_open_export_settings_dialog()
 
-                return
+                # return
 
         try:
             self.image_processing_tab_handler.batch_process_images()
