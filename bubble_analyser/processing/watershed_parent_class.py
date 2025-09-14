@@ -71,7 +71,7 @@ class WatershedSegmentation:
             bknd_img: Optional background image for background subtraction.
         """
         self.img_grey: npt.NDArray[np.int_] = img_grey
-        self.img_grey_thresholded: npt.NDArray[np.bool_]
+        self.img_grey_morph_thresholded: npt.NDArray[np.bool_]
         self.img_grey_morph: npt.NDArray[np.int_]
         self.img_grey_eroded: MatLike
         self.img_grey_dt: MatLike

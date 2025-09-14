@@ -256,6 +256,7 @@ class Image:
 
         self.img_rgb: npt.NDArray[np.int_]
         self.img_grey: npt.NDArray[np.int_]
+        self.img_grey_morph_eroded: npt.NDArray[np.int_]
 
         self.labels_on_img_before_filter: npt.NDArray[np.int_]
         self.labels_before_filter: npt.NDArray[np.int_]
@@ -338,7 +339,8 @@ class Image:
                             if_bknd_img=self.if_bknd_img,
                             bknd_img=self.bknd_img,
                         )  # type: ignore
-                        self.labels_on_img_before_filter, self.labels_before_filter = (
+                        self.labels_on_img_before_filter, self.labels_before_filter, \
+                            self.img_grey_morph_eroded = (
                             processing_instance.get_results_img()  # type: ignore
                         )
                 break
