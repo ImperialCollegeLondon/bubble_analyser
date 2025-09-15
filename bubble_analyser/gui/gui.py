@@ -353,7 +353,7 @@ class MainWindow(QMainWindow):
 
         first_column_layout.addWidget(QLabel("Select image and preview"))
         first_column_layout.addWidget(self.sample_image_preview)
-        
+
         # Add filename and index display label
         self.sample_image_info_label = QLabel("No image selected")
         self.sample_image_info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
