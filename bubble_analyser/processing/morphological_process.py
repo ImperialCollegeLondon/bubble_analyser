@@ -61,13 +61,13 @@ def morphological_process(
     logging.info(f"Time consumed for closing: {time.perf_counter() - start_time}")
     start_time = time.perf_counter()
     image_processed_filled = ndimage.binary_fill_holes(image_processed_closed)
+    # image_processed_filled = image_processed_filled.astype(np.uint8)
     logging.info(f"Time consumed for filling holes: {time.perf_counter() - start_time}")
     start_time = time.perf_counter()
     image_processed_cleared = segmentation.clear_border(image_processed_filled)
     logging.info(f"Time consumed for clearing borders: {time.perf_counter() - start_time}")
 
     image_processed_cleared = image_processed_cleared.astype(np.uint8)
-    # opening = cv2.morphologyEx(B,cv2.MORPH_OPEN,kernel, iterations = 2)
     reverse_dilation = True
     image_processed_cleard_eroded = cast(MatLike, None)
     if reverse_dilation:
@@ -78,6 +78,9 @@ def morphological_process(
     logging.info("Morphological processing completed.")
     return image_processed_cleared, image_processed_cleard_eroded
 
+    # image_processed_filled = image_processed_filled.astype(np.uint8)
+    # Convert filled image to int type and return with eroded image (which is None)
+    # return np.array(image_processed_filled, dtype=np.int_), image_processed_cleard_eroded
 
 if __name__ == "__main__":
     # Define the image path

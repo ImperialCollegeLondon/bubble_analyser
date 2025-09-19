@@ -47,6 +47,24 @@ class ThresholdMethods:
     bubble detection and analysis.
     """
 
+    def normal_threshold(self, target_img: npt.NDArray[np.int_], threshold_value: float = 0.5) -> npt.NDArray[np.bool_]:
+        """Apply a normal thresholding to the target image and return a binary mask.
+
+        This function takes a target image and a threshold value. It applies a simple
+        thresholding to the target image to create a binary mask where the foreground
+        objects are separated from the background.
+
+        Args:
+            target_img: A grayscale image (2D array) representing the target image.
+            threshold_value: A float value between 0 and 1 representing the threshold
+            for binarization. Default is 0.5.
+
+        Returns:
+            A binary image where the foreground and background are separated.
+        """
+        binary_image = target_img > (threshold_value * 255)  # Binary image using thresholding
+        return ~binary_image
+        
     def otsu_threshold(self, target_img: npt.NDArray[np.int_]) -> npt.NDArray[np.bool_]:
         """Apply Otsu's thresholding to the target image and return an inverted binary mask.
 

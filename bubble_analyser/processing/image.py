@@ -16,10 +16,10 @@ from typing import cast
 import numpy as np
 from numpy import typing as npt
 
-from ..methods.watershed_methods import IterativeWatershed, NormalWatershed
-from .circle_handler import EllipseHandler as CircleHandler
-from .config import Config
-from .image_preprocess import image_preprocess
+from bubble_analyser.methods.watershed_methods import IterativeWatershed, NormalWatershed
+from bubble_analyser.processing.circle_handler import EllipseHandler as CircleHandler
+from bubble_analyser.processing.config import Config
+from bubble_analyser.processing.image_preprocess import image_preprocess
 
 
 class MethodsHandler:

@@ -117,7 +117,8 @@ class WatershedSegmentation:
         Computes the distance transform using L2 (Euclidean) distance metric.
         The result is converted to uint8 type for further processing.
         """
-        dt_image = cv2.distanceTransform(image, cv2.DIST_L2, self.element_size)  # type: ignore
+        image_uint8 = image.astype(np.uint8)
+        dt_image = cv2.distanceTransform(image_uint8, cv2.DIST_L2, self.element_size)  # type: ignore
         return dt_image
 
     def _initialize_labels(self, img: MatLike) -> MatLike:
