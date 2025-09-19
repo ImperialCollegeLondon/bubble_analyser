@@ -150,7 +150,7 @@ if __name__ == "__main__":
     # output_path_grey = Path("../../tests/background_image_grey.JPG")
     # output_path_rgb = Path("../../tests/background_image_rgb.JPG")
 
-    img_path = Path("../../tests/test_image_raw.JPG")
+    img_path = Path("../../tests/test_image_raw_30ppm.JPG")
     output_path_grey = Path("../../tests/test_image_grey.JPG")
     output_path_rgb = Path("../../tests/test_image_rgb.JPG")
 
