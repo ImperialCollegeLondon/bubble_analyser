@@ -64,6 +64,8 @@ save_path_for_images = "."
 min_size = 0.1
 min_size_range = [0, 50]
 
+max_size = 20000
+
 # Reject abnormal bubbles from quantification. E>0.85 or S<0.9
 max_eccentricity = 0.85
 max_eccentricity_range = [0.1, 1.0]

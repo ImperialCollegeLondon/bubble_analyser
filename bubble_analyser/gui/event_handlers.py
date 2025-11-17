@@ -883,6 +883,9 @@ class ImageProcessingTabHandler(QThread):
             logging.info("Preview processed image enabled for current image.")
             self.gui.preview_processed_images_button.setEnabled(True)
 
+            # Below is only for cnn version
+            self.preview_processed_images()
+
         else:
             self.gui.preview_processed_images_button.setEnabled(False)
 
@@ -897,6 +900,7 @@ class ImageProcessingTabHandler(QThread):
         if if_img:
             self.update_label_before_filtering(img_before_filter)
             self.update_process_image_preview(img_after_filter)
+
         else:
             self._show_warning("Image Not Found", "Image has not been fully processed yet.")
 
@@ -1389,6 +1393,7 @@ class ImageProcessingTabHandler(QThread):
         self.worker_thread = WorkerThread(self.model, self.if_save_processed_images, self.export_handler.save_path)
         self.worker_thread.update_progress.connect(self.update_progress_bar)
         self.worker_thread.processing_done.connect(self.on_processing_done)
+        self.worker_thread.error_occurred.connect(self.on_worker_error)
         self.worker_thread.start()
 
     def show_progress_window(self, num_images: int) -> None:
@@ -1431,10 +1436,31 @@ class ImageProcessingTabHandler(QThread):
         self.progress_dialog.close()
         self.batch_processing_done.emit()
 
-        # Switch to the final tab
-        self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.results_tab))
+        # # Switch to the final tab
+        # self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.results_tab))
         logging.info("Batch processing completed.")
         logging.info("******************************Result Session******************************")
+
+    def on_worker_error(self, error_message: str) -> None:
+        """Handle errors that occur in the worker thread.
+
+        This method is called on the main thread when the worker thread encounters an error.
+
+        Args:
+            error_message (str): The error message and details from the worker thread.
+        """
+        # Close the progress dialog if it's open
+        if hasattr(self, 'progress_dialog') and self.progress_dialog:
+            self.progress_dialog.close()
+
+        # Show error dialog on main thread
+        QMessageBox.critical(
+            self.gui,
+            "Processing Error",
+            "An error occurred during batch processing:\n\n" + error_message
+        )
+        
+        logging.error(f"Worker thread error handled on main thread: {error_message}")
 
 
 class ResultsTabHandler(QThread):
@@ -1970,7 +1996,20 @@ class MainHandler:
         logging.basicConfig(level=logging.INFO)
         logging.info("Initializing GUI...")
 
+        # Apply macOS-specific fixes
+        if sys.platform == "darwin":
+            # Set environment variable to fix Qt rendering issues on macOS
+            os.environ.setdefault("QT_MAC_WANTS_LAYER", "1")
+            # Disable native menu bar on macOS to prevent crashes
+            os.environ.setdefault("QT_MAC_NO_NATIVE_MENUBAR", "1")
+
         self.app = QApplication(sys.argv)
+        
+        # Set application properties for better macOS compatibility
+        self.app.setApplicationName("Bubble Analyser")
+        self.app.setApplicationVersion("1.0")
+        self.app.setOrganizationName("Bubble Analyser")
+        
         self.gui = MainWindow()
         self.gui.show()
 

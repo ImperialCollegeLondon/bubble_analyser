@@ -218,9 +218,21 @@ class EllipseAdjuster(QMainWindow):
             angle: float
             center, axes, angle = ellipse
             
+            # Validate ellipse parameters before drawing
+            ellipse_width, ellipse_height = axes
+            if (ellipse_width <= 0 or ellipse_height <= 0 or 
+                not np.isfinite(ellipse_width) or not np.isfinite(ellipse_height) or
+                not np.isfinite(center[0]) or not np.isfinite(center[1]) or
+                not np.isfinite(angle)):
+                continue  # Skip invalid ellipses
+                
             # Highlight selected ellipse in red; otherwise, use green.
             color = (0, 0, 255) if idx == self.selected_ellipse_index else (0, 255, 0)
-            cv2.ellipse(image, ellipse, color, 2)  # type: ignore
+            try:
+                cv2.ellipse(image, ellipse, color, 2)  # type: ignore
+            except cv2.error as e:
+                print(f"Warning: Skipping invalid ellipse {ellipse}: {e}")
+                continue
 
             angle_rad = np.deg2rad(angle)
             cos_angle = np.cos(angle_rad)
@@ -272,6 +284,41 @@ class EllipseAdjuster(QMainWindow):
                 (center_int[0], center_int[1] + cross_size),
                 (255, 255, 0),
                 2,
+            )
+            
+            # Draw ellipse number label at the center
+            ellipse_number = str(idx)
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            font_scale = 0.8
+            font_thickness = 2
+            text_color = (255, 255, 255)  # White text
+            
+            # Get text size to center it properly
+            (text_width, text_height), baseline = cv2.getTextSize(ellipse_number, font, font_scale, font_thickness)
+            
+            # Calculate text position to center it on the ellipse center
+            text_x = center_int[0] - text_width // 2
+            text_y = center_int[1] + text_height // 2
+            
+            # Draw a small background rectangle for better text visibility
+            padding = 3
+            cv2.rectangle(
+                image,
+                (text_x - padding, text_y - text_height - padding),
+                (text_x + text_width + padding, text_y + baseline + padding),
+                (0, 0, 0),  # Black background
+                -1
+            )
+            
+            # Draw the ellipse number
+            cv2.putText(
+                image,
+                ellipse_number,
+                (text_x, text_y),
+                font,
+                font_scale,
+                text_color,
+                font_thickness
             )
 
             # Compute and draw rotation handles.

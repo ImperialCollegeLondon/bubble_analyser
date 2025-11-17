@@ -127,6 +127,8 @@ class Config(BaseModel):  # type: ignore
     min_size: PositiveFloat
     min_size_range: tuple[StrictFloat, StrictFloat]
 
+    max_size: PositiveFloat
+
     # Parameters for finding big and small bubbles
     if_find_circles: StrictStr
     L_maxA: PositiveFloat
@@ -173,6 +175,9 @@ class Config(BaseModel):  # type: ignore
         if not (self.default_range[0] <= self.min_solidity <= self.default_range[1]):
             raise ValueError("Chosen min_solidity is not within valid range (0, 1)")
 
+        if not (self.min_size <= self.max_size):
+            raise ValueError("min_size must be less than max_size")
+
         return self
 
     @model_validator(mode="after")
@@ -190,20 +195,6 @@ class Config(BaseModel):  # type: ignore
         """
         if not (self.element_size == 3 or self.element_size == 5 or self.element_size == 0):
             raise ValueError("Morphological_element_size must be 3, 5 or 0")
-        return self
-
-    @model_validator(mode="after")
-    def check_connectivity(self) -> typing_extensions.Self:
-        """Validates the connectivity value.
-
-        Ensures that the connectivity is one of the allowed values (4 or 8).
-        If the value is not allowed, a ValueError is raised.
-
-        Returns:
-            Self: The instance itself, for method chaining.
-        """
-        if not (self.connectivity == 4 or self.connectivity == 8):
-            raise ValueError("Connectivity must be 4 or 8")
         return self
 
     @model_validator(mode="after")

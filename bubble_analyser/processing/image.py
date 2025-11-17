@@ -16,7 +16,7 @@ from typing import cast
 import numpy as np
 from numpy import typing as npt
 
-from bubble_analyser.methods.watershed_methods import IterativeWatershed, NormalWatershed
+# from bubble_analyser.methods.watershed_methods import IterativeWatershed, NormalWatershed
 from bubble_analyser.processing.circle_handler import EllipseHandler as CircleHandler
 from bubble_analyser.processing.config import Config
 from bubble_analyser.processing.image_preprocess import image_preprocess
@@ -77,6 +77,7 @@ class MethodsHandler:
         package_name = "bubble_analyser.methods"
 
         try:
+            logging.info(f"Loading modules from package: {package_name}")
             # For Python 3.9+
             if sys.version_info >= (3, 9):  # type: ignore # noqa: UP036
                 from importlib.resources import files
@@ -87,14 +88,18 @@ class MethodsHandler:
                     # For directories
 
                     for file_path in package_path.iterdir():  # type: ignore
+                        logging.info(f"Found file: {file_path}")
+
                         if file_path.is_file() and file_path.name.endswith(".py") and file_path.name != "__init__.py":
                             module_name = str(file_path).rsplit(".", 1)[0].split("/")[-1]
                             spec = importlib.util.spec_from_file_location(module_name, str(file_path))
                             if spec is not None:
+                                logging.info(f"Loading module: {module_name} from {file_path}")
                                 module = importlib.util.module_from_spec(spec)
                                 if spec.loader is not None:
                                     spec.loader.exec_module(module)
                                     modules[module_name] = module
+
                 except (TypeError, AttributeError):
                     # For MultiplexedPath or other path types that don't support iterdir
                     from importlib.resources import contents
@@ -104,16 +109,6 @@ class MethodsHandler:
                             module_name = resource[:-3]  # Remove .py extension
                             module_path = f"{package_name}.{module_name}"
                             modules[module_name] = importlib.import_module(module_path)
-
-            # # For Python 3.8 and below
-            # else:
-            #     import importlib_resources
-
-            #     for resource in importlib_resources.contents(package_name):
-            #         if resource.endswith(".py") and resource != "__init__.py":
-            #             module_name = resource[:-3]  # Remove .py extension
-            #             module_path = f"{package_name}.{module_name}"
-            #             modules[module_name] = importlib.import_module(module_path)
 
         except Exception as e:
             print(f"Error loading modules: {e}")
@@ -309,7 +304,7 @@ class Image:
 
         return
 
-    def processing_image_before_filtering(self, algorithm: str) -> None:
+    def processing_image_before_filtering(self, algorithm: str, cnn_model) -> None:
         """Process the image using a specified algorithm prior to filtering.
 
         Iterates through the available methods and their parameters, and if a match is found for the given
@@ -332,13 +327,23 @@ class Image:
                         self._img_preprocess(self.target_width)
                         logging.info(f"target_width used: {self.target_width}")
                         # processing_instance
-                        processing_instance.initialize_processing(  # type: ignore
-                            params=params,
-                            img_grey=self.img_grey,
-                            img_rgb=self.img_rgb,
-                            if_bknd_img=self.if_bknd_img,
-                            bknd_img=self.bknd_img,
-                        )  # type: ignore
+                        if name == "BubMask (Deep Learning)":
+                            processing_instance.initialize_processing(  # type: ignore
+                                params=params,
+                                img_grey=self.img_grey,
+                                img_rgb=self.img_rgb,
+                                if_bknd_img=self.if_bknd_img,
+                                bknd_img=self.bknd_img,
+                                cnn_model=cnn_model
+                            )  # type: ignore
+                        else:
+                            processing_instance.initialize_processing(  # type: ignore
+                                params=params,
+                                img_grey=self.img_grey,
+                                img_rgb=self.img_rgb,
+                                if_bknd_img=self.if_bknd_img,
+                                bknd_img=self.bknd_img,
+                            )  # type: ignore
                         self.labels_on_img_before_filter, self.labels_before_filter, \
                             self.img_grey_morph_eroded = (
                             processing_instance.get_results_img()  # type: ignore
@@ -400,6 +405,9 @@ class Image:
         """
         self.ellipses = ellipses
         self.new_circle_handler.ellipses = ellipses
+        self.set_fine_tuned()
+    
+    def set_fine_tuned(self):
         self.if_fine_tuned = True
 
     def get_ellipse_properties(self) -> None:

@@ -225,6 +225,10 @@ class TestWatershed(WatershedSegmentation):
             g = img
         # g = cv2.GaussianBlur(img, (0, 0), 1.2)
 
+        # Ensure the image is in uint8 format for cv2.Sobel compatibility
+        if g.dtype != np.uint8:
+            g = g.astype(np.uint8)
+
         # 2) Gradient magnitude = "topography"
         gx = cv2.Sobel(g, cv2.CV_32F, 1, 0, ksize=self.ksize)
         gy = cv2.Sobel(g, cv2.CV_32F, 0, 1, ksize=self.ksize)
@@ -235,7 +239,7 @@ class TestWatershed(WatershedSegmentation):
         grad_bgr = cv2.cvtColor(grad_u8, cv2.COLOR_GRAY2BGR)
         self.img_grey = grad_u8
         self.grad_img_rgb = grad_bgr
-
+        
     def get_results_img(self) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_], npt.NDArray[np.int_]]:
         """Execute the complete watershed segmentation process and return results.
 

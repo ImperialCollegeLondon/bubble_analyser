@@ -159,8 +159,21 @@ class WatershedSegmentation:
             for contour in contours:
                 if len(contour) >= 5:
                     ellipse = cv2.fitEllipse(contour)
-                    cv2.ellipse(mask, ellipse, color=255, thickness=-1)  # type: ignore
-                    ellipses.append(ellipse)
+                    # Validate ellipse parameters before drawing
+                    center, axes, angle = ellipse
+                    ellipse_width, ellipse_height = axes
+                    
+                    # Skip invalid ellipses (width or height <= 0)
+                    if ellipse_width <= 0 or ellipse_height <= 0:
+                        continue
+                        
+                    try:
+                        cv2.ellipse(mask, ellipse, color=255, thickness=-1)  # type: ignore
+                        ellipses.append(ellipse)
+                    except cv2.error as e:
+                        # Log the error and skip this ellipse
+                        print(f"Warning: Skipping invalid ellipse {ellipse}: {e}")
+                        continue
 
             labelled_img[mask == 255] = current_label
             current_label += 1
