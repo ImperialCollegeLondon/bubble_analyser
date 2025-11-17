@@ -30,8 +30,8 @@ from pydantic import (
     PositiveInt,
     StrictBool,
     StrictFloat,
-    StrictStr,
     StrictInt,
+    StrictStr,
     model_validator,
 )
 
@@ -216,7 +216,7 @@ class Config(BaseModel):  # type: ignore
         Returns:
             Self: The instance itself, for method chaining.
         """
-        if not (self.if_gaussianblur == 'True' or self.if_gaussianblur == 'False'):
+        if not (self.if_gaussianblur == "True" or self.if_gaussianblur == "False"):
             raise ValueError("if_gaussianblur must be 'True' or 'False'")
         return self
 
@@ -248,11 +248,10 @@ class Config(BaseModel):  # type: ignore
         if not (high > low):
             raise ValueError("Max threshold must be greater than min threshold\n")
         return self
-    
+
     @model_validator(mode="after")
     def check_threshold_value(self) -> typing_extensions.Self:
-        """Validates the threshold value for high_ppm method.
-        """
+        """Validates the threshold value for high_ppm method."""
         if not (0 <= self.threshold_value <= 1):
             raise ValueError("threshold_value must be in the range [0, 1]\n")
         return self

@@ -12,7 +12,7 @@ import cv2
 import numpy as np
 from numpy import typing as npt
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QCloseEvent, QImage, QMouseEvent, QPixmap, QKeyEvent
+from PySide6.QtGui import QCloseEvent, QImage, QKeyEvent, QMouseEvent, QPixmap
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -90,7 +90,7 @@ class EllipseAdjuster(QMainWindow):
         self.setWindowTitle("Ellipse Adjuster")
 
         # Set window to fullscreen by default
-        self.showMaximized() 
+        self.showMaximized()
 
         # Create main widget and layout
         main_widget = QWidget()
@@ -105,7 +105,7 @@ class EllipseAdjuster(QMainWindow):
         self.ellipses: list[tuple[tuple[float, float], tuple[int, int], float]] = ellipse_list.copy()
         self.B = img_rgb.copy()
         self.window_width = 1200
-        self.dot_size = 3 
+        self.dot_size = 3
 
         # Control panel setup
         control_panel = QWidget()
@@ -144,9 +144,13 @@ class EllipseAdjuster(QMainWindow):
         # New keyboard interaction variables
         self.keyboard_mode: str = cast(str, None)  # 'scale_x', 'scale_y', 'rotate', 'move', None
         self.s_key_pressed = False  # Track if 's' key is pressed
-        self.keyboard_reference_point: tuple[float, float] = cast(tuple[float, float], None)  # Reference point for keyboard operations
+        self.keyboard_reference_point: tuple[float, float] = cast(
+            tuple[float, float], None
+        )  # Reference point for keyboard operations
         self.mode_active = False  # Track if any mode is currently active
-        self.mode_reference_point: tuple[float, float] = cast(tuple[float, float], None)  # Reference point for mode operations
+        self.mode_reference_point: tuple[float, float] = cast(
+            tuple[float, float], None
+        )  # Reference point for mode operations
         self.mode_initial_values: dict = {}  # Store initial values for mode operations
 
         # New variables for drag-to-create functionality
@@ -166,7 +170,7 @@ class EllipseAdjuster(QMainWindow):
 
         # Enable keyboard focus
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        
+
         self.update_image()
 
     def update_image(self) -> None:
@@ -217,7 +221,7 @@ class EllipseAdjuster(QMainWindow):
             axes: tuple[int, int]
             angle: float
             center, axes, angle = ellipse
-            
+
             # Highlight selected ellipse in red; otherwise, use green.
             color = (0, 0, 255) if idx == self.selected_ellipse_index else (0, 255, 0)
             cv2.ellipse(image, ellipse, color, 2)  # type: ignore
@@ -289,63 +293,58 @@ class EllipseAdjuster(QMainWindow):
     def keyPressEvent(self, event: QKeyEvent) -> None:
         """Handle keyboard events for Blender-like interaction modes."""
         key = event.key()
-        
+
         # Handle 'A' key for adding new circle (no selection required)
         if key == Qt.Key.Key_A and not self.mode_active:
             self.add_circle_button_clicked()
             return
-        
+
         # Only allow other keyboard modes when an ellipse is selected and no other mode is active
         if self.selected_ellipse_index is None:
             super().keyPressEvent(event)
             return
-            
+
         # Handle 'X' key for major-axis scaling (simplified from s+x)
         if key == Qt.Key.Key_X and not self.mode_active:
-            self.start_keyboard_mode('scale_x')
+            self.start_keyboard_mode("scale_x")
             return
-            
+
         # Handle 'C' key for minor-axis scaling (simplified from s+y)
         if key == Qt.Key.Key_C and not self.mode_active:
-            self.start_keyboard_mode('scale_y')
+            self.start_keyboard_mode("scale_y")
             return
-                
+
         # Handle 'R' key for rotation
         if key == Qt.Key.Key_R and not self.mode_active:
-            self.start_keyboard_mode('rotate')
+            self.start_keyboard_mode("rotate")
             return
-            
+
         # Handle space key for moving
         if key == Qt.Key.Key_Space and not self.mode_active:
-            self.start_keyboard_mode('move')
+            self.start_keyboard_mode("move")
             return
-            
+
         super().keyPressEvent(event)
 
     def start_keyboard_mode(self, mode: str) -> None:
         """Start a keyboard interaction mode."""
         if self.selected_ellipse_index is None:
             return
-            
+
         self.keyboard_mode = mode
         self.mode_active = True
         self.s_key_pressed = False  # Reset s key state
-        
+
         # Get current mouse position as reference
         cursor_pos = self.mapFromGlobal(self.cursor().pos())
         label_pos = self.image_label.mapFromParent(cursor_pos)
         x = label_pos.x() / self.scale_factor
         y = label_pos.y() / self.scale_factor
         self.mode_reference_point = (x, y)
-        
+
         # Store initial values for the selected ellipse
         center, axes, angle = self.ellipses[self.selected_ellipse_index]
-        self.mode_initial_values = {
-            'center': center,
-            'axes': axes,
-            'angle': angle,
-            'mouse_pos': (x, y)
-        }
+        self.mode_initial_values = {"center": center, "axes": axes, "angle": angle, "mouse_pos": (x, y)}
 
     def exit_keyboard_mode(self) -> None:
         """Exit the current keyboard mode."""
@@ -382,14 +381,14 @@ class EllipseAdjuster(QMainWindow):
                 self.exit_keyboard_mode()
                 self.update_image()
                 return
-        
+
         if event.button() == Qt.MouseButton.RightButton:
             self.selected_ellipse_index = cast(int, None)
             self.selected_ellipse = cast(int, None)
             self.rotating = False
             self.moving_center = False
             self.dragging = False
-            
+
             # Reset keyboard modes
             self.exit_keyboard_mode()
 
@@ -580,31 +579,33 @@ class EllipseAdjuster(QMainWindow):
         """Handle mouse movement during keyboard modes."""
         if self.selected_ellipse_index is None or not self.mode_initial_values:
             return
-            
-        initial_center = self.mode_initial_values['center']
-        initial_axes = self.mode_initial_values['axes']
-        initial_angle = self.mode_initial_values['angle']
-        initial_mouse = self.mode_initial_values['mouse_pos']
-        
-        if self.keyboard_mode == 'move':
+
+        initial_center = self.mode_initial_values["center"]
+        initial_axes = self.mode_initial_values["axes"]
+        initial_angle = self.mode_initial_values["angle"]
+        initial_mouse = self.mode_initial_values["mouse_pos"]
+
+        if self.keyboard_mode == "move":
             # Move ellipse based on mouse movement
             dx = x - initial_mouse[0]
             dy = y - initial_mouse[1]
             new_center = (initial_center[0] + dx, initial_center[1] + dy)
             self.ellipses[self.selected_ellipse_index] = (new_center, initial_axes, initial_angle)
-            
-        elif self.keyboard_mode == 'rotate':
+
+        elif self.keyboard_mode == "rotate":
             # Rotate based on mouse movement
             initial_angle_rad = math.atan2(initial_mouse[1] - initial_center[1], initial_mouse[0] - initial_center[0])
             current_angle_rad = math.atan2(y - initial_center[1], x - initial_center[0])
             angle_diff = math.degrees(current_angle_rad - initial_angle_rad)
             new_angle = (initial_angle + angle_diff) % 360
             self.ellipses[self.selected_ellipse_index] = (initial_center, initial_axes, new_angle)
-            
-        elif self.keyboard_mode == 'scale_x':
+
+        elif self.keyboard_mode == "scale_x":
             # Scale in major-axis direction based on distance from center
-            distance_from_center = math.sqrt((x - initial_center[0])**2 + (y - initial_center[1])**2)
-            initial_distance = math.sqrt((initial_mouse[0] - initial_center[0])**2 + (initial_mouse[1] - initial_center[1])**2)
+            distance_from_center = math.sqrt((x - initial_center[0]) ** 2 + (y - initial_center[1]) ** 2)
+            initial_distance = math.sqrt(
+                (initial_mouse[0] - initial_center[0]) ** 2 + (initial_mouse[1] - initial_center[1]) ** 2
+            )
             if initial_distance > 0:
                 scale_factor = distance_from_center / initial_distance
                 new_major_axis = max(10, int(initial_axes[0] * scale_factor))
@@ -612,11 +613,13 @@ class EllipseAdjuster(QMainWindow):
                 new_major_axis = max(10, int(distance_from_center * 2))
             new_axes = (new_major_axis, initial_axes[1])
             self.ellipses[self.selected_ellipse_index] = (initial_center, new_axes, initial_angle)
-            
-        elif self.keyboard_mode == 'scale_y':
+
+        elif self.keyboard_mode == "scale_y":
             # Scale in minor-axis direction based on distance from center
-            distance_from_center = math.sqrt((x - initial_center[0])**2 + (y - initial_center[1])**2)
-            initial_distance = math.sqrt((initial_mouse[0] - initial_center[0])**2 + (initial_mouse[1] - initial_center[1])**2)
+            distance_from_center = math.sqrt((x - initial_center[0]) ** 2 + (y - initial_center[1]) ** 2)
+            initial_distance = math.sqrt(
+                (initial_mouse[0] - initial_center[0]) ** 2 + (initial_mouse[1] - initial_center[1]) ** 2
+            )
             if initial_distance > 0:
                 scale_factor = distance_from_center / initial_distance
                 new_minor_axis = max(10, int(initial_axes[1] * scale_factor))
@@ -624,7 +627,7 @@ class EllipseAdjuster(QMainWindow):
                 new_minor_axis = max(10, int(distance_from_center * 2))
             new_axes = (initial_axes[0], new_minor_axis)
             self.ellipses[self.selected_ellipse_index] = (initial_center, new_axes, initial_angle)
-            
+
         self.update_image()
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:

@@ -555,15 +555,16 @@ class ImageProcessingModel:
             if if_save:
                 self.save_processed_images(self.img_dict[name].ellipses_on_images, img_fit_ellipse_name, save_path)
                 self.save_processed_images(self.img_dict[name].img_rgb, img_rgb_name, save_path)
-                self.save_processed_images(self.img_dict[name].img_grey_morph_eroded, img_mt_name, save_path, if_mt = True)
+                self.save_processed_images(
+                    self.img_dict[name].img_grey_morph_eroded, img_mt_name, save_path, if_mt=True
+                )
                 self.save_labelled_masks(self.img_dict[name].labelled_ellipses_mask, cast(Path, base_name), save_path)
                 continue
-
 
             worker_thread.update_progress_bar(index + 1)
         worker_thread.on_processing_done()
 
-    def save_processed_images(self, img: npt.NDArray[np.int_], img_name: Path, save_path: Path, if_mt = False) -> None:
+    def save_processed_images(self, img: npt.NDArray[np.int_], img_name: Path, save_path: Path, if_mt=False) -> None:
         """Save the processed image with detected ellipses to disk.
 
         Args:
@@ -576,7 +577,7 @@ class ImageProcessingModel:
         logging.info(f"Processed image with ellipses saving to: {new_name}")
         try:
             if if_mt:
-                cv2.imwrite(new_name, img*255)
+                cv2.imwrite(new_name, img * 255)
             else:
                 cv2.imwrite(new_name, img)
                 logging.info("saved")

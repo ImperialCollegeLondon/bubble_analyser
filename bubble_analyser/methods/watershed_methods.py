@@ -20,8 +20,9 @@ import numpy as np
 from cv2.typing import MatLike
 from numpy import typing as npt
 
-from bubble_analyser.processing.watershed_parent_class import WatershedSegmentation
 from bubble_analyser.processing.threshold_methods import ThresholdMethods
+from bubble_analyser.processing.watershed_parent_class import WatershedSegmentation
+
 
 class TestWatershed(WatershedSegmentation):
     """Standard watershed segmentation implementation.
@@ -126,7 +127,7 @@ class TestWatershed(WatershedSegmentation):
         self.connectivity = params["connectivity"]  # type: ignore
         self.threshold_value = params["threshold_value"]
         self.ksize = cast(int, params["ksize"])
-        
+
         if params["if_gaussianblur"] == "True":
             self.if_gaussianblur = True
             logging.info("Gausssian Blur activated")
@@ -231,7 +232,7 @@ class TestWatershed(WatershedSegmentation):
         grad = cv2.magnitude(gx, gy)
 
         # normalize to 8-bit for display + watershed input
-        grad_u8 = cv2.normalize(grad, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8) # type: ignore
+        grad_u8 = cv2.normalize(grad, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)  # type: ignore
         grad_bgr = cv2.cvtColor(grad_u8, cv2.COLOR_GRAY2BGR)
         self.img_grey = grad_u8
         self.grad_img_rgb = grad_bgr
@@ -260,15 +261,18 @@ class TestWatershed(WatershedSegmentation):
         self.labels = self._initialize_labels(self.dilated_mask)
         # img_grey_morph_rgb = cv2.cvtColor(self.img_grey_morph_eroded, cv2.COLOR_GRAY2RGB)  # type: ignore
         self.labels_watershed = self._watershed_segmentation(self.grad_img_rgb, self.labels)
-        
+
         # self.labels_watershed_filled = self._fill_ellipses(self.labels_watershed)
         self.labels_on_img = self._overlay_labels_on_rgb(
             self.img_rgb, cast(npt.NDArray[np.int_], self.labels_watershed)
         )
 
-        return cast(npt.NDArray[np.int_], self.labels_on_img), \
-            cast(npt.NDArray[np.int_], self.labels_watershed),\
-                cast(npt.NDArray[np.int_], self.img_grey_morph_eroded)
+        return (
+            cast(npt.NDArray[np.int_], self.labels_on_img),
+            cast(npt.NDArray[np.int_], self.labels_watershed),
+            cast(npt.NDArray[np.int_], self.img_grey_morph_eroded),
+        )
+
 
 class IterativeWatershed(WatershedSegmentation):
     """Iterative watershed segmentation implementation.
@@ -459,9 +463,12 @@ class IterativeWatershed(WatershedSegmentation):
         self.labels_on_img = self._overlay_labels_on_rgb(
             self.img_rgb, cast(npt.NDArray[np.int_], self.labels_watershed_filled)
         )
-        return cast(npt.NDArray[np.int_], self.labels_on_img), \
-            cast(npt.NDArray[np.int_], self.labels_watershed_filled), \
-            cast(npt.NDArray[np.int_], self.img_grey_morph_eroded)
+        return (
+            cast(npt.NDArray[np.int_], self.labels_on_img),
+            cast(npt.NDArray[np.int_], self.labels_watershed_filled),
+            cast(npt.NDArray[np.int_], self.img_grey_morph_eroded),
+        )
+
 
 class NormalWatershed(WatershedSegmentation):
     """Standard watershed segmentation implementation.
@@ -652,9 +659,11 @@ class NormalWatershed(WatershedSegmentation):
             self.img_rgb, cast(npt.NDArray[np.int_], self.labels_watershed)
         )
 
-        return cast(npt.NDArray[np.int_], self.labels_on_img), \
-            cast(npt.NDArray[np.int_], self.labels_watershed),\
-                cast(npt.NDArray[np.int_], self.img_grey_morph_eroded)
+        return (
+            cast(npt.NDArray[np.int_], self.labels_on_img),
+            cast(npt.NDArray[np.int_], self.labels_watershed),
+            cast(npt.NDArray[np.int_], self.img_grey_morph_eroded),
+        )
 
 
 # if __name__ == "__main__":
@@ -738,7 +747,6 @@ if __name__ == "__main__":
     # Define paths
     img_grey_path = "../../tests/test_image_grey.JPG"
     img_rgb_path = "../../tests/test_image_rgb.JPG"
-    
 
     # Change to your desired output location
     background_path = None  # Change if you have a background image
@@ -792,9 +800,9 @@ if __name__ == "__main__":
     np.save("../../tests/test_labels_watershed.npy", labels_watershed)
     cv2.imwrite(str(img_grey_thresh_path), img_grey_thresh.astype(np.uint8))
     cv2.imwrite(str(img_dt_path), dist_transform)
-    cv2.imwrite(str(img_morph_save_path), img_morph*255)
+    cv2.imwrite(str(img_morph_save_path), img_morph * 255)
     cv2.imwrite(str(img_segmented_save_path), segmented_img)
-    cv2.imwrite(str(img_dt_thresh_save_path), img_grey_dt_thresh*255)
+    cv2.imwrite(str(img_dt_thresh_save_path), img_grey_dt_thresh * 255)
     # cv2.imwrite(str(img_morph_eroded_save_path), img_morph_eroded*255)
 
     # Save and display results
@@ -827,7 +835,6 @@ if __name__ == "__main__":
     plt.imshow(img_grey_dt_thresh, cmap="jet")
     plt.title("img_grey_dt_thresh")
 
-
     # plt.subplot(336)
     # plt.imshow(normal_watershed.b_mask, cmap="gray")
     # plt.title("s2_watershed")
@@ -835,4 +842,3 @@ if __name__ == "__main__":
     plt.show()
 
     print(f"Segmentation completed! Output saved at: {output_path}")
-

@@ -35,8 +35,8 @@ from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
-    QComboBox,
     QCheckBox,
+    QComboBox,
     QDialog,
     QFileDialog,
     QHBoxLayout,
@@ -712,7 +712,7 @@ class ImageProcessingTabHandler(QThread):
         #     except ValidationError as e:
         #         self._show_warning("Invalid if_gaussianblur value", str(e))
         #         return False
-                
+
         if name == "ksize":
             try:
                 new_checker.ksize = cast(int, value)
@@ -935,7 +935,6 @@ class ImageProcessingTabHandler(QThread):
 
         for algorithm_name, params in self.model.all_methods_n_params.items():
             if algorithm_name == self.current_algorithm:
-
                 self.gui.param_sandbox1.setRowCount(len(params))
 
                 for (
@@ -949,7 +948,7 @@ class ImageProcessingTabHandler(QThread):
                         # Create a dropdown with True/False options
                         combo_box = QComboBox()
                         combo_box.addItems(["True", "False"])
-                        
+
                         # Set the current value
                         current_value = str(value)
                         if current_value in ["True", "False"]:
@@ -957,52 +956,52 @@ class ImageProcessingTabHandler(QThread):
                         else:
                             # Default to False if value is not boolean
                             combo_box.setCurrentText("False")
-                        
+
                         # Set the combo box as the cell widget
                         self.gui.param_sandbox1.setCellWidget(row, 1, combo_box)
-                    
+
                     elif name == "element_size":
                         combo_box = QComboBox()
-                        combo_box.addItems(["0","3","5"])
+                        combo_box.addItems(["0", "3", "5"])
 
                         # Set the current value
                         current_value = str(value)
-                        if current_value in ["0","3","5"]:
+                        if current_value in ["0", "3", "5"]:
                             combo_box.setCurrentText(current_value)
                         else:
                             # Default to False if value is not boolean
                             combo_box.setCurrentText("3")
-                        
+
                         # Set the combo box as the cell widget
                         self.gui.param_sandbox1.setCellWidget(row, 1, combo_box)
-                    
+
                     elif name == "connectivity":
                         combo_box = QComboBox()
-                        combo_box.addItems(["4","8"])
+                        combo_box.addItems(["4", "8"])
 
                         # Set the current value
                         current_value = str(value)
-                        if current_value in ["4","8"]:
+                        if current_value in ["4", "8"]:
                             combo_box.setCurrentText(current_value)
                         else:
                             # Default to False if value is not boolean
                             combo_box.setCurrentText("8")
-                        
+
                         # Set the combo box as the cell widget
                         self.gui.param_sandbox1.setCellWidget(row, 1, combo_box)
 
                     elif name == "ksize":
                         combo_box = QComboBox()
-                        combo_box.addItems(["1","3","5","7"])
+                        combo_box.addItems(["1", "3", "5", "7"])
 
                         # Set the current value
                         current_value = str(value)
-                        if current_value in ["1","3","5","7"]:
+                        if current_value in ["1", "3", "5", "7"]:
                             combo_box.setCurrentText(current_value)
                         else:
                             # Default to False if value is not boolean
                             combo_box.setCurrentText("3")
-                        
+
                         # Set the combo box as the cell widget
                         self.gui.param_sandbox1.setCellWidget(row, 1, combo_box)
 

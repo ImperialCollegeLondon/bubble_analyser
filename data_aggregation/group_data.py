@@ -1,14 +1,17 @@
-import pandas as pd
-import cv2
-import numpy as np
-import h5py # type: ignore
-from typing import cast
 from pathlib import Path
-from data_aggregation.get_psd_features import PSDAnalyzer
+from typing import cast
+
+import cv2
+import h5py  # type: ignore
+import numpy as np
+import pandas as pd
+
 from data_aggregation.get_ellipse_data import MTImageProcessor
+from data_aggregation.get_psd_features import PSDAnalyzer
+
 
 class DataGroup:
-    def __init__(self, excel_path: Path, img_folder_path = cast(Path, None)) -> None:
+    def __init__(self, excel_path: Path, img_folder_path=cast(Path, None)) -> None:
         self.excel_path = excel_path
         self.img_folder_path = img_folder_path
 
@@ -18,28 +21,28 @@ class DataGroup:
 
     def get_image_mt_list(self) -> tuple[list, list]:
         # Read the specific sheet "data_group_1"
-        df = pd.read_excel(self.excel_path, sheet_name='data_group_1')
+        df = pd.read_excel(self.excel_path, sheet_name="data_group_1")
 
         # Extract unique values from the 'image name' column
-        self.rbg_img_list = df['image name'].unique().tolist()
+        self.rbg_img_list = df["image name"].unique().tolist()
 
-        # Extract real equivalent diameter 
-        self.real_eqd_list = df['equivalent_diameter(px)'].tolist()
-        self.real_d32 = df['D32(Sauter Mean Diameter/px)'].iloc[0]
+        # Extract real equivalent diameter
+        self.real_eqd_list = df["equivalent_diameter(px)"].tolist()
+        self.real_d32 = df["D32(Sauter Mean Diameter/px)"].iloc[0]
         print(self.real_d32)
 
         # Modify each image name: remove .JPG and add _mt.png
         # self.mt_img_list = []
         for name in self.rbg_img_list:
             # Remove .JPG extension and add _mt.png
-            mt_img_names = name.replace('.JPG', '_mt.png')
+            mt_img_names = name.replace(".JPG", "_mt.png")
             mt_img_names = f"{self.img_folder_path}/{mt_img_names}"
             self.mt_img_list.append(mt_img_names)
         return self.rbg_img_list, self.mt_img_list
-    
+
     def get_ground_truth(self):
         # Read the specific sheet "data_group_1"
-        df = pd.read_excel(self.excel_path, sheet_name='data_group_1')
+        df = pd.read_excel(self.excel_path, sheet_name="data_group_1")
         return df
 
     def get_ellipse_data(self, binary_image):
@@ -47,12 +50,11 @@ class DataGroup:
         # Adjust min_area and min_contour_length based on your image characteristics
         processor = MTImageProcessor(px2mm=1, resample=1, min_area=100, min_contour_length=15)
         ellipses, properties = processor.process_binary_image(binary_image)
-        
+
         return ellipses, properties
 
     def get_normalized_histogram(self, input_hist, n_bins: int = 64, log_scale: bool = True):
-        """
-        Convert the real_eqd_list into a normalized histogram (sum = 1).
+        """Convert the real_eqd_list into a normalized histogram (sum = 1).
 
         Parameters
         ----------
@@ -62,7 +64,7 @@ class DataGroup:
             If True, use log-spaced bins (better for bubble sizes).
             If False, use linear-spaced bins.
 
-        Returns
+        Returns:
         -------
         hist : np.ndarray
             Normalized histogram of length n_bins (density, sum = 1).
@@ -114,78 +116,78 @@ class DataGroup:
         for img_path in self.mt_img_list:
             n_images += 1
             img_dict = {}
-            img_dict['img_path'] = img_path
+            img_dict["img_path"] = img_path
 
             try:
                 binary_image = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
             except:
                 print(f"Could not load image: {img_path}")
                 continue
-            
+
             # get ellipse data
             _, ellipse_data = self.get_ellipse_data(binary_image)
             n_bubbles += len(ellipse_data)
             # get psd data
             psd_feature = self.get_psd_features(binary_image)
 
-            img_dict['ellipse_data'] = ellipse_data
-            img_dict['psd_feature'] = psd_feature
+            img_dict["ellipse_data"] = ellipse_data
+            img_dict["psd_feature"] = psd_feature
 
             self.all_data_images.append(img_dict)
 
             for properties in ellipse_data:
-                eqd_list.append(properties['equivalent_diameter_px'])
-                area_list.append(properties['area_px2'])
-                peri_list.append(properties['perimeter_px'])
-                ecc_list.append(properties['eccentricity'])
+                eqd_list.append(properties["equivalent_diameter_px"])
+                area_list.append(properties["area_px2"])
+                peri_list.append(properties["perimeter_px"])
+                ecc_list.append(properties["eccentricity"])
 
         # get real_eqdiam histogram
         eqdiam_hist, bin_edges = self.get_normalized_histogram(self.real_eqd_list)
         # get real d32
         real_d32 = self.real_d32
-        self.all_data_target['target_eqdiam_hist'] = eqdiam_hist
-        self.all_data_target['target_eqdiam_bin_edges'] = bin_edges
-        self.all_data_target['target_d32'] = real_d32
-
+        self.all_data_target["target_eqdiam_hist"] = eqdiam_hist
+        self.all_data_target["target_eqdiam_bin_edges"] = bin_edges
+        self.all_data_target["target_d32"] = real_d32
 
         eqd_hist_input, eqd_bin_edges = self.get_normalized_histogram(eqd_list)
         area_hist_input, area_bin_edges = self.get_normalized_histogram(area_list)
         peri_hist_input, peri_bin_edges = self.get_normalized_histogram(peri_list)
         ecc_hist_input, ecc_bin_edges = self.get_normalized_histogram(ecc_list)
-        self.all_data_meta['n_bubbles'] = n_bubbles
-        self.all_data_meta['n_images'] = n_images
-        self.all_data_meta['eqd_hist_input'] = eqd_hist_input
-        self.all_data_meta['area_hist_input'] = area_hist_input
-        self.all_data_meta['peri_hist_input'] = peri_hist_input
-        self.all_data_meta['ecc_hist_input'] = ecc_hist_input
-        self.all_data_meta['eqd_bin_edges'] = eqd_bin_edges
-        self.all_data_meta['area_bin_edges'] = area_bin_edges
-        self.all_data_meta['peri_bin_edges'] = peri_bin_edges
-        self.all_data_meta['ecc_bin_edges'] = ecc_bin_edges
+        self.all_data_meta["n_bubbles"] = n_bubbles
+        self.all_data_meta["n_images"] = n_images
+        self.all_data_meta["eqd_hist_input"] = eqd_hist_input
+        self.all_data_meta["area_hist_input"] = area_hist_input
+        self.all_data_meta["peri_hist_input"] = peri_hist_input
+        self.all_data_meta["ecc_hist_input"] = ecc_hist_input
+        self.all_data_meta["eqd_bin_edges"] = eqd_bin_edges
+        self.all_data_meta["area_bin_edges"] = area_bin_edges
+        self.all_data_meta["peri_bin_edges"] = peri_bin_edges
+        self.all_data_meta["ecc_bin_edges"] = ecc_bin_edges
 
     def _build_per_bubble_matrix(self) -> np.ndarray:
-        """
-        Stack all bubble properties from all images into a single matrix [B, 5]:
+        """Stack all bubble properties from all images into a single matrix [B, 5]:
         [area_px2, eq_diam_px, eccentricity, solidity, circularity]
         """
         rows = []
         for row in getattr(self, "all_data_images", []):
             ellipse_list = row.get("ellipse_data", [])
             for props in ellipse_list:
-                rows.append([
-                    float(props.get("area_px2", np.nan)),
-                    float(props.get("equivalent_diameter_px", np.nan)),
-                    float(props.get("eccentricity", np.nan)),
-                    float(props.get("perimeter_px", np.nan)),
-                ])
+                rows.append(
+                    [
+                        float(props.get("area_px2", np.nan)),
+                        float(props.get("equivalent_diameter_px", np.nan)),
+                        float(props.get("eccentricity", np.nan)),
+                        float(props.get("perimeter_px", np.nan)),
+                    ]
+                )
         if not rows:
             return np.zeros((0, 5), dtype=np.float32)
         return np.asarray(rows, dtype=np.float32)
 
     def _build_per_image_matrix(self, expect_K: int | None = None) -> tuple[np.ndarray, np.ndarray]:
-        """
-        Build per-image matrix [M, 6+K] with columns:
+        """Build per-image matrix [M, 6+K] with columns:
         [psd_slope, psd_kurtosis, psd_skewness, hf_lf, peak_frequency, peak_prominence, radial_psd(K)]
+
         Returns:
         X_img : float32 [M, 6+K]
         f_centers : float64 [K]  (frequency bin centers; NaNs if unavailable)
@@ -197,17 +199,19 @@ class DataGroup:
 
             radial = np.asarray(feat.get("radial_curve", []), dtype=np.float32)
             if radial.size == 0:
-                raise ValueError(f"Missing 'radial_curve' in psd_feature for image {row.get('img_path','?')}")
+                raise ValueError(f"Missing 'radial_curve' in psd_feature for image {row.get('img_path', '?')}")
             if expect_K is not None and radial.size != expect_K:
-                raise ValueError(f"Inconsistent K. Expected {expect_K}, got {radial.size} for {row.get('img_path','?')}")
+                raise ValueError(
+                    f"Inconsistent K. Expected {expect_K}, got {radial.size} for {row.get('img_path', '?')}"
+                )
             K = radial.size
 
-            slope      = float(feat.get("slope", np.nan))
-            kurt       = float(feat.get("kurtosis", np.nan))
-            skew       = float(feat.get("skewness", np.nan))
-            hf_lf      = float(feat.get("hf_lf_ratio", np.nan))
-            peak_freq  = float(feat.get("peak_freq", np.nan))
-            peak_prom  = float(feat.get("peak_prominence", np.nan))
+            slope = float(feat.get("slope", np.nan))
+            kurt = float(feat.get("kurtosis", np.nan))
+            skew = float(feat.get("skewness", np.nan))
+            hf_lf = float(feat.get("hf_lf_ratio", np.nan))
+            peak_freq = float(feat.get("peak_freq", np.nan))
+            peak_prom = float(feat.get("peak_prominence", np.nan))
 
             head = np.array([slope, kurt, skew, hf_lf, peak_freq, peak_prom], dtype=np.float32)
             rows.append(np.concatenate([head, radial.astype(np.float32)], axis=0))
@@ -218,12 +222,14 @@ class DataGroup:
                 if f_centers_ref is None:
                     f_centers_ref = f_centers
                 else:
-                    if f_centers_ref.shape != f_centers.shape or not np.allclose(f_centers_ref, f_centers, rtol=1e-6, atol=1e-12):
+                    if f_centers_ref.shape != f_centers.shape or not np.allclose(
+                        f_centers_ref, f_centers, rtol=1e-6, atol=1e-12
+                    ):
                         raise ValueError("Inconsistent PSD frequency bins (f_centers) across images.")
 
         if not rows:
             # return empty with the expected column count if provided
-            cols = (6 + (expect_K or 0))
+            cols = 6 + (expect_K or 0)
             return np.zeros((0, cols), dtype=np.float32), np.full((expect_K or 0,), np.nan, dtype=np.float64)
 
         X_img = np.vstack(rows).astype(np.float32)
@@ -238,8 +244,7 @@ class DataGroup:
             raise RuntimeError(f"Missing keys in {where}: {missing}")
 
     def save_group_to_hdf5(self, out_path: Path) -> None:
-        """
-        Save the group to an HDF5 file with:
+        """Save the group to an HDF5 file with:
         /meta/...
         /bubbles/features           [B,5]
         /images/features            [M,6+K]
@@ -249,7 +254,11 @@ class DataGroup:
         Uses gzip compression and chunking where appropriate.
         """
         # --- sanity: ensure get_all_data() was run
-        if not hasattr(self, "all_data_images") or not hasattr(self, "all_data_meta") or not hasattr(self, "all_data_target"):
+        if (
+            not hasattr(self, "all_data_images")
+            or not hasattr(self, "all_data_meta")
+            or not hasattr(self, "all_data_target")
+        ):
             raise RuntimeError("Run get_all_data() before saving.")
 
         # --- gather matrices
@@ -267,32 +276,40 @@ class DataGroup:
         # --- targets (DICT now)
         tgt = self.all_data_target
         self._require_keys(tgt, ["target_eqdiam_hist", "target_eqdiam_bin_edges", "target_d32"], "all_data_target")
-        target_eqdiam_hist  = np.asarray(tgt["target_eqdiam_hist"], dtype=np.float32)
+        target_eqdiam_hist = np.asarray(tgt["target_eqdiam_hist"], dtype=np.float32)
         target_eqdiam_edges = np.asarray(tgt["target_eqdiam_bin_edges"], dtype=np.float64)
-        target_d32          = float(tgt["target_d32"])
+        target_d32 = float(tgt["target_d32"])
 
         # --- meta + inputs (DICT now)
         meta = self.all_data_meta
         self._require_keys(
             meta,
-            ["n_bubbles", "n_images",
-            "eqd_hist_input", "area_hist_input", "peri_hist_input", "ecc_hist_input",
-            "eqd_bin_edges", "area_bin_edges", "peri_bin_edges", "ecc_bin_edges"],
-            "all_data_meta"
+            [
+                "n_bubbles",
+                "n_images",
+                "eqd_hist_input",
+                "area_hist_input",
+                "peri_hist_input",
+                "ecc_hist_input",
+                "eqd_bin_edges",
+                "area_bin_edges",
+                "peri_bin_edges",
+                "ecc_bin_edges",
+            ],
+            "all_data_meta",
         )
         n_bubbles = int(meta["n_bubbles"])
-        n_images  = int(meta["n_images"])
+        n_images = int(meta["n_images"])
 
-        eqd_hist_input  = np.asarray(meta["eqd_hist_input"],  dtype=np.float32)
+        eqd_hist_input = np.asarray(meta["eqd_hist_input"], dtype=np.float32)
         area_hist_input = np.asarray(meta["area_hist_input"], dtype=np.float32)
         peri_hist_input = np.asarray(meta["peri_hist_input"], dtype=np.float32)
-        ecc_hist_input  = np.asarray(meta["ecc_hist_input"],  dtype=np.float32)
+        ecc_hist_input = np.asarray(meta["ecc_hist_input"], dtype=np.float32)
 
-        eqd_edges  = np.asarray(meta["eqd_bin_edges"],  dtype=np.float64)
+        eqd_edges = np.asarray(meta["eqd_bin_edges"], dtype=np.float64)
         area_edges = np.asarray(meta["area_bin_edges"], dtype=np.float64)
         peri_edges = np.asarray(meta["peri_bin_edges"], dtype=np.float64)
-        ecc_edges  = np.asarray(meta["ecc_bin_edges"],  dtype=np.float64)
-
+        ecc_edges = np.asarray(meta["ecc_bin_edges"], dtype=np.float64)
 
         # --- write to HDF5
         out_path = Path(out_path)
@@ -316,28 +333,28 @@ class DataGroup:
 
             # descriptors (input histograms)
             g_desc = f.create_group("descriptors")
-            g_desc.create_dataset("eqd_hist",  data=eqd_hist_input,  compression="gzip")
+            g_desc.create_dataset("eqd_hist", data=eqd_hist_input, compression="gzip")
             g_desc.create_dataset("area_hist", data=area_hist_input, compression="gzip")
             g_desc.create_dataset("peri_hist", data=peri_hist_input, compression="gzip")
-            g_desc.create_dataset("ecc_hist",  data=ecc_hist_input,  compression="gzip")
+            g_desc.create_dataset("ecc_hist", data=ecc_hist_input, compression="gzip")
 
             # bin edges as attributes
-            g_desc.attrs["eqd_bin_edges_px"]   = eqd_edges
+            g_desc.attrs["eqd_bin_edges_px"] = eqd_edges
             g_desc.attrs["area_bin_edges_px2"] = area_edges
-            g_desc.attrs["peri_bin_edges_px"]  = peri_edges
-            g_desc.attrs["ecc_bin_edges"]      = ecc_edges
+            g_desc.attrs["peri_bin_edges_px"] = peri_edges
+            g_desc.attrs["ecc_bin_edges"] = ecc_edges
 
             # targets
             g_tgt = f.create_group("target")
             g_tgt.create_dataset("bsd_hist_px", data=target_eqdiam_hist, compression="gzip")
-            g_tgt.create_dataset("d32_px",      data=np.float32(target_d32))
+            g_tgt.create_dataset("d32_px", data=np.float32(target_d32))
             g_tgt.attrs["eqd_bin_edges_px"] = target_eqdiam_edges
 
         print(f"[OK] Saved group to HDF5: {out_path}  (B={X_bub.shape[0]}, M={X_img.shape[0]}, K={K})")
 
+
 def export_hdf5_to_excel_detailed(h5_path: Path, out_path: Path) -> None:
-    """
-    Read a saved HDF5 group file and export:
+    """Read a saved HDF5 group file and export:
       - Summary (property, value)
       - Target (property, value) including BSD hist and its bin edges
       - Descriptors (property, value) including input histograms + bin edges
@@ -431,7 +448,6 @@ def export_hdf5_to_excel_detailed(h5_path: Path, out_path: Path) -> None:
                 head_cols = ["area_px2", "eq_diam_px", "eccentricity", "perimeter_px"]
                 df_bubbles = pd.DataFrame(X_bub, columns=head_cols)
 
-
         # ---------- Frequencies (f_centers) ----------
         df_freq = pd.DataFrame()
         if "f_centers" in f["images"]:
@@ -460,16 +476,18 @@ def export_hdf5_to_excel_detailed(h5_path: Path, out_path: Path) -> None:
 
     print(f"[OK] Wrote Excel: {out_path}")
 
+
 if __name__ == "__main__":
-    excel_path = Path("C:/Users/Yiyang/OneDrive/Nov_2025_Conference/coding_part/processed_data_from_ba/OK_Stator_2_phases_DF250_Test 1_2 DF250_4PPM/analyse_result_ba.xlsx")
-    img_folder_path = Path("C:/Users/Yiyang/OneDrive/Nov_2025_Conference/coding_part/processed_data_from_ba/OK_Stator_2_phases_DF250_Test 1_2 DF250_4PPM")
-    
+    excel_path = Path(
+        "C:/Users/Yiyang/OneDrive/Nov_2025_Conference/coding_part/processed_data_from_ba/OK_Stator_2_phases_DF250_Test 1_2 DF250_4PPM/analyse_result_ba.xlsx"
+    )
+    img_folder_path = Path(
+        "C:/Users/Yiyang/OneDrive/Nov_2025_Conference/coding_part/processed_data_from_ba/OK_Stator_2_phases_DF250_Test 1_2 DF250_4PPM"
+    )
+
     data_group = DataGroup(excel_path, img_folder_path)
     _, _ = data_group.get_image_mt_list()
     data_group.get_all_data()
     data_group.save_group_to_hdf5(Path("analyse_result_ba.h5"))
 
     export_hdf5_to_excel_detailed(Path("analyse_result_ba.h5"), Path("analyse_result_ba.xlsx"))
-
-
-

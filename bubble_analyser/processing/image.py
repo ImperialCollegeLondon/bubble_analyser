@@ -339,8 +339,7 @@ class Image:
                             if_bknd_img=self.if_bknd_img,
                             bknd_img=self.bknd_img,
                         )  # type: ignore
-                        self.labels_on_img_before_filter, self.labels_before_filter, \
-                            self.img_grey_morph_eroded = (
+                        self.labels_on_img_before_filter, self.labels_before_filter, self.img_grey_morph_eroded = (
                             processing_instance.get_results_img()  # type: ignore
                         )
                 break
