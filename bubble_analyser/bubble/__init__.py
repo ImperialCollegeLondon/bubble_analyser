@@ -1,1 +1,1 @@
-from bubble import BubbleConfig, _InfConfig, color_splash
+from .bubble import BubbleConfig, _InfConfig, color_splash

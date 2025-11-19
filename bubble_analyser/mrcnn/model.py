@@ -30,9 +30,9 @@ import tensorflow as tf
 
 # For callback mAP
 from tensorflow.keras.callbacks import Callback
-from mrcnn.utils import Dataset
+from bubble_analyser.mrcnn.utils import Dataset
 
-from mrcnn import utils
+from bubble_analyser.mrcnn import utils
 
 
 # Requires TensorFlow 1.3+ and Keras 2.0.8+.

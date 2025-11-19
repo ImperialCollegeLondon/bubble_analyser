@@ -20,6 +20,10 @@ Marker_size_range = [2, 30]
 target_width = 1000
 target_width_range = [500, 2000]
 
+# Images can be resampled with factors to make processing faster
+resample = 0.3
+resample_range = [0.01, 1.0]
+
 # Batch processing flag
 do_batch = false
 

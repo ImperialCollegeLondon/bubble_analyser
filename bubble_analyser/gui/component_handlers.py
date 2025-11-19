@@ -233,7 +233,6 @@ class CalibrationModel:
     def get_px2mm_ratio(  # type: ignore
         self,
         pixel_img_path: Path,
-        img_resample: float = 0.5,
         gui=None,  # type: ignore
     ) -> tuple[float, MatLike]:
         """Calculate the pixel-to-millimeter ratio from a calibration image.
@@ -253,7 +252,7 @@ class CalibrationModel:
             float: The calculated pixel-to-millimeter ratio.
             img_drawed_line: The ruler image with the drawn line.
         """
-        __, self.px2mm, img_drawed_line = calculate_px2mm(pixel_img_path, img_resample, gui)  # type: ignore
+        __, self.px2mm, img_drawed_line = calculate_px2mm(pixel_img_path, gui)  # type: ignore
 
         return self.px2mm, img_drawed_line
 
@@ -303,6 +302,8 @@ class ImageProcessingModel:
 
         self.algorithm: str = ""
         self.params_config: Config = params
+        self.if_batched: bool = False
+        self.if_finalise_analysis: bool = False
 
         self.filter_param_dict_1: dict[str, float | str]
         self.filter_param_dict_2: dict[str, float | str]
@@ -555,9 +556,12 @@ class ImageProcessingModel:
                 Defaults to None.
         """
         self.bubble_count = 0
+        self.ellipses_properties = []
+        logging.info("------------------------------Batch Process Started------------------------------")
+        
         # Process every image in the list
         for index, name in enumerate(self.img_path_list):
-            logging.info("------------------------------Batch Process Started------------------------------")
+            logging.info(f"***Processing image {index + 1}/{len(self.img_path_list)}: {name}***")
             logging.info(f"If saving processed images: {if_save}")
             base_name = os.path.splitext(os.path.basename(name))[0]
 
@@ -568,27 +572,35 @@ class ImageProcessingModel:
             self.initialize_image(name)
             self.img_dict[name].load_filter_params(self.filter_param_dict_1, self.filter_param_dict_2)
 
-
-            if not self.img_dict[name].if_fine_tuned:
-                self.img_dict[name].processing_image_before_filtering(self.algorithm, self.detector)
-                self.img_dict[name].filtering_processing()
-                self.ellipses_properties.append(self.img_dict[name].ellipses_properties)
-
-            else:
-                logging.info(f"This image has been fine tuned: {name}, no need to process again.")
+            if self.if_finalise_analysis:
                 self.img_dict[name].get_ellipse_properties()
                 self.ellipses_properties.append(self.img_dict[name].ellipses_properties)
 
-            if if_save:
-                self.save_processed_images(self.img_dict[name].ellipses_on_images, img_fit_ellipse_name, save_path)
-                self.save_processed_images(self.img_dict[name].img_rgb, img_rgb_name, save_path)
-                # self.save_processed_images(self.img_dict[name].img_grey_morph_eroded, img_mt_name, save_path, if_mt = True)
-                self.save_labelled_masks(self.img_dict[name].labelled_ellipses_mask, cast(Path, base_name), save_path)
-                continue
+            else:
+                if not self.img_dict[name].if_fine_tuned:
+                    self.img_dict[name].processing_image_before_filtering(self.algorithm, self.detector)
+                    self.img_dict[name].filtering_processing()
+                    self.ellipses_properties.append(self.img_dict[name].ellipses_properties)
+
+                else:
+                    logging.info(f"This image has been fine tuned: {name}, no need to process again.")
+                    self.img_dict[name].get_ellipse_properties()
+                    self.ellipses_properties.append(self.img_dict[name].ellipses_properties)
+
+                if if_save:
+                    if self.img_dict[name].ellipses_on_images is not None:
+                        self.save_processed_images(self.img_dict[name].ellipses_on_images, img_fit_ellipse_name, save_path)
+                    if self.img_dict[name].img_rgb is not None:
+                        self.save_processed_images(self.img_dict[name].img_rgb, img_rgb_name, save_path)
+                    if self.img_dict[name].img_grey_morph_eroded is not None:
+                        self.save_processed_images(self.img_dict[name].img_grey_morph_eroded, img_mt_name, save_path, if_mt = True)
+                    if self.img_dict[name].labelled_ellipses_mask is not None:
+                        self.save_labelled_masks(self.img_dict[name].labelled_ellipses_mask, cast(Path, base_name), save_path)
 
 
             worker_thread.update_progress_bar(index + 1)
         worker_thread.on_processing_done()
+        self.if_batched = True # Make finalise analysis true
 
     def save_processed_images(self, img: npt.NDArray[np.int_], img_name: Path, save_path: Path, if_mt = False) -> None:
         """Save the processed image with detected ellipses to disk.

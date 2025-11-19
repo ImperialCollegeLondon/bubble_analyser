@@ -287,39 +287,39 @@ class EllipseAdjuster(QMainWindow):
             )
             
             # Draw ellipse number label at the center
-            ellipse_number = str(idx)
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            font_scale = 0.8
-            font_thickness = 2
-            text_color = (255, 255, 255)  # White text
+            # ellipse_number = str(idx)
+            # font = cv2.FONT_HERSHEY_SIMPLEX
+            # font_scale = 0.8
+            # font_thickness = 2
+            # text_color = (255, 255, 255)  # White text
             
             # Get text size to center it properly
-            (text_width, text_height), baseline = cv2.getTextSize(ellipse_number, font, font_scale, font_thickness)
+            # (text_width, text_height), baseline = cv2.getTextSize(ellipse_number, font, font_scale, font_thickness)
             
             # Calculate text position to center it on the ellipse center
-            text_x = center_int[0] - text_width // 2
-            text_y = center_int[1] + text_height // 2
+            # text_x = center_int[0] - text_width // 2
+            # text_y = center_int[1] + text_height // 2
             
-            # Draw a small background rectangle for better text visibility
-            padding = 3
-            cv2.rectangle(
-                image,
-                (text_x - padding, text_y - text_height - padding),
-                (text_x + text_width + padding, text_y + baseline + padding),
-                (0, 0, 0),  # Black background
-                -1
-            )
+            # # Draw a small background rectangle for better text visibility
+            # padding = 3
+            # cv2.rectangle(
+            #     image,
+            #     (text_x - padding, text_y - text_height - padding),
+            #     (text_x + text_width + padding, text_y + baseline + padding),
+            #     (0, 0, 0),  # Black background
+            #     -1
+            # )
             
             # Draw the ellipse number
-            cv2.putText(
-                image,
-                ellipse_number,
-                (text_x, text_y),
-                font,
-                font_scale,
-                text_color,
-                font_thickness
-            )
+            # cv2.putText(
+            #     image,
+            #     ellipse_number,
+            #     (text_x, text_y),
+            #     font,
+            #     font_scale,
+            #     text_color,
+            #     font_thickness
+            # )
 
             # Compute and draw rotation handles.
             # We use two angles (45° and 225° in the ellipses local parametric space)

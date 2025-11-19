@@ -24,7 +24,7 @@ from PySide6.QtWidgets import (
 )
 
 from .image_preprocess import load_image
-
+import logging
 
 class ImageLabel(QLabel):
     """A custom QLabel widget for interactive distance measurement in images.
@@ -178,7 +178,7 @@ def get_pixel_distance(img: npt.NDArray[np.int_], main_window: QMainWindow) -> t
         return 0.0, label.img_final
 
 
-def get_mm_per_pixel(pixel_distance: float, scale_percent: float, img_resample: float) -> float:
+def get_mm_per_pixel(pixel_distance: float, scale_percent: float) -> float:
     """Calculate millimeters per pixel based on measured pixel distance.
 
     Args:
@@ -191,11 +191,11 @@ def get_mm_per_pixel(pixel_distance: float, scale_percent: float, img_resample: 
     """
     original_pixel_distance: float = pixel_distance / scale_percent
     mm_per_pixel: float = 10.0 / original_pixel_distance
-    mm_per_pixel = mm_per_pixel / img_resample
+    # mm_per_pixel = mm_per_pixel / img_resample
     return mm_per_pixel
 
 
-def calculate_px2mm(image_path: Path, img_resample: float, main_window: QMainWindow) -> tuple[float, float, MatLike]:
+def calculate_px2mm(image_path: Path, main_window: QMainWindow) -> tuple[float, float, MatLike]:
     """Calculate the pixel-to-millimeter conversion ratios for an image.
 
     This function allows the user to measure a known distance in an image and
@@ -220,9 +220,8 @@ def calculate_px2mm(image_path: Path, img_resample: float, main_window: QMainWin
     pixel_per_mm = 0.0
 
     if pixel_distance > 0:
-        mm_per_pixel = get_mm_per_pixel(pixel_distance, scale_percent, img_resample)
-        print(f"Conversion factor: {mm_per_pixel} mm per pixel")
+        mm_per_pixel = get_mm_per_pixel(pixel_distance, scale_percent)
         pixel_per_mm = 1 / mm_per_pixel
-        print(f"Conversion factor: {pixel_per_mm} pixels per mm")
+        logging.info(f"Raw conversion factor: {mm_per_pixel} mm per pixel")
 
     return mm_per_pixel, pixel_per_mm, img_final

@@ -31,9 +31,11 @@ class BubMaskWatershed():
                 'image_min_dim', 'image_max_dim', 'element_size', and 'connectivity'.
         """
         self.name = "BubMask (Deep Learning)"
-        base_dir = "/Users/eeeyoung/Bubbles/bubble_analyser"
+        self.description = "Detection of bubbles using Mask R-CNN model from MULTIPHASE FLOW & FLOW VISUALIZATION LAB, https://doi.org/10.1038/s41598-021-88334-0 (Kim & Park, 2021)."
+        base_dir = str(Path(__file__).resolve().parents[2])
         self.weights_path: str = os.path.join(base_dir, "bubble_analyser/weights/mask_rcnn_bubble.h5")
         self.confidence_threshold: float = 0.9
+        self.resample: float = 0.5
         self.target_width: int = 1000
         self.image_min_dim: int = 192
         self.image_max_dim: int = 384
@@ -43,7 +45,7 @@ class BubMaskWatershed():
         
         # Initialize parent class attributes
         super().__init__()
-        
+        logging.info("Initializing BubMask detector...")
         # Update with provided parameters
         self.update_params(params)
 
@@ -56,7 +58,8 @@ class BubMaskWatershed():
         return {
             "weights_path": self.weights_path,
             "confidence_threshold": self.confidence_threshold,
-            "target_width": self.target_width,
+            # "target_width": self.target_width,
+            "resample": self.resample,
             "image_min_dim": self.image_min_dim,
             "image_max_dim": self.image_max_dim,
         }
@@ -72,8 +75,10 @@ class BubMaskWatershed():
             self.weights_path = str(params["weights_path"])
         if "confidence_threshold" in params:
             self.confidence_threshold = float(params["confidence_threshold"])
-        if "target_width" in params:
-            self.target_width = int(params["target_width"])
+        # if "target_width" in params:
+        #     self.target_width = int(params["target_width"])
+        if "resample" in params:
+            self.resample = float(params["resample"])
         if "image_min_dim" in params:
             self.image_min_dim = int(params["image_min_dim"])
         if "image_max_dim" in params:

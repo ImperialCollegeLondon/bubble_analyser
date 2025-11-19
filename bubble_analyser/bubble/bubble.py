@@ -72,7 +72,7 @@ import matplotlib.colors as mcolors
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(CURRENT_DIR)  # c:\bubble_segment_cnn\BubMask
 sys.path.insert(0, ROOT_DIR)
-from mrcnn import visualize
+from bubble_analyser.mrcnn import visualize
 
 import datetime
 
@@ -103,8 +103,8 @@ ROOT_DIR = os.path.dirname(CURRENT_DIR)
 
 # Import Mask RCNN
 # sys.path already updated above
-from mrcnn.config import Config
-from mrcnn import model as modellib, utils
+from bubble_analyser.mrcnn.config import Config
+from bubble_analyser.mrcnn import model as modellib, utils
 
 # Path to trained weights file
 COCO_WEIGHTS_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.h5")

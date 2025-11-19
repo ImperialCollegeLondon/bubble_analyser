@@ -398,8 +398,6 @@ class CalibrationTabHandler:
             params (Config): Configuration parameters containing default values.
         """
         self.calibration_model: CalibrationModel = calibration_model
-        # self.img_resample: float = params.resample
-        self.img_resample: float = 0.5
         self.px_img_path: Path = params.ruler_img_path
 
     def load_gui(self, gui: MainWindow) -> None:
@@ -476,10 +474,10 @@ class CalibrationTabHandler:
         img_path: Path = cast(Path, self.gui.pixel_img_name.text())
         if os.path.exists(img_path):
             px2mm, img_drawed_line = self.calibration_model.get_px2mm_ratio(
-                pixel_img_path=img_path, img_resample=self.img_resample, gui=self.gui
+                pixel_img_path=img_path, gui=self.gui
             )
 
-            px2mm_display = px2mm / self.img_resample
+            px2mm_display = px2mm
 
             self.gui.manual_px_mm_input.setText(f"{px2mm_display:.3f}")
 
@@ -923,6 +921,14 @@ class ImageProcessingTabHandler(QThread):
         self.update_model_algorithm(self.algorithm_list[0])
         logging.info("Algorithm combo box initialized.")
 
+        # Update description
+        try:
+            description = getattr(self.model.methods_handler.all_classes[self.algorithm_list[0]], "description", "No description available.")
+            self.gui.algorithm_description_label.setText(description)
+        except Exception as e:
+            logging.error(f"Error updating description: {e}")
+            self.gui.algorithm_description_label.setText("No description available.")
+
     def load_parameter_table_1(self, algorithm: str) -> None:
         """Load the parameter table with values for the selected algorithm.
 
@@ -1033,6 +1039,14 @@ class ImageProcessingTabHandler(QThread):
 
         # Update params in the model
         self.update_model_algorithm(new_algorithm)
+
+        # Update description
+        try:
+            description = getattr(self.model.methods_handler.all_classes[new_algorithm], "description", "No description available.")
+            self.gui.algorithm_description_label.setText(description)
+        except Exception as e:
+            logging.error(f"Error updating description: {e}")
+            self.gui.algorithm_description_label.setText("No description available.")
 
     def update_model_algorithm(self, algorithm: str) -> None:
         """Update the algorithm in the processing model.
@@ -1303,26 +1317,48 @@ class ImageProcessingTabHandler(QThread):
         If confirmed, initiates the batch processing operation.
         """
         self.if_save_processed_images = False
-        confirm_dialog = self.create_confirm_dialog()
+        confirm_dialog = self.create_confirm_dialog("Batch Processing Confirmation", 
+        "The parameters will be applied to all the images. Confirm to process.")
         self.create_save_images_checkbox(confirm_dialog)
 
         response = confirm_dialog.exec()
 
         if response == QMessageBox.StandardButton.Ok:
-            self.check_for_export_path.emit()
-            # self.batch_process_images()
+            self.check_for_export_path.emit() # Let Main handler check if export being properlly set
+
         else:
             logging.info("Batch processing canceled.")
 
-    def create_confirm_dialog(self) -> QMessageBox:
+    def finalise_analysis(self) -> None:
+        """Finalise the analysis by setting the if_finish_analysis flag to True."""
+        if not self.model.if_batched:
+            QMessageBox.information(self.gui, "Information", "Please finish at least one time of batch processing first.")
+            return
+        
+        else:
+            confirm_dialog = self.create_confirm_dialog("Finalise Analysis Confirmation", 
+            "The analysis will be finalised. \n Make sure you are satisfied with the segmentation of all images. Confirm to finalise.")
+            self.create_save_images_checkbox(confirm_dialog)
+
+            response = confirm_dialog.exec()
+
+            if response == QMessageBox.StandardButton.Ok:
+                self.model.if_finalise_analysis = True
+                self.check_for_export_path.emit() # Let Main handler check if export being properlly set
+
+            else:
+                logging.info("Analysis finalisation canceled.")
+
+
+    def create_confirm_dialog(self, title: str, text: str) -> QMessageBox:
         """Create a confirmation dialog for batch processing.
 
         Returns:
             QMessageBox: The configured confirmation dialog.
         """
         confirm_dialog = QMessageBox(self.gui)
-        confirm_dialog.setWindowTitle("Batch Processing Confirmation")
-        confirm_dialog.setText("The parameters will be applied to all the images. Confirm to process.")
+        confirm_dialog.setWindowTitle(title)
+        confirm_dialog.setText(text)
         confirm_dialog.setStandardButtons(QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel)
         return confirm_dialog
 
@@ -1435,11 +1471,12 @@ class ImageProcessingTabHandler(QThread):
         # Close the progress dialog
         self.progress_dialog.close()
         self.batch_processing_done.emit()
-
-        # # Switch to the final tab
-        # self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.results_tab))
         logging.info("Batch processing completed.")
-        logging.info("******************************Result Session******************************")
+
+        # Switch to the final tab
+        if self.model.if_finalise_analysis:
+            self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.results_tab))
+            logging.info("******************************Result Session******************************")
 
     def on_worker_error(self, error_message: str) -> None:
         """Handle errors that occur in the worker thread.
@@ -2077,6 +2114,7 @@ class MainHandler:
         self.gui.manual_adjustment_button.clicked.connect(self.tab3_ellipse_manual_adjustment)
         self.gui.preview_button2.clicked.connect(self.tab3_confirm_parameter_for_filtering)
         self.gui.batch_process_button.clicked.connect(self.tab3_ask_if_batch)
+        self.gui.finalise_analysis_button.clicked.connect(self.tab3_finalise_analysis)
 
     def disconnect_gui_and_handlers(self) -> None:
         """Disconnect GUI components from their respective handlers.
@@ -2119,6 +2157,7 @@ class MainHandler:
         self.gui.manual_adjustment_button.clicked.disconnect(self.tab3_ellipse_manual_adjustment)
         self.gui.preview_button2.clicked.disconnect(self.tab3_confirm_parameter_for_filtering)
         self.gui.batch_process_button.clicked.disconnect(self.tab3_ask_if_batch)
+        self.gui.finalise_analysis_button.clicked.disconnect(self.tab3_finalise_analysis)
 
         # results tab
         self.gui.pdf_checkbox.stateChanged.disconnect(self.results_tab_handler.generate_histogram)
@@ -2403,6 +2442,14 @@ class MainHandler:
         tab handler, which prompts the user and initiates batch processing if confirmed.
         """
         self.image_processing_tab_handler.ask_if_batch()
+
+    def tab3_finalise_analysis(self) -> None:
+        """Finalise the analysis and save the results.
+
+        Delegates the finalise analysis functionality to the image processing tab handler,
+        which saves the results to the specified export path and updates the UI accordingly.
+        """
+        self.image_processing_tab_handler.finalise_analysis()
 
     def start_generate_histogram(self) -> None:
         """Generate histograms based on the processed ellipse properties.

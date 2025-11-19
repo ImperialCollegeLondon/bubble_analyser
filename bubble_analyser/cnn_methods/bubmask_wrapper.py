@@ -37,9 +37,9 @@ if str(BUBBLE_DIR) not in sys.path:
 
 try:
     # Import BubMask modules
-    from mrcnn import model as modellib
-    from bubble import BubbleConfig, _InfConfig, color_splash
-    import bubble
+    from bubble_analyser.mrcnn import model as modellib
+    from bubble_analyser.bubble import BubbleConfig, _InfConfig, color_splash
+    import bubble_analyser.bubble
 except ImportError as e:
     logging.error(f"Failed to import BubMask modules: {e}")
     raise ImportError(f"BubMask modules not found. Please ensure BubMask is properly installed. Error: {e}")

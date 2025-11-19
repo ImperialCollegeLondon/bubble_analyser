@@ -76,6 +76,16 @@ class MethodsHandler:
         modules = {}
         package_name = "bubble_analyser.methods"
 
+        if getattr(sys, "frozen", False):
+            logging.info("Running in frozen mode, loading modules explicitly")
+            try:
+                from bubble_analyser.methods import watershed_methods, bubmask_method
+                modules["watershed_methods"] = watershed_methods
+                modules["bubmask_method"] = bubmask_method
+            except ImportError as e:
+                logging.error(f"Error loading modules in frozen mode: {e}")
+            return modules
+
         try:
             logging.info(f"Loading modules from package: {package_name}")
             # For Python 3.9+
@@ -298,9 +308,9 @@ class Image:
             None
         """
         # Get resized grey and RGB version of the target image
-        self.img_grey, self.img_rgb = image_preprocess(self.raw_img_path, target_width)
+        self.img_grey, self.img_rgb = image_preprocess(self.raw_img_path, self.resample)
         if self.bknd_img_path is not None:
-            self.bknd_img, _ = image_preprocess(self.bknd_img_path, target_width)
+            self.bknd_img, _ = image_preprocess(self.bknd_img_path, self.resample)
 
         return
 
@@ -323,9 +333,10 @@ class Image:
                     processing_instance,
                 ) in self.methods_handler.all_classes.items():
                     if name == algorithm_name:
-                        self.target_width = cast(int, params["target_width"])
-                        self._img_preprocess(self.target_width)
-                        logging.info(f"target_width used: {self.target_width}")
+                        # self.target_width = cast(int, params["target_width"])
+                        self.resample = params["resample"]  # type: ignore
+                        self._img_preprocess(self.resample)
+                        logging.info(f"resample used for preprocess: {self.resample}")
                         # processing_instance
                         if name == "BubMask (Deep Learning)":
                             processing_instance.initialize_processing(  # type: ignore

@@ -49,14 +49,15 @@ class TestWatershed(WatershedSegmentation):
                 Must include 'target_width', 'element_size', 'connectivity', and 'threshold_value'.
         """
         self.name = "NEW method"
+        self.description = "A new watershed method still in developing and testing (by Yiyang)."
         self.img_grey_dt_thresh: MatLike
         self.grad_img_rgb: MatLike
         self.sure_fg: npt.NDArray[np.uint8]
         self.sure_bg: npt.NDArray[np.uint8]
         self.unknown: MatLike
         self.threshold_value: float
-        # self.resample: float
-        self.target_width: int
+        self.resample: float
+        # self.target_width: int
         self.if_bknd_img: bool = False
         self.if_gaussianblur: bool = False
         self.ksize: int = 3
@@ -69,7 +70,8 @@ class TestWatershed(WatershedSegmentation):
             dict[str, float | int]: Dictionary containing the required parameters and their current values.
         """
         return {
-            "target_width": self.target_width,
+            # "target_width": self.target_width,
+            "resample": self.resample,
             "threshold_value": self.threshold_value,
             "if_gaussianblur": self.if_gaussianblur,
             "ksize": self.ksize,
@@ -118,7 +120,8 @@ class TestWatershed(WatershedSegmentation):
             params (dict[str, float | int]): Dictionary containing parameters to update.
                 Must include 'target_width', 'element_size', 'connectivity', and 'threshold_value'.
         """
-        self.target_width = cast(int, params["target_width"])
+        # self.target_width = cast(int, params["target_width"])
+        self.resample = cast(float, params["resample"])
         self.max_thresh = params["max_thresh"]
         self.min_thresh = params["min_thresh"]
         self.step_size = params["step_size"]
@@ -300,9 +303,11 @@ class IterativeWatershed(WatershedSegmentation):
                 and 'step_size'.
         """
         self.name = "Iterative Watershed"
+        self.description = "An advanced watershed method that iteratively applies thresholds to detect objects at different intensity levels (by Yiyang)."
         self.max_thresh: float
         self.min_thresh: float
         self.step_size: float
+        self.resample: float
         self.update_params(params)
         self.output_mask_for_labels: MatLike
         self.no_overlap_count: int = 0  # Track number of "no overlap" occurrences
@@ -315,7 +320,8 @@ class IterativeWatershed(WatershedSegmentation):
             dict[str, float | int]: Dictionary containing the required parameters and their current values.
         """
         return {
-            "target_width": self.target_width,
+            # "target_width": self.target_width,
+            "resample": self.resample,
             "element_size": self.element_size,
             "connectivity": self.connectivity,
             "max_thresh": self.max_thresh,
@@ -362,7 +368,8 @@ class IterativeWatershed(WatershedSegmentation):
                 Must include 'target_width', 'element_size', 'connectivity', 'max_thresh',
                 'min_thresh', and 'step_size'.
         """
-        self.target_width = params["target_width"]
+        # self.target_width = params["target_width"]
+        self.resample = params["resample"]  # type: ignore
         self.element_size = params["element_size"]  # type: ignore
         self.connectivity = params["connectivity"]  # type: ignore
         self.max_thresh = params["max_thresh"]
@@ -493,11 +500,14 @@ class NormalWatershed(WatershedSegmentation):
                 Must include 'target_width', 'element_size', 'connectivity', and 'threshold_value'.
         """
         self.name = "Default"
+        self.description = "The default watershed method that applies thresholds by three times (by Yiyang)."
+
         self.img_grey_dt_thresh: MatLike
         self.sure_fg: npt.NDArray[np.uint8]
         self.sure_bg: npt.NDArray[np.uint8]
         self.unknown: MatLike
         self.threshold_value: float
+        self.resample: float
         self.target_width: int
         self.if_bknd_img: bool = False
         self.update_params(params)
@@ -509,7 +519,8 @@ class NormalWatershed(WatershedSegmentation):
             dict[str, float | int]: Dictionary containing the required parameters and their current values.
         """
         return {
-            "target_width": self.target_width,
+            # "target_width": self.target_width,
+            "resample": self.resample,
             "high_thresh": self.high_thresh,
             "mid_thresh": self.mid_thresh,
             "low_thresh": self.low_thresh,
@@ -555,7 +566,8 @@ class NormalWatershed(WatershedSegmentation):
             params (dict[str, float | int]): Dictionary containing parameters to update.
                 Must include 'target_width', 'element_size', 'connectivity', and 'threshold_value'.
         """
-        self.target_width = cast(int, params["target_width"])
+        # self.target_width = cast(int, params["target_width"])
+        self.resample = params["resample"]  # type: ignore
         self.high_thresh = params["high_thresh"]
         self.mid_thresh = params["mid_thresh"]
         self.low_thresh = params["low_thresh"]

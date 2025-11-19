@@ -198,8 +198,8 @@ class EllipseHandler:
                 continue
 
             # Calculate circle properties in mm
-            # area = prop.area * (mm2px**2)
-            area = prop.area
+            area = prop.area * (mm2px**2)
+            # area = prop.area
             eccentricity = prop.eccentricity
             solidity = prop.solidity
 
@@ -234,6 +234,7 @@ class EllipseHandler:
                         continue
 
         self.labels_after_filtering = new_labels
+
         return new_labels
 
     def fill_ellipse_labels(
@@ -273,120 +274,8 @@ class EllipseHandler:
                         print(f"Warning: Skipping invalid ellipse with dimensions: width={ellipse_width}, height={ellipse_height}")
 
         self.ellipses = ellipses  # type: ignore
-        self.ellipses = self.filter_ellipses_properties()
 
         return self.ellipses  # type: ignore
-
-    def filter_ellipses_properties(self) -> list[tuple[tuple[float, float], tuple[int, int], float]]:
-        """Filter ellipses based on the same criteria as filter_labels_properties.
-        
-        This function applies the same filtering standards as filter_labels_properties
-        but works directly on the ellipse format. It filters based on:
-        - Geometric properties (eccentricity, solidity approximation, area)
-        - Size constraints (min/max area)
-        - Boundary touching (ellipses touching image edges are removed)
-        - Optional area-based circle finding criteria
-        
-        Returns:
-            list[tuple[tuple[float, float], tuple[int, int], float]]: Filtered list of ellipses.
-        """
-        if not hasattr(self, 'ellipses') or not self.ellipses:
-            logging.warning("No ellipses to filter")
-            return []
-            
-        if self.img_rgb is None:
-            raise ValueError("img_rgb is not initialized")
-            
-        # Get image dimensions for boundary detection
-        img_height, img_width = self.img_rgb.shape[:2]
-        
-        # Get filtering parameters
-        max_eccentricity = float(self.filter_param_dict_1["max_eccentricity"])
-        min_solidity = float(self.filter_param_dict_1["min_solidity"])
-        min_size = float(self.filter_param_dict_1["min_size"])
-        max_size = float(self.filter_param_dict_1["max_size"])
-        
-        if_find_circles_str = self.filter_param_dict_2.get("find_circles(Y/N)")
-        if_find_circles = (if_find_circles_str == "Y")
-        
-        L_min = float(self.filter_param_dict_2["L_minA"])
-        L_max = float(self.filter_param_dict_2["L_maxA"])
-        s_max = float(self.filter_param_dict_2["s_maxA"])
-        s_min = float(self.filter_param_dict_2["s_minA"])
-        
-        filtered_ellipses = []
-        
-        for i, ellipse in enumerate(self.ellipses):
-            center, axes, angle = ellipse
-            ellipse_width, ellipse_height = axes
-            center_x, center_y = center
-            
-            # Calculate ellipse properties
-            major_axis = max(ellipse_width, ellipse_height)
-            minor_axis = min(ellipse_width, ellipse_height)
-            area = np.pi * (major_axis / 2) * (minor_axis / 2)
-            
-            # Calculate eccentricity
-            if major_axis > 0:
-                eccentricity = np.sqrt(1 - (minor_axis / major_axis) ** 2)
-            else:
-                eccentricity = 1.0  # Invalid ellipse
-            
-            # Approximate solidity (for ellipses, we'll use a simplified approach)
-            # Solidity = area / convex_hull_area, for ellipses this is approximately 1.0
-            # We'll use a more conservative approach based on aspect ratio
-            aspect_ratio = major_axis / minor_axis if minor_axis > 0 else float('inf')
-            # Approximate solidity based on how circular the ellipse is
-            solidity = 1.0 / (1.0 + (aspect_ratio - 1.0) * 0.1)  # Simplified approximation
-            
-            # Check boundary touching
-            # Calculate ellipse bounding box approximation
-            half_major = major_axis / 2
-            half_minor = minor_axis / 2
-            # Simple bounding box approximation (not rotated)
-            margin = max(half_major, half_minor)
-            
-            touches_boundary = (
-                center_x - margin <= 0 or  # Touches left edge
-                center_y - margin <= 0 or  # Touches top edge
-                center_x + margin >= img_width or  # Touches right edge
-                center_y + margin >= img_height  # Touches bottom edge
-            )
-            
-            if touches_boundary:
-                logging.info(f"Ellipse {i} is being filtered out because it touches the image boundary")
-                continue
-            
-            logging.info(f"Ellipse {i} - Eccentricity: {eccentricity:.3f}, Solidity: {solidity:.3f}, Area: {area:.1f}")
-            
-            # Check if the ellipse properties meet the thresholds
-            if not (eccentricity <= max_eccentricity and solidity >= min_solidity and min_size <= area <= max_size):
-                logging.info(f"Ellipse {i} is being filtered out because the following parameter(s) are not qualified:")
-                if eccentricity > max_eccentricity:
-                    logging.info(f"Eccentricity (too large): {eccentricity:.3f}")
-                if solidity < min_solidity:
-                    logging.info(f"Solidity (too small): {solidity:.3f}")
-                if area < min_size:
-                    logging.info(f"Area (too small): {area:.1f}")
-                if area > max_size:
-                    logging.info(f"Area (too large): {area:.1f}")
-                continue
-            
-            if not min_size <= area <= max_size:
-                logging.info(f"Ellipse {i} is being filtered out because area criteria not met:")
-                logging.info(f"Value of the ellipse's area: {area:.1f}")
-                logging.info(f"Value of the min_size: {min_size}")
-                logging.info(f"Value of the max_size: {max_size}")
-                continue
-
-            # If all checks pass, keep the ellipse
-            filtered_ellipses.append(ellipse)
-        
-        # Update the ellipses list
-        self.ellipses = filtered_ellipses
-        logging.info(f"Ellipse filtering complete: {len(filtered_ellipses)} ellipses remaining out of {len(self.ellipses) if hasattr(self, 'ellipses') else 0} original")
-        
-        return filtered_ellipses
 
     def overlay_ellipses_on_image(self, thickness: int = 5) -> npt.NDArray[np.int_]:
         """Overlay detected ellipses on the RGB image.
@@ -487,10 +376,10 @@ class EllipseHandler:
 
         for ellipse in self.ellipses:
             center, axes, angle = ellipse
-            # major_axis_length = max(axes) * mm2px
-            # minor_axis_length = min(axes) * mm2px
-            major_axis_length = max(axes)
-            minor_axis_length = min(axes)
+            major_axis_length = max(axes) * mm2px
+            minor_axis_length = min(axes) * mm2px
+            # major_axis_length = max(axes)
+            # minor_axis_length = min(axes)
             area = np.pi * (major_axis_length / 2) * (minor_axis_length / 2)
             perimeter = np.pi * (
                 3 * (major_axis_length + minor_axis_length)

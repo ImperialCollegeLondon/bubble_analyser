@@ -397,6 +397,14 @@ class MainWindow(QMainWindow):
         second_column_layout.addWidget(self.param_sandbox1)
         second_column_layout.addWidget(self.preview_button1)
 
+        # Algorithm Description Label
+        self.algorithm_description_label = QLabel("")
+        self.algorithm_description_label.setWordWrap(True)
+        self.algorithm_description_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.algorithm_description_label.setStyleSheet("color: #666; font-style: italic; margin-top: 10px;")
+        second_column_layout.addWidget(self.algorithm_description_label)
+        second_column_layout.addStretch()
+
         # ----------- Third Column: Processed Image After Filtering and Sandbox ------
 
         third_column_frame = QFrame()
@@ -424,7 +432,8 @@ class MainWindow(QMainWindow):
         self.manual_adjustment_button = QPushButton("Manual adjustment")
         # self.manual_adjustment_button.clicked.connect(self.main_handler.tab3_ellipse_manual_adjustment)
         self.batch_process_button = QPushButton("Batch process images")
-        self.batch_process_button.setStyleSheet("background-color: red; color: white;")
+        self.finalise_analysis_button = QPushButton("Finalise analysis")
+        self.finalise_analysis_button.setStyleSheet("background-color: red; color: white;")
         # self.preview_button2.clicked.connect(self.main_handler.tab3_confirm_parameter_for_filtering)
         # self.batch_process_button.clicked.connect(self.main_handler.tab3_ask_if_batch)
 
@@ -435,6 +444,7 @@ class MainWindow(QMainWindow):
         third_column_layout.addWidget(self.preview_button2)
         third_column_layout.addWidget(self.manual_adjustment_button)
         third_column_layout.addWidget(self.batch_process_button)
+        third_column_layout.addWidget(self.finalise_analysis_button)
 
         # Add the columns to the main layout
         layout.addWidget(first_column_frame, 0, 0)
@@ -477,9 +487,10 @@ class MainWindow(QMainWindow):
         histogram_by_label = QLabel("Histogram by:")
         self.histogram_by = QComboBox()
         self.histogram_by.addItems(["Count", "Volume"])
-        # Connect to auto-update
 
+        # Connect to auto-update
         self.options_label = QLabel("Histogram Options:")
+        
         # PDF/CDF Checkboxes
         self.pdf_checkbox = QCheckBox("PDF")
         self.cdf_checkbox = QCheckBox("CDF")

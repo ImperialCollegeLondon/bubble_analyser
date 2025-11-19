@@ -81,6 +81,9 @@ class Config(BaseModel):  # type: ignore
     target_width: PositiveInt
     target_width_range: tuple[PositiveInt, PositiveInt]
 
+    resample: PositiveFloat
+    resample_range: tuple[PositiveFloat, PositiveFloat]
+
     max_thresh: PositiveFloat
     min_thresh: PositiveFloat
     step_size: PositiveFloat
@@ -177,6 +180,9 @@ class Config(BaseModel):  # type: ignore
 
         if not (self.min_size <= self.max_size):
             raise ValueError("min_size must be less than max_size")
+
+        if not (self.resample_range[0] <= self.resample <= self.resample_range[1]):
+            raise ValueError("Chosen resample is not within valid range (0.01, 1)")
 
         return self
 
