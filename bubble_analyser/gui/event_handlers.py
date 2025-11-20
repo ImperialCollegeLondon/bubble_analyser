@@ -915,6 +915,8 @@ class ImageProcessingTabHandler(QThread):
         # And achieve all the available methods' names
 
         logging.info("Initializing algorithm combo box...")
+        self.gui.algorithm_combo.clear()
+        
         for algorithm, params in self.model.all_methods_n_params.items():
             logging.info(f"Initialize algorithm: {algorithm}")
             self.algorithm_list.append(algorithm)

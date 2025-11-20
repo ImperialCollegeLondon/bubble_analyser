@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import cast
 
 import cv2
+import sys
 import numpy as np
 from cv2.typing import MatLike
 from numpy import typing as npt
@@ -35,8 +36,6 @@ from bubble_analyser.processing import (
     calculate_px2mm,
 )
 from bubble_analyser.cnn_methods.bubmask_wrapper import BubMaskDetector, BubMaskConfig
-
-
 
 class WorkerThread(QThread):
     """A worker thread class for handling batch image processing operations.
@@ -112,8 +111,6 @@ class WorkerThread(QThread):
         """
         self.processing_done.emit()
 
-
-
 class Step1Worker(QThread):
     """A worker thread for handling the first step of image processing (segmentation).
 
@@ -144,8 +141,6 @@ class Step1Worker(QThread):
             import traceback
             error_details = traceback.format_exc()
             self.error.emit(f"Error in Step 1 processing: {str(e)}\n\n{error_details}")
-
-
 
 class Step2Worker(QThread):
     """A worker thread for handling the second step of image processing (filtering).
@@ -255,6 +250,12 @@ class InputFilesModel:
                 self.image_list_full_path.append(os.path.join(folder_path, file_name))
         return self.image_list, self.image_list_full_path
 
+    def reset(self) -> None:
+        """Reset the model to its initial state."""
+        self.image_list = []
+        self.image_list_full_path = []
+        self.image_list_full_path_in_path = []
+        self.sample_images_confirmed = False
 
 class CalibrationModel:
     """A model class for managing calibration data and pixel-to-millimeter conversion.
@@ -330,6 +331,9 @@ class CalibrationModel:
         """
         self.calibration_confirmed = True
 
+    def reset(self) -> None:
+        """Reset the model to its initial state."""
+        self.calibration_confirmed = False
 
 class ImageProcessingModel:
     """A model class for managing image processing operations and parameters.
@@ -385,7 +389,16 @@ class ImageProcessingModel:
         self.adjuster: EllipseAdjuster
         self.ellipses_properties: list[list[dict[str, float | str]]] = []
 
-        base_dir = "/Users/eeeyoung/Bubbles/bubble_analyser"
+        # Determine base directory for weights
+        if getattr(sys, "frozen", False):
+            # If the application is run as a bundle (PyInstaller)
+            base_dir = sys._MEIPASS
+        else:
+            # If running in development mode
+            # component_handlers.py is in bubble_analyser/gui/
+            # We need to go up two levels to get to the project root
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
         self.weights_path: str = os.path.join(base_dir, "bubble_analyser/weights/mask_rcnn_bubble.h5")
         self.confidence_threshold: float = 0.9
         self.target_width: int = 1000
