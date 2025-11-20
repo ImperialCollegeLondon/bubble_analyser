@@ -138,6 +138,3 @@ dmypy.json
 # Vim temp files
 **/*~
 **/*.swp
-
-# local test files
-tests/
