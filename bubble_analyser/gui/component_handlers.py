@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import cast
 
 import cv2
+import sys
 import numpy as np
 from cv2.typing import MatLike
 from numpy import typing as npt
@@ -34,7 +35,7 @@ from bubble_analyser.processing import (
     MethodsHandler,
     calculate_px2mm,
 )
-
+from bubble_analyser.cnn_methods.bubmask_wrapper import BubMaskDetector, BubMaskConfig
 
 class WorkerThread(QThread):
     """A worker thread class for handling batch image processing operations.
@@ -46,6 +47,7 @@ class WorkerThread(QThread):
     Attributes:
         update_progress (Signal[int]): Signal emitted to update the progress bar.
         processing_done (Signal): Signal emitted when processing is complete.
+        error_occurred (Signal[str]): Signal emitted when an error occurs during processing.
         if_save (bool): Flag indicating whether to save processed images.
         save_path (Path): Directory path where processed images should be saved.
         model (ImageProcessingModel): The model containing image processing logic.
@@ -53,6 +55,7 @@ class WorkerThread(QThread):
 
     update_progress = Signal(int)
     processing_done = Signal()
+    error_occurred = Signal(str)
 
     def __init__(  # type: ignore
         self,
@@ -80,7 +83,18 @@ class WorkerThread(QThread):
         This method is called when the thread starts. It delegates the actual processing
         to the model's batch_process_images method.
         """
-        self.model.batch_process_images(self, self.if_save, self.save_path)
+        try:
+            self.model.batch_process_images(self, self.if_save, self.save_path)
+        except Exception as e:
+            # Log the error instead of showing a dialog from worker thread
+            import logging
+            import traceback
+            
+            error_details = traceback.format_exc()
+            logging.error(f"Error in worker thread: {error_details}")
+            
+            # Emit error signal to be handled on the main thread
+            self.error_occurred.emit(f"Processing error: {str(e)}\n\nDetails:\n{error_details}")
 
     def update_progress_bar(self, value: int) -> None:
         """Emit a signal to update the progress bar in the GUI.
@@ -96,6 +110,68 @@ class WorkerThread(QThread):
         This method is called when all images have been processed.
         """
         self.processing_done.emit()
+
+class Step1Worker(QThread):
+    """A worker thread for handling the first step of image processing (segmentation).
+
+    This class runs the segmentation process in a background thread and emits
+    signals upon completion or error.
+    """
+
+    finished = Signal(object)  # Emits the processed image (numpy array)
+    error = Signal(str)
+
+    def __init__(self, model, index: int) -> None:
+        """Initialize the Step 1 worker.
+
+        Args:
+            model (ImageProcessingModel): The image processing model.
+            index (int): The index of the image to process.
+        """
+        super().__init__()
+        self.model = model
+        self.index = index
+
+    def run(self) -> None:
+        """Execute the segmentation process."""
+        try:
+            img = self.model.step_1_main(self.index)
+            self.finished.emit(img)
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            self.error.emit(f"Error in Step 1 processing: {str(e)}\n\n{error_details}")
+
+class Step2Worker(QThread):
+    """A worker thread for handling the second step of image processing (filtering).
+
+    This class runs the filtering process in a background thread and emits
+    signals upon completion or error.
+    """
+
+    finished = Signal(object)  # Emits the processed image (numpy array)
+    error = Signal(str)
+
+    def __init__(self, model, index: int) -> None:
+        """Initialize the Step 2 worker.
+
+        Args:
+            model (ImageProcessingModel): The image processing model.
+            index (int): The index of the image to process.
+        """
+        super().__init__()
+        self.model = model
+        self.index = index
+
+    def run(self) -> None:
+        """Execute the filtering process."""
+        try:
+            img = self.model.step_2_main(self.index)
+            self.finished.emit(img)
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            self.error.emit(f"Error in Step 2 processing: {str(e)}\n\n{error_details}")
 
 
 class InputFilesModel:
@@ -174,6 +250,12 @@ class InputFilesModel:
                 self.image_list_full_path.append(os.path.join(folder_path, file_name))
         return self.image_list, self.image_list_full_path
 
+    def reset(self) -> None:
+        """Reset the model to its initial state."""
+        self.image_list = []
+        self.image_list_full_path = []
+        self.image_list_full_path_in_path = []
+        self.sample_images_confirmed = False
 
 class CalibrationModel:
     """A model class for managing calibration data and pixel-to-millimeter conversion.
@@ -218,7 +300,6 @@ class CalibrationModel:
     def get_px2mm_ratio(  # type: ignore
         self,
         pixel_img_path: Path,
-        img_resample: float = 0.5,
         gui=None,  # type: ignore
     ) -> tuple[float, MatLike]:
         """Calculate the pixel-to-millimeter ratio from a calibration image.
@@ -238,7 +319,7 @@ class CalibrationModel:
             float: The calculated pixel-to-millimeter ratio.
             img_drawed_line: The ruler image with the drawn line.
         """
-        __, self.px2mm, img_drawed_line = calculate_px2mm(pixel_img_path, img_resample, gui)  # type: ignore
+        __, self.px2mm, img_drawed_line = calculate_px2mm(pixel_img_path, gui)  # type: ignore
 
         return self.px2mm, img_drawed_line
 
@@ -250,6 +331,9 @@ class CalibrationModel:
         """
         self.calibration_confirmed = True
 
+    def reset(self) -> None:
+        """Reset the model to its initial state."""
+        self.calibration_confirmed = False
 
 class ImageProcessingModel:
     """A model class for managing image processing operations and parameters.
@@ -288,12 +372,15 @@ class ImageProcessingModel:
 
         self.algorithm: str = ""
         self.params_config: Config = params
+        self.if_batched: bool = False
+        self.if_finalise_analysis: bool = False
 
         self.filter_param_dict_1: dict[str, float | str]
         self.filter_param_dict_2: dict[str, float | str]
 
         self.px2mm_display: float
         self.if_bknd: bool
+        self.bubble_count: int = 0
         self.bknd_img_path: Path = cast(Path, None)
 
         self.img_path_list: list[Path] = []
@@ -302,11 +389,29 @@ class ImageProcessingModel:
         self.adjuster: EllipseAdjuster
         self.ellipses_properties: list[list[dict[str, float | str]]] = []
 
+        # Determine base directory for weights
+        if getattr(sys, "frozen", False):
+            # If the application is run as a bundle (PyInstaller)
+            base_dir = sys._MEIPASS
+        else:
+            # If running in development mode
+            # component_handlers.py is in bubble_analyser/gui/
+            # We need to go up two levels to get to the project root
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+        self.weights_path: str = os.path.join(base_dir, "bubble_analyser/weights/mask_rcnn_bubble.h5")
+        self.confidence_threshold: float = 0.9
+        self.target_width: int = 1000
+        self.image_min_dim: int = 192*2
+        self.image_max_dim: int = 384*2
+        self.detector: BubMaskDetector | None = None
+
         logging.info("------------------------------Intializing Parameters------------------------------")
         self.methods_handler: MethodsHandler
         self.filter_param_handler: FilterParamHandler
         self.initialize_methods_handlers()
         self.initialize_filter_param_handler()
+        self.initialize_cnn_model()
 
     def initialize_methods_handlers(self) -> None:
         """Initialize the methods handler and retrieve available processing methods.
@@ -334,6 +439,21 @@ class ImageProcessingModel:
         self.filter_param_dict_1, self.filter_param_dict_2 = self.filter_param_handler.get_needed_params()
         logging.info(f"Basic filtering parameters: {self.filter_param_dict_1}")
         logging.info(f"Find circles filtering parameters: {self.filter_param_dict_2}")
+
+    def initialize_cnn_model(self) -> None:
+        # Initialize BubMask detector if not already done
+        if self.detector is None and self.weights_path:
+            try:
+                config = BubMaskConfig(
+                    confidence_threshold=self.confidence_threshold,
+                    image_min_dim=self.image_min_dim,
+                    image_max_dim=self.image_max_dim
+                )
+                self.detector = BubMaskDetector(self.weights_path, config)
+                logging.info("BubMask detector initialized successfully")
+            except Exception as e:
+                logging.error(f"Failed to initialize BubMask detector: {e}")
+                raise
 
     def confirm_folder_selection(self, folder_path_list: list[Path]) -> None:
         """Set the list of image paths to be processed.
@@ -390,6 +510,8 @@ class ImageProcessingModel:
                 )
             if_img = True
 
+            self.img_dict[name].set_fine_tuned()
+
         return if_img, img_before_filter, img_after_filter
 
     def load_filter_params(self, dict_params_1: dict[str, float | str], dict_params_2: dict[str, float | str]) -> None:
@@ -429,7 +551,7 @@ class ImageProcessingModel:
         name = self.img_path_list[index]
         self.initialize_image(name)
 
-        self.img_dict[name].processing_image_before_filtering(self.algorithm)
+        self.img_dict[name].processing_image_before_filtering(self.algorithm, self.detector)
         return self.img_dict[name].labels_on_img_before_filter
 
     def step_2_main(self, index: int) -> npt.NDArray[np.int_]:
@@ -478,6 +600,9 @@ class ImageProcessingModel:
         logging.info("Ellipse handler finished.")
         return image.ellipses_on_images
 
+    def label_image_fine_tuned(self, image: Image) -> None:
+        image.set_fine_tuned()
+
     def handle_ellipse_adjustment_finished(self, image: Image) -> None:
         """Process the results of manual ellipse adjustment.
 
@@ -509,39 +634,54 @@ class ImageProcessingModel:
             save_path (Path, optional): Directory to save processed images.
                 Defaults to None.
         """
+        self.bubble_count = 0
+        self.ellipses_properties = []
+        logging.info("------------------------------Batch Process Started------------------------------")
+        
         # Process every image in the list
         for index, name in enumerate(self.img_path_list):
-            logging.info("------------------------------Batch Process Started------------------------------")
+            logging.info(f"***Processing image {index + 1}/{len(self.img_path_list)}: {name}***")
             logging.info(f"If saving processed images: {if_save}")
+            base_name = os.path.splitext(os.path.basename(name))[0]
+
+            img_fit_ellipse_name = cast(Path, f"{base_name}_circles.png")
+            img_rgb_name = cast(Path, f"{base_name}_rgb.png")
+            img_mt_name = cast(Path, f"{base_name}_mt.png")
+            self.initialize_image(name)
             self.initialize_image(name)
             self.img_dict[name].load_filter_params(self.filter_param_dict_1, self.filter_param_dict_2)
 
-            # Check if the image has been manually fine tuned
-            if self.img_dict[name].if_fine_tuned:
-                # If fine tuned, save the ellipses properties
-                # and skip the processing
-                logging.info(f"This image has been fine tuned: {name}, no need to process again.")
+            if self.if_finalise_analysis:
                 self.img_dict[name].get_ellipse_properties()
                 self.ellipses_properties.append(self.img_dict[name].ellipses_properties)
 
+            else:
+                if not self.img_dict[name].if_fine_tuned:
+                    self.img_dict[name].processing_image_before_filtering(self.algorithm, self.detector)
+                    self.img_dict[name].filtering_processing()
+                    self.ellipses_properties.append(self.img_dict[name].ellipses_properties)
+
+                else:
+                    logging.info(f"This image has been fine tuned: {name}, no need to process again.")
+                    self.img_dict[name].get_ellipse_properties()
+                    self.ellipses_properties.append(self.img_dict[name].ellipses_properties)
+
                 if if_save:
-                    self.save_processed_images(self.img_dict[name].ellipses_on_images, name, save_path)
-                    self.save_labelled_masks(self.img_dict[name].labelled_ellipses_mask, name, save_path)
-                    continue
+                    if self.img_dict[name].ellipses_on_images is not None:
+                        self.save_processed_images(self.img_dict[name].ellipses_on_images, img_fit_ellipse_name, save_path)
+                    if self.img_dict[name].img_rgb is not None:
+                        self.save_processed_images(self.img_dict[name].img_rgb, img_rgb_name, save_path)
+                    if self.img_dict[name].img_grey_morph_eroded is not None:
+                        self.save_processed_images(self.img_dict[name].img_grey_morph_eroded, img_mt_name, save_path, if_mt = True)
+                    if self.img_dict[name].labelled_ellipses_mask is not None:
+                        self.save_labelled_masks(self.img_dict[name].labelled_ellipses_mask, cast(Path, base_name), save_path)
 
-            self.img_dict[name].processing_image_before_filtering(self.algorithm)
-            self.img_dict[name].filtering_processing()
-
-            self.ellipses_properties.append(self.img_dict[name].ellipses_properties)
-
-            if if_save:
-                self.save_processed_images(self.img_dict[name].ellipses_on_images, name, save_path)
-                self.save_labelled_masks(self.img_dict[name].labelled_ellipses_mask, name, save_path)
 
             worker_thread.update_progress_bar(index + 1)
         worker_thread.on_processing_done()
+        self.if_batched = True # Make finalise analysis true
 
-    def save_processed_images(self, img: npt.NDArray[np.int_], img_name: Path, save_path: Path) -> None:
+    def save_processed_images(self, img: npt.NDArray[np.int_], img_name: Path, save_path: Path, if_mt = False) -> None:
         """Save the processed image with detected ellipses to disk.
 
         Args:
@@ -553,8 +693,11 @@ class ImageProcessingModel:
         new_name = os.path.join(save_path, file_name)
         logging.info(f"Processed image with ellipses saving to: {new_name}")
         try:
-            cv2.imwrite(new_name, img)
-            logging.info("saved")
+            if if_mt:
+                cv2.imwrite(new_name, img*255)
+            else:
+                cv2.imwrite(new_name, img)
+                logging.info("saved")
         except Exception as e:
             logging.info(e)
 

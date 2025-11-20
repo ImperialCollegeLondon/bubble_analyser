@@ -71,7 +71,7 @@ class WatershedSegmentation:
             bknd_img: Optional background image for background subtraction.
         """
         self.img_grey: npt.NDArray[np.int_] = img_grey
-        self.img_grey_thresholded: npt.NDArray[np.bool_]
+        self.img_grey_morph_thresholded: npt.NDArray[np.bool_]
         self.img_grey_morph: npt.NDArray[np.int_]
         self.img_grey_eroded: MatLike
         self.img_grey_dt: MatLike
@@ -117,7 +117,8 @@ class WatershedSegmentation:
         Computes the distance transform using L2 (Euclidean) distance metric.
         The result is converted to uint8 type for further processing.
         """
-        dt_image = cv2.distanceTransform(image, cv2.DIST_L2, self.element_size)  # type: ignore
+        image_uint8 = image.astype(np.uint8)
+        dt_image = cv2.distanceTransform(image_uint8, cv2.DIST_L2, self.element_size)  # type: ignore
         return dt_image
 
     def _initialize_labels(self, img: MatLike) -> MatLike:
@@ -158,8 +159,21 @@ class WatershedSegmentation:
             for contour in contours:
                 if len(contour) >= 5:
                     ellipse = cv2.fitEllipse(contour)
-                    cv2.ellipse(mask, ellipse, color=255, thickness=-1)  # type: ignore
-                    ellipses.append(ellipse)
+                    # Validate ellipse parameters before drawing
+                    center, axes, angle = ellipse
+                    ellipse_width, ellipse_height = axes
+                    
+                    # Skip invalid ellipses (width or height <= 0)
+                    if ellipse_width <= 0 or ellipse_height <= 0:
+                        continue
+                        
+                    try:
+                        cv2.ellipse(mask, ellipse, color=255, thickness=-1)  # type: ignore
+                        ellipses.append(ellipse)
+                    except cv2.error as e:
+                        # Log the error and skip this ellipse
+                        print(f"Warning: Skipping invalid ellipse {ellipse}: {e}")
+                        continue
 
             labelled_img[mask == 255] = current_label
             current_label += 1

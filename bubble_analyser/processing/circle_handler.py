@@ -49,6 +49,7 @@ class FilterParamHandler:
             "max_eccentricity": params_dict["max_eccentricity"],
             "min_solidity": params_dict["min_solidity"],
             "min_size": params_dict["min_size"],
+            "max_size": params_dict["max_size"],
         }
         self.filter_param_dict_2: dict[str, float | str] = {
             "find_circles(Y/N)": params_dict["if_find_circles"],
@@ -151,13 +152,11 @@ class EllipseHandler:
     def filter_labels_properties(self) -> npt.NDArray[np.int_]:
         """Filters out regions (circles) from the labeled image based on their properties.
 
-        Args:
-            labels: A labeled image where each distinct region is represented by a unique
-            label.
-            px2mm: The pixel-to-mm conversion factor.
-            min_eccentricity: The minimum allowed eccentricity for circles.
-            min_solidity: The minimum allowed solidity for circles.
-            min_circularity: The minimum allowed circularity for circles.
+        This function filters regions based on:
+        - Geometric properties (eccentricity, solidity, area)
+        - Size constraints (min/max area)
+        - Boundary touching (regions touching image edges are removed)
+        - Optional area-based circle finding criteria
 
         Returns:
             Updated labels array where regions not meeting the thresholds are removed.
@@ -167,6 +166,12 @@ class EllipseHandler:
         properties = measure.regionprops(labels)
         new_labels = np.copy(labels) if labels is not None else np.array([])
         mm2px = self.mm2px
+        
+        # Get image dimensions for boundary detection
+        if labels is not None:
+            img_height, img_width = labels.shape
+        else:
+            raise ValueError("labels_before_filtering is None")
 
         cast(float, self.filter_param_dict_1["max_eccentricity"])
         max_eccentricity = float(self.filter_param_dict_1["max_eccentricity"])
@@ -174,6 +179,7 @@ class EllipseHandler:
         min_solidity = float(self.filter_param_dict_1["min_solidity"])
         cast(float, self.filter_param_dict_1["min_size"])
         min_size = float(self.filter_param_dict_1["min_size"])
+        max_size = float(self.filter_param_dict_1["max_size"])
 
         if_find_circles_str = self.filter_param_dict_2.get("find_circles(Y/N)")
 
@@ -193,11 +199,12 @@ class EllipseHandler:
 
             # Calculate circle properties in mm
             area = prop.area * (mm2px**2)
+            # area = prop.area
             eccentricity = prop.eccentricity
             solidity = prop.solidity
 
             # Check if the circle properties meet the thresholds
-            if not (eccentricity <= max_eccentricity and solidity >= min_solidity and area >= min_size):
+            if not (eccentricity <= max_eccentricity and solidity >= min_solidity and min_size <= area <= max_size):
                 # Remove the region by setting it to 1 (background)
                 new_labels[new_labels == prop.label] = 1
                 logging.info("A circle is being filtered out because the following parameter(s) are not qualified:")
@@ -207,6 +214,8 @@ class EllipseHandler:
                     logging.info(f"Solidity (too small): {solidity}")
                 if area < min_size:
                     logging.info(f"Area (too small): {area}")
+                if area > max_size:
+                    logging.info(f"Area (too large): {area}")
 
             else:
                 if if_find_circles:
@@ -214,7 +223,7 @@ class EllipseHandler:
                     if not ((L_min <= area <= L_max) or (s_min <= area <= s_max)):
                         logging.info(
                             "A circle is being filtered out because one or \
-more of the following parameter(s) are not qualified:"
+                            more of the following parameter(s) are not qualified:"
                         )
                         logging.info(f"Value of the circle's area: {area}")
                         logging.info(f"Value of the L_min: {L_min}")
@@ -225,6 +234,7 @@ more of the following parameter(s) are not qualified:"
                         continue
 
         self.labels_after_filtering = new_labels
+
         return new_labels
 
     def fill_ellipse_labels(
@@ -250,33 +260,62 @@ more of the following parameter(s) are not qualified:"
             for contour in contours:
                 if len(contour) >= 5:
                     ellipse = cv2.fitEllipse(contour)
-                    ellipses.append(ellipse)
+                    # Validate ellipse parameters before adding to list
+                    center, axes, angle = ellipse
+                    ellipse_width, ellipse_height = axes
+                    
+                    # Only add valid ellipses (width and height > 0, finite values)
+                    if (ellipse_width > 0 and ellipse_height > 0 and 
+                        np.isfinite(ellipse_width) and np.isfinite(ellipse_height) and
+                        np.isfinite(center[0]) and np.isfinite(center[1]) and
+                        np.isfinite(angle)):
+                        ellipses.append(ellipse)
+                    else:
+                        print(f"Warning: Skipping invalid ellipse with dimensions: width={ellipse_width}, height={ellipse_height}")
 
         self.ellipses = ellipses  # type: ignore
-        return ellipses  # type: ignore
 
-    def overlay_ellipses_on_image(self, thickness: int = 20) -> npt.NDArray[np.int_]:
+        return self.ellipses  # type: ignore
+
+    def overlay_ellipses_on_image(self, thickness: int = 5) -> npt.NDArray[np.int_]:
         """Overlay detected ellipses on the RGB image.
-
+    
         Draws each detected ellipse on the RGB image with the specified thickness.
         Also creates a labeled image from the ellipses.
-
+    
         Args:
             thickness (int, optional): Thickness of the ellipse outlines. Defaults to 20.
-
+    
         Returns:
             npt.NDArray[np.int_]: The RGB image with ellipses overlaid.
         """
         if self.img_rgb is None:
             raise ValueError("img_rgb is not initialized")
         ellipse_image = self.img_rgb.copy()
-
+    
         for ellipse in self.ellipses:
-            cv2.ellipse(ellipse_image, ellipse, (0, 0, 255), thickness)  # type: ignore
+            # Validate ellipse parameters before drawing
+            center, axes, angle = ellipse
+            ellipse_width, ellipse_height = axes
+            
+            # Check if ellipse dimensions are valid (positive, finite values)
+            if (ellipse_width > 0 and ellipse_height > 0 and thickness > 0 and
+                np.isfinite(ellipse_width) and np.isfinite(ellipse_height) and
+                np.isfinite(center[0]) and np.isfinite(center[1]) and
+                np.isfinite(angle)):
+                try:
+                    cv2.ellipse(ellipse_image, ellipse, (0, 0, 255), thickness)  # type: ignore
+                except cv2.error as e:
+                    logging.warning(f"Failed to draw ellipse {ellipse}: {e}")
+                    continue
+            else:
+                logging.warning(f"Invalid ellipse dimensions: width={ellipse_width}, height={ellipse_height}, thickness={thickness}")
+                continue
+                
         self.ellipses_on_image = ellipse_image
-
+    
         self.create_labelled_image_from_ellipses()
-
+    
         return ellipse_image
 
     def create_labelled_image_from_ellipses(self) -> npt.NDArray[np.int_]:
@@ -291,19 +330,33 @@ more of the following parameter(s) are not qualified:"
         """
         if self.img_rgb is None:
             raise ValueError("img_rgb is not initialized")
-        height, width = self.img_rgb.shape[:2]
+        img_height, img_width = self.img_rgb.shape[:2]
 
         # Initialize the labelled image with background label (1)
-        labelled_img = np.ones((height, width), dtype=np.int_)
+        labelled_img = np.ones((img_height, img_width), dtype=np.int_)
 
         current_label = 2  # Start labelling from 2
         for ellipse in self.ellipses:
+            # Validate ellipse parameters before drawing
+            center, axes, angle = ellipse
+            ellipse_width, ellipse_height = axes
+            
+            # Skip invalid ellipses (width or height <= 0, inf, or nan)
+            if (ellipse_width <= 0 or ellipse_height <= 0 or 
+                not np.isfinite(ellipse_width) or not np.isfinite(ellipse_height)):
+                continue
+                
             # Create a mask for the current ellipse.
-            mask = np.zeros((height, width), dtype=np.uint8)
-            cv2.ellipse(mask, ellipse, color=255, thickness=-1)  # type: ignore
-            # Assign the current label to all pixels inside the ellipse.
-            labelled_img[mask == 255] = current_label
-            current_label += 1
+            mask = np.zeros((img_height, img_width), dtype=np.uint8)
+            try:
+                cv2.ellipse(mask, ellipse, color=255, thickness=-1)  # type: ignore
+                # Assign the current label to all pixels inside the ellipse.
+                labelled_img[mask == 255] = current_label
+                current_label += 1
+            except cv2.error as e:
+                # Log the error and skip this ellipse
+                print(f"Warning: Skipping invalid ellipse {ellipse}: {e}")
+                continue
 
         return labelled_img
 
@@ -325,6 +378,8 @@ more of the following parameter(s) are not qualified:"
             center, axes, angle = ellipse
             major_axis_length = max(axes) * mm2px
             minor_axis_length = min(axes) * mm2px
+            # major_axis_length = max(axes)
+            # minor_axis_length = min(axes)
             area = np.pi * (major_axis_length / 2) * (minor_axis_length / 2)
             perimeter = np.pi * (
                 3 * (major_axis_length + minor_axis_length)

@@ -54,7 +54,117 @@ from PySide6.QtWidgets import (
     QTabWidget,
     QVBoxLayout,
     QWidget,
+    QDialog,
 )
+from PySide6.QtCore import QTimer
+from PySide6.QtGui import QPainter, QPen, QColor
+
+
+class SpinnerWidget(QWidget):
+    """A custom widget that displays a rotating spinner animation.
+
+    This widget draws a rotating arc to indicate an indeterminate process.
+    """
+
+    def __init__(self, parent: QWidget = None) -> None:
+        """Initialize the spinner widget.
+
+        Args:
+            parent (QWidget, optional): The parent widget. Defaults to None.
+        """
+        super().__init__(parent)
+        self.angle = 0
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.rotate)
+        self.timer.start(50)  # Update every 50ms
+        self.setFixedSize(100, 100)
+
+    def rotate(self) -> None:
+        """Update the rotation angle and trigger a repaint."""
+        self.angle = (self.angle + 10) % 360
+        self.update()
+
+    def paintEvent(self, event) -> None:
+        """Paint the spinner.
+
+        Args:
+            event: The paint event.
+        """
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        
+        width = self.width()
+        height = self.height()
+        
+        # Center point
+        center_x = width / 2
+        center_y = height / 2
+        
+        # Radius
+        radius = min(width, height) / 2 - 10
+        
+        # Draw background circle (optional, faint)
+        pen = QPen(QColor(200, 200, 200))
+        pen.setWidth(6)
+        painter.setPen(pen)
+        painter.drawEllipse(int(center_x - radius), int(center_y - radius), int(radius * 2), int(radius * 2))
+        
+        # Draw rotating arc
+        pen.setColor(QColor(66, 135, 245))  # Blue color
+        painter.setPen(pen)
+        
+        # Draw a 90 degree arc
+        span_angle = 90 * 16 # Angles are in 1/16th of a degree
+        start_angle = -self.angle * 16
+        
+        painter.drawArc(int(center_x - radius), int(center_y - radius), int(radius * 2), int(radius * 2), start_angle, span_angle)
+
+
+class ProcessingDialog(QDialog):
+    """A modal dialog that displays a processing spinner.
+
+    This dialog is used to block user interaction while a background task is running.
+    """
+
+    def __init__(self, parent: QWidget = None, title: str = "Processing...") -> None:
+        """Initialize the processing dialog.
+
+        Args:
+            parent (QWidget, optional): The parent widget. Defaults to None.
+            title (str, optional): The title of the dialog. Defaults to "Processing...".
+        """
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setModal(True)
+        self.setFixedSize(200, 230)  # Increased height for time label
+        
+        # Remove the close button
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowCloseButtonHint)
+
+        layout = QVBoxLayout(self)
+        
+        self.spinner = SpinnerWidget(self)
+        layout.addWidget(self.spinner, 0, Qt.AlignmentFlag.AlignCenter)
+        
+        self.label = QLabel(title, self)
+        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.label)
+
+        # Time elapsed label
+        self.time_label = QLabel("Time elapsed: 0s", self)
+        self.time_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.time_label)
+
+        # Timer for updating elapsed time
+        self.elapsed_time = 0
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_time)
+        self.timer.start(1000)  # Update every second
+
+    def update_time(self) -> None:
+        """Update the elapsed time label."""
+        self.elapsed_time += 1
+        self.time_label.setText(f"Time elapsed: {self.elapsed_time}s")
 
 
 class MplCanvas(FigureCanvas):
@@ -397,6 +507,14 @@ class MainWindow(QMainWindow):
         second_column_layout.addWidget(self.param_sandbox1)
         second_column_layout.addWidget(self.preview_button1)
 
+        # Algorithm Description Label
+        self.algorithm_description_label = QLabel("")
+        self.algorithm_description_label.setWordWrap(True)
+        self.algorithm_description_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.algorithm_description_label.setStyleSheet("color: #666; font-style: italic; margin-top: 10px;")
+        second_column_layout.addWidget(self.algorithm_description_label)
+        second_column_layout.addStretch()
+
         # ----------- Third Column: Processed Image After Filtering and Sandbox ------
 
         third_column_frame = QFrame()
@@ -424,7 +542,8 @@ class MainWindow(QMainWindow):
         self.manual_adjustment_button = QPushButton("Manual adjustment")
         # self.manual_adjustment_button.clicked.connect(self.main_handler.tab3_ellipse_manual_adjustment)
         self.batch_process_button = QPushButton("Batch process images")
-        self.batch_process_button.setStyleSheet("background-color: red; color: white;")
+        self.finalise_analysis_button = QPushButton("Finalise analysis")
+        self.finalise_analysis_button.setStyleSheet("background-color: red; color: white;")
         # self.preview_button2.clicked.connect(self.main_handler.tab3_confirm_parameter_for_filtering)
         # self.batch_process_button.clicked.connect(self.main_handler.tab3_ask_if_batch)
 
@@ -435,6 +554,7 @@ class MainWindow(QMainWindow):
         third_column_layout.addWidget(self.preview_button2)
         third_column_layout.addWidget(self.manual_adjustment_button)
         third_column_layout.addWidget(self.batch_process_button)
+        third_column_layout.addWidget(self.finalise_analysis_button)
 
         # Add the columns to the main layout
         layout.addWidget(first_column_frame, 0, 0)
@@ -477,9 +597,10 @@ class MainWindow(QMainWindow):
         histogram_by_label = QLabel("Histogram by:")
         self.histogram_by = QComboBox()
         self.histogram_by.addItems(["Count", "Volume"])
-        # Connect to auto-update
 
+        # Connect to auto-update
         self.options_label = QLabel("Histogram Options:")
+        
         # PDF/CDF Checkboxes
         self.pdf_checkbox = QCheckBox("PDF")
         self.cdf_checkbox = QCheckBox("CDF")

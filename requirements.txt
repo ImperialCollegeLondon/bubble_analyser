@@ -1,0 +1,31 @@
+# Main dependencies from bubble_analyser pyproject.toml
+matplotlib>=3.9.1
+toml>=0.10.2
+numpy<=1.26.4
+scikit-image>=0.25.1
+scipy>=1.14.0
+pydantic>=2.11.1
+typing-extensions>=4.12.2
+pyside6>=6.8.3
+datetime>=5.5
+numba>=0.60.0
+opencv-python>=4.11.0.86
+mkdocstrings-python>=0.18
+pandas>=2.3.2
+openpyxl>=3.1.5
+h5py>=3.14.0
+xlsxwriter>=3.2.5
+
+# Development dependencies (optional - uncomment if needed)
+# pytest>=8.3.3
+# pytest-cov>=6.0.0
+# pytest-mypy>=1.0.0
+# pytest-mock>=3.7.0
+# pre-commit>=4.2.0
+# ruff>=0.11.2
+# types-toml>=0.10.8.20240310
+# pyinstaller>=6.12.0
+
+# Documentation dependencies (optional - uncomment if needed)
+# mkdocs>=1.6.1
+# mkdocs-material>=9.6.11

@@ -35,6 +35,7 @@ from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
+    QComboBox,
     QCheckBox,
     QDialog,
     QFileDialog,
@@ -53,9 +54,11 @@ from bubble_analyser.gui import (
     CalibrationModel,
     ImageProcessingModel,
     InputFilesModel,
+    Step1Worker,
+    Step2Worker,
     WorkerThread,
 )
-from bubble_analyser.gui.gui import MainWindow as MainWindow
+from bubble_analyser.gui.gui import MainWindow, ProcessingDialog
 from bubble_analyser.processing import Config, cv2_to_qpixmap
 
 
@@ -397,7 +400,6 @@ class CalibrationTabHandler:
             params (Config): Configuration parameters containing default values.
         """
         self.calibration_model: CalibrationModel = calibration_model
-        self.img_resample: float = params.resample
         self.px_img_path: Path = params.ruler_img_path
 
     def load_gui(self, gui: MainWindow) -> None:
@@ -474,10 +476,10 @@ class CalibrationTabHandler:
         img_path: Path = cast(Path, self.gui.pixel_img_name.text())
         if os.path.exists(img_path):
             px2mm, img_drawed_line = self.calibration_model.get_px2mm_ratio(
-                pixel_img_path=img_path, img_resample=self.img_resample, gui=self.gui
+                pixel_img_path=img_path, gui=self.gui
             )
 
-            px2mm_display = px2mm / self.img_resample
+            px2mm_display = px2mm
 
             self.gui.manual_px_mm_input.setText(f"{px2mm_display:.3f}")
 
@@ -704,9 +706,23 @@ class ImageProcessingTabHandler(QThread):
                 self._show_warning("Invalid Connectivity", str(e))
                 return False
 
-        if name == "resample":
+        # if name == "if_gaussianblur":
+        #     try:
+        #         new_checker.if_gaussianblur = cast(str, value)
+        #     except ValidationError as e:
+        #         self._show_warning("Invalid if_gaussianblur value", str(e))
+        #         return False
+                
+        if name == "ksize":
             try:
-                new_checker.resample = cast(float, value)
+                new_checker.ksize = cast(int, value)
+            except ValidationError as e:
+                self._show_warning("Invalid ksize value", str(e))
+                return False
+
+        if name == "target_width":
+            try:
+                new_checker.target_width = cast(int, value)
             except ValidationError as e:
                 self._show_warning("Invalid Resample Factor", str(e))
                 return False
@@ -867,6 +883,9 @@ class ImageProcessingTabHandler(QThread):
             logging.info("Preview processed image enabled for current image.")
             self.gui.preview_processed_images_button.setEnabled(True)
 
+            # Below is only for cnn version
+            self.preview_processed_images()
+
         else:
             self.gui.preview_processed_images_button.setEnabled(False)
 
@@ -881,6 +900,7 @@ class ImageProcessingTabHandler(QThread):
         if if_img:
             self.update_label_before_filtering(img_before_filter)
             self.update_process_image_preview(img_after_filter)
+
         else:
             self._show_warning("Image Not Found", "Image has not been fully processed yet.")
 
@@ -895,6 +915,8 @@ class ImageProcessingTabHandler(QThread):
         # And achieve all the available methods' names
 
         logging.info("Initializing algorithm combo box...")
+        self.gui.algorithm_combo.clear()
+        
         for algorithm, params in self.model.all_methods_n_params.items():
             logging.info(f"Initialize algorithm: {algorithm}")
             self.algorithm_list.append(algorithm)
@@ -902,6 +924,14 @@ class ImageProcessingTabHandler(QThread):
         self.gui.algorithm_combo.addItems(self.algorithm_list)
         self.update_model_algorithm(self.algorithm_list[0])
         logging.info("Algorithm combo box initialized.")
+        
+        # Update description
+        try:
+            description = getattr(self.model.methods_handler.all_classes[self.algorithm_list[0]], "description", "No description available.")
+            self.gui.algorithm_description_label.setText(description)
+        except Exception as e:
+            logging.error(f"Error updating description: {e}")
+            self.gui.algorithm_description_label.setText("No description available.")
 
     def load_parameter_table_1(self, algorithm: str) -> None:
         """Load the parameter table with values for the selected algorithm.
@@ -915,8 +945,11 @@ class ImageProcessingTabHandler(QThread):
         self.current_algorithm = algorithm
         logging.info(f"Current choosing algorithm: {self.current_algorithm}")
 
+        self.gui.param_sandbox1.clear()
+
         for algorithm_name, params in self.model.all_methods_n_params.items():
             if algorithm_name == self.current_algorithm:
+
                 self.gui.param_sandbox1.setRowCount(len(params))
 
                 for (
@@ -924,7 +957,72 @@ class ImageProcessingTabHandler(QThread):
                     (name, value),
                 ) in enumerate(params.items()):
                     self.gui.param_sandbox1.setItem(row, 0, QTableWidgetItem(name))
-                    self.gui.param_sandbox1.setItem(row, 1, QTableWidgetItem(str(value)))
+
+                    # Special handling for if_gaussianblur parameter
+                    if name == "if_gaussianblur":
+                        # Create a dropdown with True/False options
+                        combo_box = QComboBox()
+                        combo_box.addItems(["True", "False"])
+                        
+                        # Set the current value
+                        current_value = str(value)
+                        if current_value in ["True", "False"]:
+                            combo_box.setCurrentText(str(current_value))
+                        else:
+                            # Default to False if value is not boolean
+                            combo_box.setCurrentText("False")
+                        
+                        # Set the combo box as the cell widget
+                        self.gui.param_sandbox1.setCellWidget(row, 1, combo_box)
+                    
+                    elif name == "element_size":
+                        combo_box = QComboBox()
+                        combo_box.addItems(["0","3","5"])
+
+                        # Set the current value
+                        current_value = str(value)
+                        if current_value in ["0","3","5"]:
+                            combo_box.setCurrentText(current_value)
+                        else:
+                            # Default to False if value is not boolean
+                            combo_box.setCurrentText("3")
+                        
+                        # Set the combo box as the cell widget
+                        self.gui.param_sandbox1.setCellWidget(row, 1, combo_box)
+                    
+                    elif name == "connectivity":
+                        combo_box = QComboBox()
+                        combo_box.addItems(["4","8"])
+
+                        # Set the current value
+                        current_value = str(value)
+                        if current_value in ["4","8"]:
+                            combo_box.setCurrentText(current_value)
+                        else:
+                            # Default to False if value is not boolean
+                            combo_box.setCurrentText("8")
+                        
+                        # Set the combo box as the cell widget
+                        self.gui.param_sandbox1.setCellWidget(row, 1, combo_box)
+
+                    elif name == "ksize":
+                        combo_box = QComboBox()
+                        combo_box.addItems(["1","3","5","7"])
+
+                        # Set the current value
+                        current_value = str(value)
+                        if current_value in ["1","3","5","7"]:
+                            combo_box.setCurrentText(current_value)
+                        else:
+                            # Default to False if value is not boolean
+                            combo_box.setCurrentText("3")
+                        
+                        # Set the combo box as the cell widget
+                        self.gui.param_sandbox1.setCellWidget(row, 1, combo_box)
+
+                    else:
+                        # Regular text item for other parameters
+                        self.gui.param_sandbox1.setItem(row, 1, QTableWidgetItem(str(value)))
 
                 break
 
@@ -945,6 +1043,14 @@ class ImageProcessingTabHandler(QThread):
 
         # Update params in the model
         self.update_model_algorithm(new_algorithm)
+
+        # Update description
+        try:
+            description = getattr(self.model.methods_handler.all_classes[new_algorithm], "description", "No description available.")
+            self.gui.algorithm_description_label.setText(description)
+        except Exception as e:
+            logging.error(f"Error updating description: {e}")
+            self.gui.algorithm_description_label.setText("No description available.")
 
     def update_model_algorithm(self, algorithm: str) -> None:
         """Update the algorithm in the processing model.
@@ -1053,8 +1159,29 @@ class ImageProcessingTabHandler(QThread):
         and updates the preview with the results.
         """
         logging.info("------------------------------Processing Started------------------------------")
-        step_1_img = self.model.step_1_main(self.current_index)
-        self.update_label_before_filtering(step_1_img)
+        
+        # Create and show processing dialog
+        self.processing_dialog = ProcessingDialog(self.gui, "Processing Step 1...")
+        self.processing_dialog.show()
+        
+        # Create and start worker thread
+        self.step_1_worker = Step1Worker(self.model, self.current_index)
+        self.step_1_worker.finished.connect(self.on_step_1_finished)
+        self.step_1_worker.error.connect(self.on_worker_error)
+        self.step_1_worker.start()
+
+    def on_step_1_finished(self, img: npt.NDArray[np.int_]) -> None:
+        """Handle completion of step 1 processing.
+
+        Args:
+            img (npt.NDArray[np.int_]): The processed image.
+        """
+        # Close dialog
+        if hasattr(self, 'processing_dialog'):
+            self.processing_dialog.close()
+            
+        self.update_label_before_filtering(img)
+        logging.info("Step 1 processing completed.")
 
     def update_label_before_filtering(self, img: npt.NDArray[np.int_]) -> None:
         """Update the preview of the image after the first processing step.
@@ -1184,8 +1311,28 @@ class ImageProcessingTabHandler(QThread):
         Calls the model's step_2_main method to apply filtering to the current image
         and updates the preview with the results.
         """
-        step_2_img = self.model.step_2_main(self.current_index)
-        self.update_process_image_preview(step_2_img)
+        # Create and show processing dialog
+        self.processing_dialog = ProcessingDialog(self.gui, "Processing Step 2...")
+        self.processing_dialog.show()
+        
+        # Create and start worker thread
+        self.step_2_worker = Step2Worker(self.model, self.current_index)
+        self.step_2_worker.finished.connect(self.on_step_2_finished)
+        self.step_2_worker.error.connect(self.on_worker_error)
+        self.step_2_worker.start()
+
+    def on_step_2_finished(self, img: npt.NDArray[np.int_]) -> None:
+        """Handle completion of step 2 processing.
+
+        Args:
+            img (npt.NDArray[np.int_]): The processed image.
+        """
+        # Close dialog
+        if hasattr(self, 'processing_dialog'):
+            self.processing_dialog.close()
+            
+        self.update_process_image_preview(img)
+        logging.info("Step 2 processing completed.")
 
     # -------Third Column Functions: Manual Ellipse Adjustment-------------------------
     def ellipse_manual_adjustment(self) -> None:
@@ -1215,26 +1362,48 @@ class ImageProcessingTabHandler(QThread):
         If confirmed, initiates the batch processing operation.
         """
         self.if_save_processed_images = False
-        confirm_dialog = self.create_confirm_dialog()
+        confirm_dialog = self.create_confirm_dialog("Batch Processing Confirmation", 
+        "The parameters will be applied to all the images. Confirm to process.")
         self.create_save_images_checkbox(confirm_dialog)
 
         response = confirm_dialog.exec()
 
         if response == QMessageBox.StandardButton.Ok:
-            self.check_for_export_path.emit()
-            # self.batch_process_images()
+            self.check_for_export_path.emit() # Let Main handler check if export being properlly set
+
         else:
             logging.info("Batch processing canceled.")
 
-    def create_confirm_dialog(self) -> QMessageBox:
+    def finalise_analysis(self) -> None:
+        """Finalise the analysis by setting the if_finish_analysis flag to True."""
+        if not self.model.if_batched:
+            QMessageBox.information(self.gui, "Information", "Please finish at least one time of batch processing first.")
+            return
+        
+        else:
+            confirm_dialog = self.create_confirm_dialog("Finalise Analysis Confirmation", 
+            "The analysis will be finalised. \n Make sure you are satisfied with the segmentation of all images. Confirm to finalise.")
+            self.create_save_images_checkbox(confirm_dialog)
+
+            response = confirm_dialog.exec()
+
+            if response == QMessageBox.StandardButton.Ok:
+                self.model.if_finalise_analysis = True
+                self.check_for_export_path.emit() # Let Main handler check if export being properlly set
+
+            else:
+                logging.info("Analysis finalisation canceled.")
+
+
+    def create_confirm_dialog(self, title: str, text: str) -> QMessageBox:
         """Create a confirmation dialog for batch processing.
 
         Returns:
             QMessageBox: The configured confirmation dialog.
         """
         confirm_dialog = QMessageBox(self.gui)
-        confirm_dialog.setWindowTitle("Batch Processing Confirmation")
-        confirm_dialog.setText("The parameters will be applied to all the images. Confirm to process.")
+        confirm_dialog.setWindowTitle(title)
+        confirm_dialog.setText(text)
         confirm_dialog.setStandardButtons(QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel)
         return confirm_dialog
 
@@ -1305,6 +1474,7 @@ class ImageProcessingTabHandler(QThread):
         self.worker_thread = WorkerThread(self.model, self.if_save_processed_images, self.export_handler.save_path)
         self.worker_thread.update_progress.connect(self.update_progress_bar)
         self.worker_thread.processing_done.connect(self.on_processing_done)
+        self.worker_thread.error_occurred.connect(self.on_worker_error)
         self.worker_thread.start()
 
     def show_progress_window(self, num_images: int) -> None:
@@ -1345,12 +1515,35 @@ class ImageProcessingTabHandler(QThread):
         """
         # Close the progress dialog
         self.progress_dialog.close()
+        self.preview_processed_images()
         self.batch_processing_done.emit()
+        logging.info("Batch processing completed.")
 
         # Switch to the final tab
-        self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.results_tab))
-        logging.info("Batch processing completed.")
-        logging.info("******************************Result Session******************************")
+        if self.model.if_finalise_analysis:
+            self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.results_tab))
+            logging.info("******************************Result Session******************************")
+
+    def on_worker_error(self, error_message: str) -> None:
+        """Handle errors that occur in the worker thread.
+
+        This method is called on the main thread when the worker thread encounters an error.
+
+        Args:
+            error_message (str): The error message and details from the worker thread.
+        """
+        # Close the progress dialog if it's open
+        if hasattr(self, 'progress_dialog') and self.progress_dialog:
+            self.progress_dialog.close()
+
+        # Show error dialog on main thread
+        QMessageBox.critical(
+            self.gui,
+            "Processing Error",
+            "An error occurred during batch processing:\n\n" + error_message
+        )
+        
+        logging.error(f"Worker thread error handled on main thread: {error_message}")
 
 
 class ResultsTabHandler(QThread):
@@ -1510,14 +1703,14 @@ class ResultsTabHandler(QThread):
                 weights=volumes,  # Use volumes as weights
             )
             # Set graph labels for volume histogram
-            self.gui.histogram_canvas.axes.set_xlabel("Equivalent diameter [mm]")
-            self.gui.histogram_canvas.axes.set_ylabel("Volume [mm³]")
+            self.gui.histogram_canvas.axes.set_xlabel("Equivalent diameter [px]")
+            self.gui.histogram_canvas.axes.set_ylabel("Volume [px³]")
         else:  # Count histogram (default)
             counts, bins, patches = self.gui.histogram_canvas.axes.hist(
                 equivalent_diameters_array, bins=num_bins, range=(x_min, x_max)
             )
             # Set graph labels for count histogram
-            self.gui.histogram_canvas.axes.set_xlabel("Equivalent diameter [mm]")
+            self.gui.histogram_canvas.axes.set_xlabel("Equivalent diameter [px]")
             self.gui.histogram_canvas.axes.set_ylabel("Count [#]")
 
         dxy_x_power: int = int(self.gui.dxy_x_input.text())
@@ -1686,11 +1879,11 @@ class ResultsTabHandler(QThread):
         """Save both ellipse data and config data to a single Excel file with multiple sheets."""
         # Prepare ellipse data
         ellipse_headers = [
-            "major_axis_length(mm)",
-            "minor_axis_length(mm)",
-            "equivalent_diameter(mm)",
-            "area(mm2)",
-            "perimeter(mm)",
+            "major_axis_length(px)",
+            "minor_axis_length(px)",
+            "equivalent_diameter(px)",
+            "area(px2)",
+            "perimeter(px)",
             "eccentricity",
             "image name",
         ]
@@ -1755,9 +1948,7 @@ class ResultsTabHandler(QThread):
         summary_data = [
             ["d32", self.current_d32],
             ["d_mean", self.current_dmean],
-            ["dxy", self.current_dxy],
-            ["dxy_x_power", self.current_d_x_power],
-            ["dxy_y_power", self.current_d_y_power],
+            [f"d{self.current_d_x_power}{self.current_d_y_power}", self.current_dxy],
             ["number of bubbles", number_of_bubbles],
             ["number of photos", number_of_photos],
         ]
@@ -1888,7 +2079,20 @@ class MainHandler:
         logging.basicConfig(level=logging.INFO)
         logging.info("Initializing GUI...")
 
+        # Apply macOS-specific fixes
+        if sys.platform == "darwin":
+            # Set environment variable to fix Qt rendering issues on macOS
+            os.environ.setdefault("QT_MAC_WANTS_LAYER", "1")
+            # Disable native menu bar on macOS to prevent crashes
+            os.environ.setdefault("QT_MAC_NO_NATIVE_MENUBAR", "1")
+
         self.app = QApplication(sys.argv)
+        
+        # Set application properties for better macOS compatibility
+        self.app.setApplicationName("Bubble Analyser")
+        self.app.setApplicationVersion("1.0")
+        self.app.setOrganizationName("Bubble Analyser")
+        
         self.gui = MainWindow()
         self.gui.show()
 
@@ -1956,6 +2160,7 @@ class MainHandler:
         self.gui.manual_adjustment_button.clicked.connect(self.tab3_ellipse_manual_adjustment)
         self.gui.preview_button2.clicked.connect(self.tab3_confirm_parameter_for_filtering)
         self.gui.batch_process_button.clicked.connect(self.tab3_ask_if_batch)
+        self.gui.finalise_analysis_button.clicked.connect(self.tab3_finalise_analysis)
 
     def disconnect_gui_and_handlers(self) -> None:
         """Disconnect GUI components from their respective handlers.
@@ -1998,6 +2203,7 @@ class MainHandler:
         self.gui.manual_adjustment_button.clicked.disconnect(self.tab3_ellipse_manual_adjustment)
         self.gui.preview_button2.clicked.disconnect(self.tab3_confirm_parameter_for_filtering)
         self.gui.batch_process_button.clicked.disconnect(self.tab3_ask_if_batch)
+        self.gui.finalise_analysis_button.clicked.disconnect(self.tab3_finalise_analysis)
 
         # results tab
         self.gui.pdf_checkbox.stateChanged.disconnect(self.results_tab_handler.generate_histogram)
@@ -2087,7 +2293,7 @@ class MainHandler:
             if not self.export_handler.check_if_path_valid():
                 self.menubar_open_export_settings_dialog()
 
-                return
+                # return
 
         try:
             self.image_processing_tab_handler.batch_process_images()
@@ -2282,6 +2488,14 @@ class MainHandler:
         tab handler, which prompts the user and initiates batch processing if confirmed.
         """
         self.image_processing_tab_handler.ask_if_batch()
+
+    def tab3_finalise_analysis(self) -> None:
+        """Finalise the analysis and save the results.
+
+        Delegates the finalise analysis functionality to the image processing tab handler,
+        which saves the results to the specified export path and updates the UI accordingly.
+        """
+        self.image_processing_tab_handler.finalise_analysis()
 
     def start_generate_histogram(self) -> None:
         """Generate histograms based on the processed ellipse properties.

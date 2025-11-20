@@ -31,6 +31,7 @@ from pydantic import (
     StrictBool,
     StrictFloat,
     StrictStr,
+    StrictInt,
     model_validator,
 )
 
@@ -71,12 +72,15 @@ class Config(BaseModel):  # type: ignore
     # Default PARAMETERS
     # ------------------------------Segment Parameters-------------------------------
     # Morphological element used for binary operations, e.g. opening, closing, etc.
-    element_size: PositiveInt
+    element_size: StrictInt
 
     # Connectivity used, use 4 or 8
     connectivity: PositiveInt
 
     # Images can be resampled to make processing faster
+    target_width: PositiveInt
+    target_width_range: tuple[PositiveInt, PositiveInt]
+
     resample: PositiveFloat
     resample_range: tuple[PositiveFloat, PositiveFloat]
 
@@ -88,7 +92,10 @@ class Config(BaseModel):  # type: ignore
     mid_thresh: PositiveFloat
     low_thresh: PositiveFloat
 
+    threshold_value: PositiveFloat
     default_range: tuple[StrictFloat, PositiveFloat]
+    if_gaussianblur: StrictStr
+    ksize: PositiveInt
 
     # User input Image resolution
     px2mm: PositiveFloat
@@ -122,6 +129,8 @@ class Config(BaseModel):  # type: ignore
     # Also ignore too small bubbles (equivalent diameter in mm)
     min_size: PositiveFloat
     min_size_range: tuple[StrictFloat, StrictFloat]
+
+    max_size: PositiveFloat
 
     # Parameters for finding big and small bubbles
     if_find_circles: StrictStr
@@ -169,6 +178,12 @@ class Config(BaseModel):  # type: ignore
         if not (self.default_range[0] <= self.min_solidity <= self.default_range[1]):
             raise ValueError("Chosen min_solidity is not within valid range (0, 1)")
 
+        if not (self.min_size <= self.max_size):
+            raise ValueError("min_size must be less than max_size")
+
+        if not (self.resample_range[0] <= self.resample <= self.resample_range[1]):
+            raise ValueError("Chosen resample is not within valid range (0.01, 1)")
+
         return self
 
     @model_validator(mode="after")
@@ -189,17 +204,31 @@ class Config(BaseModel):  # type: ignore
         return self
 
     @model_validator(mode="after")
-    def check_connectivity(self) -> typing_extensions.Self:
-        """Validates the connectivity value.
+    def check_if_gaussianblue(self) -> typing_extensions.Self:
+        """Validates the if_gaussianblur value.
 
-        Ensures that the connectivity is one of the allowed values (4 or 8).
+        Ensures that the if_gaussianblur is one of the allowed values ('True' or 'False').
         If the value is not allowed, a ValueError is raised.
 
         Returns:
             Self: The instance itself, for method chaining.
         """
-        if not (self.connectivity == 4 or self.connectivity == 8):
-            raise ValueError("Connectivity must be 4 or 8")
+        if not (self.if_gaussianblur == 'True' or self.if_gaussianblur == 'False'):
+            raise ValueError("if_gaussianblur must be 'True' or 'False'")
+        return self
+
+    @model_validator(mode="after")
+    def check_ksize(self) -> typing_extensions.Self:
+        """Validates the ksize value.
+
+        Ensures that the ksize is a positive odd integer.
+        If the value is not valid, a ValueError is raised.
+
+        Returns:
+            Self: The instance itself, for method chaining.
+        """
+        if not (self.ksize > 0 and self.ksize % 2 == 1):
+            raise ValueError("ksize must be a positive odd integer")
         return self
 
     @model_validator(mode="after")
@@ -215,6 +244,14 @@ class Config(BaseModel):  # type: ignore
         low, high = self.min_thresh, self.max_thresh
         if not (high > low):
             raise ValueError("Max threshold must be greater than min threshold\n")
+        return self
+    
+    @model_validator(mode="after")
+    def check_threshold_value(self) -> typing_extensions.Self:
+        """Validates the threshold value for high_ppm method.
+        """
+        if not (0 <= self.threshold_value <= 1):
+            raise ValueError("threshold_value must be in the range [0, 1]\n")
         return self
 
     @model_validator(mode="after")
@@ -261,12 +298,12 @@ class Config(BaseModel):  # type: ignore
             ValueError: If the lower bound is greater than or equal to the upper bound.
         """
         # Get the lower and upper bounds of the resample range
-        low, high = self.resample_range
+        low, high = self.target_width_range
 
         # Check if the lower bound is less than the upper bound
         if low >= high:
             # Raise a ValueError if the bounds are in the wrong order
-            raise ValueError("Limits for the resample_range are in the wrong order")
+            raise ValueError("Limits for the target_width_range are in the wrong order")
 
         # Return the instance itself for method chaining
         return self

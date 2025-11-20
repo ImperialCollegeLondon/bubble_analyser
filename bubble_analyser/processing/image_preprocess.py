@@ -63,57 +63,50 @@ def get_RGB(image: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
     return cast(npt.NDArray[np.int_], imgRGB)
 
 
-def resize_for_RGB(image: npt.NDArray[np.int_], img_resample_factor: float) -> npt.NDArray[np.int_]:
-    """Resizes an image in RGB format based on the provided resampling factor.
+def resize_for_RGB(image: npt.NDArray[np.int_], resample: float) -> npt.NDArray[np.int_]:
+    """Resizes an image in RGB format to a target width while maintaining aspect ratio.
 
     Args:
         image (npt.NDArray): The input image in RGB format.
-        img_resample_factor (float): The factor by which the image will be resampled.
+        resample (float): The resample factor for the resized image.
 
     Returns:
         npt.NDArray: The resized image in RGB format.
     """
-    scale_percent = img_resample_factor * 100  # percent of original size
-    width = int(image.shape[1] * scale_percent / 100)
-    height = int(image.shape[0] * scale_percent / 100)
-    img_resample_dimension = (width, height)
-
-    image_resized = cv2.resize(image, img_resample_dimension, interpolation=cv2.INTER_AREA)
+    original_height, original_width = image.shape[:2]
+    aspect_ratio = original_height / original_width
+    target_width = int(original_width * resample)
+    target_height = int(target_width * aspect_ratio)
+    
+    image_resized = cv2.resize(image, (target_width, target_height), interpolation=cv2.INTER_AREA)
     return cast(npt.NDArray[np.int_], image_resized)
 
 
-def resize_for_original_image(image: npt.NDArray[np.int_], img_resample_factor: float) -> npt.NDArray[np.int_]:
-    """Resizes an image based on the provided resampling factor for original image.
+def resize_for_original_image(image: npt.NDArray[np.int_], resample: float) -> npt.NDArray[np.int_]:
+    """Resizes an image to a target width while maintaining aspect ratio.
 
     Args:
         image (npt.NDArray): The input image to be resized.
-        img_resample_factor (float): The factor by which the image will be resampled.
+        resample (float): The resample factor for the resized image.
 
     Returns:
         npt.NDArray: The resized image.
     """
-    # image = transform.resize(
-    #     image,
-    #     (
-    #         int(image.shape[0] * img_resample_factor),
-    #         int(image.shape[1] * img_resample_factor),
-    #     ),
-    #     anti_aliasing=True,
-    # )
-    # return image
-
+    original_height, original_width = image.shape[:2]
+    aspect_ratio = original_height / original_width
+    target_width = int(original_width * resample)
+    target_height = int(target_width * aspect_ratio)
+    
     resize_image: npt.NDArray[np.int_] = cv2.resize(
         image,
-        (0, 0),
-        fx=img_resample_factor,
-        fy=img_resample_factor,
+        (target_width, target_height),
         interpolation=cv2.INTER_AREA,
     )  # type: ignore
     return resize_image
 
 
-def image_preprocess(img_path: Path, img_resample: float) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]:
-    """Load an image, resizing it based on a provided resampling factor.
+def image_preprocess(img_path: Path, resample: float) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]:
+    """Load an image, resizing it to a target width while maintaining aspect ratio.
 
     The resized grayscale image (img) is for use in the following "default" watershed
     algorithm as a target image. And the RGB image (imgRGB) is for the visualization of
@@ -122,7 +115,7 @@ def image_preprocess(img_path: Path, img_resample: float) -> tuple[npt.NDArray[n
 
     Args:
         img_path (str): The file path of the image to preprocess.
-        img_resample (float): The resampling factor to apply to the image.
+        resample (float): The resample factor for the resized images.
 
     Returns:
         tuple[npt.NDArray, npt.NDArray]: A tuple containing the resized grayscale image
@@ -138,7 +131,7 @@ def image_preprocess(img_path: Path, img_resample: float) -> tuple[npt.NDArray[n
     logging.info(f"Time used for get_RGB:  {time.perf_counter() - start_time}")
 
     start_time = time.perf_counter()
-    image = resize_for_original_image(image, img_resample)
+    image = resize_for_original_image(image, resample)
     logging.info(f"Time used for resize_for_original_image:  {time.perf_counter() - start_time}")
 
     start_time = time.perf_counter()
@@ -146,7 +139,7 @@ def image_preprocess(img_path: Path, img_resample: float) -> tuple[npt.NDArray[n
     logging.info(f"Time used for get_greyscale:  {time.perf_counter() - start_time}")
 
     start_time = time.perf_counter()
-    image_RGB = resize_for_RGB(image_RGB, img_resample)
+    image_RGB = resize_for_RGB(image_RGB, resample)
     logging.info(f"Time used for resize_for_RGB:  {time.perf_counter() - start_time}")
 
     logging.info("Image preprocessing finished.")
@@ -154,18 +147,18 @@ def image_preprocess(img_path: Path, img_resample: float) -> tuple[npt.NDArray[n
 
 
 if __name__ == "__main__":
-    # Define the image path and resampling factor
+    # Define the image path and target width
     # img_path = Path("../../datafile/calibration_files/Background.png")
     # output_path_grey = Path("../../tests/background_image_grey.JPG")
     # output_path_rgb = Path("../../tests/background_image_rgb.JPG")
 
-    img_path = Path("../../tests/test_image_raw.JPG")
+    img_path = Path("../../tests/test_image_raw_30ppm.JPG")
     output_path_grey = Path("../../tests/test_image_grey.JPG")
     output_path_rgb = Path("../../tests/test_image_rgb.JPG")
 
-    img_resample = 0.5
+    target_width = 800  # Target width in pixels
 
-    img, img_rgb = image_preprocess(img_path, img_resample)
+    img, img_rgb = image_preprocess(img_path, target_width)
     img_grey = get_greyscale(img)
     # Save the output images
     img_grey_path = Path(output_path_grey)

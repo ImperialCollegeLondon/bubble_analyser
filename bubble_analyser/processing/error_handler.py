@@ -8,26 +8,48 @@ import logging
 import sys
 import traceback
 
-from PySide6.QtWidgets import QMessageBox
+from PySide6.QtCore import QMetaObject, Qt, QThread
+from PySide6.QtWidgets import QApplication, QMessageBox
 
 
 def show_error_dialog(title: str, message: str, details: str | None = None) -> None:
     """Display an error message in a dialog box.
+
+    This function is thread-safe and can be called from any thread.
 
     Args:
         title: The title of the error dialog.
         message: The main error message to display.
         details: Optional detailed error information (e.g., traceback).
     """
-    error_box = QMessageBox()
-    error_box.setIcon(QMessageBox.Icon.Critical)
-    error_box.setWindowTitle(title)
-    error_box.setText(message)
+    def _show_dialog() -> None:
+        """Internal function to show the dialog on the main thread."""
+        app = QApplication.instance()
+        if app is None:
+            # No QApplication instance, can't show dialog
+            return
+            
+        error_box = QMessageBox()
+        error_box.setIcon(QMessageBox.Icon.Critical)
+        error_box.setWindowTitle(title)
+        error_box.setText(message)
 
-    if details:
-        error_box.setDetailedText(details)
+        if details:
+            error_box.setDetailedText(details)
 
-    error_box.exec()
+        error_box.exec()
+
+    # Check if we're on the main thread
+    if QThread.currentThread() == QApplication.instance().thread():
+        # We're on the main thread, show dialog directly
+        _show_dialog()
+    else:
+        # We're on a worker thread, invoke on main thread
+        QMetaObject.invokeMethod(
+            QApplication.instance(),
+            _show_dialog,
+            Qt.ConnectionType.QueuedConnection
+        )
 
 
 def exception_handler(exctype: type[BaseException], value: BaseException, tb) -> None:  # type: ignore
