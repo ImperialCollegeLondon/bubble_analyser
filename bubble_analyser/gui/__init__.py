@@ -9,6 +9,8 @@ results.
 from bubble_analyser.gui.component_handlers import (
     CalibrationModel,
     ImageProcessingModel,
+    Step1Worker,
+    Step2Worker,
     InputFilesModel,
     WorkerThread,
 )

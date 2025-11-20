@@ -105,6 +105,7 @@ class EllipseAdjuster(QMainWindow):
         self.ellipses: list[tuple[tuple[float, float], tuple[int, int], float]] = ellipse_list.copy()
         self.B = img_rgb.copy()
         self.window_width = 1200
+        self.line_width = 2
         self.dot_size = 3 
 
         # Control panel setup
@@ -112,12 +113,12 @@ class EllipseAdjuster(QMainWindow):
         control_layout = QVBoxLayout(control_panel)
 
         # Delete button
-        self.delete_btn = QPushButton("Delete")
+        self.delete_btn = QPushButton("Delete (D)")
         self.delete_btn.clicked.connect(self.delete_selected_ellipse)
         control_layout.addWidget(self.delete_btn)
 
         # Add a circle button
-        self.add_circle_btn = QPushButton("Add a circle")
+        self.add_circle_btn = QPushButton("Add a circle (A)")
         self.add_circle_btn.clicked.connect(self.add_circle_button_clicked)
         control_layout.addWidget(self.add_circle_btn)
 
@@ -125,6 +126,29 @@ class EllipseAdjuster(QMainWindow):
         self.save_exit_btn = QPushButton("Save and Exit")
         self.save_exit_btn.clicked.connect(self.close)
         control_layout.addWidget(self.save_exit_btn)
+
+        # Instructions Label
+        instructions = (
+            "<b>Interaction Logic:</b><br>"
+            "1. <b>Resize:</b> Drag the yellow dots at axis ends.<br>"
+            "2. <b>Rotate:</b> Drag the magenta dots on the ring.<br>"
+            "3. <b>Move:</b> Drag the cross at the center.<br>"
+            "4. <b>Create:</b> Click 'Add a circle' (or 'A'), then drag on canvas.<br>"
+            "5. <b>Delete:</b> Select ellipse (red), click 'Delete' (or 'D').<br><br>"
+            "<b>Keyboard Shortcuts:</b><br>"
+            "<b>A:</b> Add circle<br>"
+            "<b>D / Del:</b> Delete<br>"
+            "<b>Space:</b> Move<br>"
+            "<b>R:</b> Rotate<br>"
+            "<b>X:</b> Scale Length<br>"
+            "<b>C:</b> Scale Width"
+        )
+        self.info_label = QLabel(instructions)
+        self.info_label.setWordWrap(True)
+        control_layout.addWidget(self.info_label)
+        
+        # Add stretch to push buttons to the top
+        control_layout.addStretch()
 
         self.main_layout.addWidget(control_panel, 15)
         self.setCentralWidget(main_widget)
@@ -177,11 +201,13 @@ class EllipseAdjuster(QMainWindow):
         Finally, converts the image to a QImage and displays it in the QLabel.
         """
         display_image = self.B.copy()
+
+        height, width, _ = display_image.shape
+        self.scale_factor = self.window_width / width
+
         self.draw_ellipses(display_image, self.ellipses)
 
         # Scale the image to a fixed width (800 pixels) while maintaining aspect ratio.
-        height, width, _ = display_image.shape
-        self.scale_factor = self.window_width / width
         new_size = (self.window_width, int(height * self.scale_factor))
         scaled_image = cv2.resize(display_image, new_size, interpolation=cv2.INTER_AREA)
 
@@ -211,6 +237,8 @@ class EllipseAdjuster(QMainWindow):
             center is a tuple of (x, y) coordinates, axes is a tuple of (major, minor) axes lengths,
             and angle is the angle of the ellipse in degrees.
         """
+        line_width = round(self.line_width/self.scale_factor)
+        dot_size = round(self.dot_size/self.scale_factor)
         for idx, ellipse in enumerate(ellipses):
             # ellipse is a tuple: (center, axes, angle)
             center: tuple[float, float]
@@ -229,7 +257,7 @@ class EllipseAdjuster(QMainWindow):
             # Highlight selected ellipse in red; otherwise, use green.
             color = (0, 0, 255) if idx == self.selected_ellipse_index else (0, 255, 0)
             try:
-                cv2.ellipse(image, ellipse, color, 2)  # type: ignore
+                cv2.ellipse(image, ellipse, color, line_width)  # type: ignore
             except cv2.error as e:
                 print(f"Warning: Skipping invalid ellipse {ellipse}: {e}")
                 continue
@@ -257,16 +285,16 @@ class EllipseAdjuster(QMainWindow):
             )
 
             # Draw the axis lines.
-            cv2.line(image, (int(center[0]), int(center[1])), major_axis1, (255, 0, 0), 2)
-            cv2.line(image, (int(center[0]), int(center[1])), major_axis2, (255, 0, 0), 2)
-            cv2.line(image, (int(center[0]), int(center[1])), minor_axis1, (0, 0, 255), 2)
-            cv2.line(image, (int(center[0]), int(center[1])), minor_axis2, (0, 0, 255), 2)
+            cv2.line(image, (int(center[0]), int(center[1])), major_axis1, (255, 0, 0), line_width)
+            cv2.line(image, (int(center[0]), int(center[1])), major_axis2, (255, 0, 0), line_width)
+            cv2.line(image, (int(center[0]), int(center[1])), minor_axis1, (0, 0, 255), line_width)
+            cv2.line(image, (int(center[0]), int(center[1])), minor_axis2, (0, 0, 255), line_width)
 
             # Draw small circles at each endpoint.
-            cv2.circle(image, major_axis1, self.dot_size, (0, 255, 255), -1)
-            cv2.circle(image, major_axis2, self.dot_size, (0, 255, 255), -1)
-            cv2.circle(image, minor_axis1, self.dot_size, (0, 255, 255), -1)
-            cv2.circle(image, minor_axis2, self.dot_size, (0, 255, 255), -1)
+            cv2.circle(image, major_axis1, dot_size, (0, 255, 255), -1)
+            cv2.circle(image, major_axis2, dot_size, (0, 255, 255), -1)
+            cv2.circle(image, minor_axis1, dot_size, (0, 255, 255), -1)
+            cv2.circle(image, minor_axis2, dot_size, (0, 255, 255), -1)
 
             # Draw a cross at the center.
             center_int = (int(center[0]), int(center[1]))
@@ -331,7 +359,7 @@ class EllipseAdjuster(QMainWindow):
                 rot_x = int(center[0] + (axes[0] / 2) * np.cos(t) * cos_angle - (axes[1] / 2) * np.sin(t) * sin_angle)
                 rot_y = int(center[1] + (axes[0] / 2) * np.cos(t) * sin_angle + (axes[1] / 2) * np.sin(t) * cos_angle)
                 # Draw a circle (e.g., magenta) for rotation handle.
-                cv2.circle(image, (rot_x, rot_y), self.dot_size, (255, 0, 255), -1)
+                cv2.circle(image, (rot_x, rot_y), dot_size, (255, 0, 255), -1)
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         """Handle keyboard events for Blender-like interaction modes."""
@@ -340,6 +368,11 @@ class EllipseAdjuster(QMainWindow):
         # Handle 'A' key for adding new circle (no selection required)
         if key == Qt.Key.Key_A and not self.mode_active:
             self.add_circle_button_clicked()
+            return
+
+        # Handle 'D', Delete, or Backspace for deletion
+        if (key == Qt.Key.Key_D or key == Qt.Key.Key_Delete or key == Qt.Key.Key_Backspace) and not self.mode_active:
+            self.delete_selected_ellipse()
             return
         
         # Only allow other keyboard modes when an ellipse is selected and no other mode is active

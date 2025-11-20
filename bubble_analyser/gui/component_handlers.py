@@ -113,6 +113,72 @@ class WorkerThread(QThread):
         self.processing_done.emit()
 
 
+
+class Step1Worker(QThread):
+    """A worker thread for handling the first step of image processing (segmentation).
+
+    This class runs the segmentation process in a background thread and emits
+    signals upon completion or error.
+    """
+
+    finished = Signal(object)  # Emits the processed image (numpy array)
+    error = Signal(str)
+
+    def __init__(self, model, index: int) -> None:
+        """Initialize the Step 1 worker.
+
+        Args:
+            model (ImageProcessingModel): The image processing model.
+            index (int): The index of the image to process.
+        """
+        super().__init__()
+        self.model = model
+        self.index = index
+
+    def run(self) -> None:
+        """Execute the segmentation process."""
+        try:
+            img = self.model.step_1_main(self.index)
+            self.finished.emit(img)
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            self.error.emit(f"Error in Step 1 processing: {str(e)}\n\n{error_details}")
+
+
+
+class Step2Worker(QThread):
+    """A worker thread for handling the second step of image processing (filtering).
+
+    This class runs the filtering process in a background thread and emits
+    signals upon completion or error.
+    """
+
+    finished = Signal(object)  # Emits the processed image (numpy array)
+    error = Signal(str)
+
+    def __init__(self, model, index: int) -> None:
+        """Initialize the Step 2 worker.
+
+        Args:
+            model (ImageProcessingModel): The image processing model.
+            index (int): The index of the image to process.
+        """
+        super().__init__()
+        self.model = model
+        self.index = index
+
+    def run(self) -> None:
+        """Execute the filtering process."""
+        try:
+            img = self.model.step_2_main(self.index)
+            self.finished.emit(img)
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            self.error.emit(f"Error in Step 2 processing: {str(e)}\n\n{error_details}")
+
+
 class InputFilesModel:
     """A model class for managing input image files and their paths.
 

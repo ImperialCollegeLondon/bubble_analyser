@@ -54,9 +54,11 @@ from bubble_analyser.gui import (
     CalibrationModel,
     ImageProcessingModel,
     InputFilesModel,
+    Step1Worker,
+    Step2Worker,
     WorkerThread,
 )
-from bubble_analyser.gui.gui import MainWindow as MainWindow
+from bubble_analyser.gui.gui import MainWindow, ProcessingDialog
 from bubble_analyser.processing import Config, cv2_to_qpixmap
 
 
@@ -920,7 +922,7 @@ class ImageProcessingTabHandler(QThread):
         self.gui.algorithm_combo.addItems(self.algorithm_list)
         self.update_model_algorithm(self.algorithm_list[0])
         logging.info("Algorithm combo box initialized.")
-
+        
         # Update description
         try:
             description = getattr(self.model.methods_handler.all_classes[self.algorithm_list[0]], "description", "No description available.")
@@ -1155,8 +1157,29 @@ class ImageProcessingTabHandler(QThread):
         and updates the preview with the results.
         """
         logging.info("------------------------------Processing Started------------------------------")
-        step_1_img = self.model.step_1_main(self.current_index)
-        self.update_label_before_filtering(step_1_img)
+        
+        # Create and show processing dialog
+        self.processing_dialog = ProcessingDialog(self.gui, "Processing Step 1...")
+        self.processing_dialog.show()
+        
+        # Create and start worker thread
+        self.step_1_worker = Step1Worker(self.model, self.current_index)
+        self.step_1_worker.finished.connect(self.on_step_1_finished)
+        self.step_1_worker.error.connect(self.on_worker_error)
+        self.step_1_worker.start()
+
+    def on_step_1_finished(self, img: npt.NDArray[np.int_]) -> None:
+        """Handle completion of step 1 processing.
+
+        Args:
+            img (npt.NDArray[np.int_]): The processed image.
+        """
+        # Close dialog
+        if hasattr(self, 'processing_dialog'):
+            self.processing_dialog.close()
+            
+        self.update_label_before_filtering(img)
+        logging.info("Step 1 processing completed.")
 
     def update_label_before_filtering(self, img: npt.NDArray[np.int_]) -> None:
         """Update the preview of the image after the first processing step.
@@ -1286,8 +1309,28 @@ class ImageProcessingTabHandler(QThread):
         Calls the model's step_2_main method to apply filtering to the current image
         and updates the preview with the results.
         """
-        step_2_img = self.model.step_2_main(self.current_index)
-        self.update_process_image_preview(step_2_img)
+        # Create and show processing dialog
+        self.processing_dialog = ProcessingDialog(self.gui, "Processing Step 2...")
+        self.processing_dialog.show()
+        
+        # Create and start worker thread
+        self.step_2_worker = Step2Worker(self.model, self.current_index)
+        self.step_2_worker.finished.connect(self.on_step_2_finished)
+        self.step_2_worker.error.connect(self.on_worker_error)
+        self.step_2_worker.start()
+
+    def on_step_2_finished(self, img: npt.NDArray[np.int_]) -> None:
+        """Handle completion of step 2 processing.
+
+        Args:
+            img (npt.NDArray[np.int_]): The processed image.
+        """
+        # Close dialog
+        if hasattr(self, 'processing_dialog'):
+            self.processing_dialog.close()
+            
+        self.update_process_image_preview(img)
+        logging.info("Step 2 processing completed.")
 
     # -------Third Column Functions: Manual Ellipse Adjustment-------------------------
     def ellipse_manual_adjustment(self) -> None:
@@ -1470,6 +1513,7 @@ class ImageProcessingTabHandler(QThread):
         """
         # Close the progress dialog
         self.progress_dialog.close()
+        self.preview_processed_images()
         self.batch_processing_done.emit()
         logging.info("Batch processing completed.")
 
