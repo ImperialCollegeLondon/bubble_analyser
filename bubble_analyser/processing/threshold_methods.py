@@ -64,7 +64,7 @@ class ThresholdMethods:
         """
         binary_image = target_img > (threshold_value * 255)  # Binary image using thresholding
         return ~binary_image
-        
+
     def otsu_threshold(self, target_img: npt.NDArray[np.int_]) -> npt.NDArray[np.bool_]:
         """Apply Otsu's thresholding to the target image and return an inverted binary mask.
 
