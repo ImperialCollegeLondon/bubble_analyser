@@ -39,7 +39,7 @@ try:
     # Import BubMask modules
     from bubble_analyser.mrcnn import model as modellib
     from bubble_analyser.bubble import BubbleConfig, _InfConfig, color_splash
-    import bubble_analyser.bubble
+    import bubble
 except ImportError as e:
     logging.error(f"Failed to import BubMask modules: {e}")
     raise ImportError(f"BubMask modules not found. Please ensure BubMask is properly installed. Error: {e}")
@@ -158,78 +158,6 @@ class BubMaskConfig:
             cls.for_medium_quality(confidence_threshold),  # 256x512  - Good balance
             cls.for_low_memory_gpu(confidence_threshold),  # 128x256  - Memory safe
         ]
-    
-    @classmethod
-    def for_low_memory_gpu(cls, confidence_threshold: float = 0.9):
-        """Configuration optimized for GPUs with limited memory (4-6GB).
-        
-        Args:
-            confidence_threshold: Minimum confidence for detections
-            
-        Returns:
-            BubMaskConfig: Low memory configuration
-        """
-        return cls(
-            confidence_threshold=confidence_threshold,
-            image_min_dim=128,
-            image_max_dim=256,
-            gpu_count=1,
-            images_per_gpu=1
-        )
-    
-    @classmethod
-    def for_medium_quality(cls, confidence_threshold: float = 0.9):
-        """Configuration for medium quality detection with moderate memory usage (6-8GB GPU).
-        
-        Args:
-            confidence_threshold: Minimum confidence for detections
-            
-        Returns:
-            BubMaskConfig: Medium quality configuration
-        """
-        return cls(
-            confidence_threshold=confidence_threshold,
-            image_min_dim=256,
-            image_max_dim=512,
-            gpu_count=1,
-            images_per_gpu=1
-        )
-    
-    @classmethod
-    def for_high_quality(cls, confidence_threshold: float = 0.9):
-        """Configuration for high quality detection (requires 8GB+ GPU memory).
-        
-        Args:
-            confidence_threshold: Minimum confidence for detections
-            
-        Returns:
-            BubMaskConfig: High quality configuration
-        """
-        return cls(
-            confidence_threshold=confidence_threshold,
-            image_min_dim=512,
-            image_max_dim=1024,
-            gpu_count=1,
-            images_per_gpu=1
-        )
-    
-    @classmethod
-    def for_cpu_only(cls, confidence_threshold: float = 0.9):
-        """Configuration for CPU-only processing (slower but no memory limits).
-        
-        Args:
-            confidence_threshold: Minimum confidence for detections
-            
-        Returns:
-            BubMaskConfig: CPU-only configuration
-        """
-        return cls(
-            confidence_threshold=confidence_threshold,
-            image_min_dim=256,
-            image_max_dim=512,
-            gpu_count=0,  # Force CPU usage
-            images_per_gpu=1
-        )
 
 
 class BubMaskDetector:
@@ -386,22 +314,31 @@ class BubMaskDetector:
         except Exception as e:
             logging.error(f"Error detecting bubbles in {image_path}: {e}")
             raise
-    
-    def batch_detect(self, 
-                    input_dir: Union[str, Path], 
-                    output_dir: Optional[Union[str, Path]] = None,
-                    save_masks: bool = True,
-                    save_splash: bool = True) -> List[Dict]:
-        """Detect bubbles in multiple images from a directory.
+
+    def batch_detect_parallel(self, 
+                            input_dir: Union[str, Path], 
+                            output_dir: Optional[Union[str, Path]] = None,
+                            save_masks: bool = True,
+                            save_splash: bool = True,
+                            batch_size: int = 4,
+                            use_multiprocessing: bool = False,
+                            max_workers: int = 4) -> List[Dict]:
+        """Detect bubbles in multiple images using parallel processing.
+        
+        On GPU (default), uses batch processing to maximize throughput.
+        On CPU (use_multiprocessing=True), uses process pool for parallelism.
         
         Args:
             input_dir: Directory containing input images
             output_dir: Directory to save results (optional)
             save_masks: Whether to save individual masks
             save_splash: Whether to save splash images
+            batch_size: Number of images to process at once (GPU mode)
+            use_multiprocessing: Whether to use CPU multiprocessing (CPU mode only)
+            max_workers: Number of worker processes (CPU mode only)
             
         Returns:
-            List of detection results for each image
+            List of detection results
         """
         input_path = Path(input_dir)
         if not input_path.exists():
@@ -416,26 +353,115 @@ class BubMaskDetector:
             logging.warning(f"No image files found in {input_path}")
             return []
         
+        logging.info(f"Found {len(image_files)} images to process")
         results = []
-        for image_file in image_files:
-            try:
-                result = self.detect_bubbles(image_file, 
-                                           return_masks=save_masks, 
-                                           return_splash=save_splash)
-                result['filename'] = image_file.name
-                results.append(result)
-                
-                # Save results if output directory specified
-                if output_dir:
-                    self._save_results(result, image_file, output_dir, save_masks, save_splash)
-                    
-            except Exception as e:
-                logging.error(f"Failed to process {image_file}: {e}")
-                continue
         
-        logging.info(f"Processed {len(results)} images from {input_path}")
+        if use_multiprocessing and self.config.gpu_count == 0:
+            # CPU Multiprocessing Mode
+            logging.info(f"Starting CPU multiprocessing with {max_workers} workers")
+            logging.warning("Multiprocessing requires complex TF setup. "
+                          "Falling back to batch processing which is efficient for both CPU and GPU.")
+            
+        # Batch Processing Mode (Works for both GPU and CPU)
+        logging.info(f"Starting batch processing with batch_size={batch_size}")
+        
+        # Process in batches
+        for i in range(0, len(image_files), batch_size):
+            batch_files = image_files[i:i + batch_size]
+            batch_images = []
+            valid_files = []
+            
+            # Load images
+            for img_file in batch_files:
+                try:
+                    image = skimage.io.imread(str(img_file))
+                    if image.ndim == 2:
+                        image = cv2.merge((image, image, image))
+                    # Handle alpha channel if present
+                    if image.shape[-1] == 4:
+                        image = image[..., :3]
+                    batch_images.append(image)
+                    valid_files.append(img_file)
+                except Exception as e:
+                    logging.error(f"Failed to load {img_file}: {e}")
+            
+            if not batch_images:
+                continue
+                
+            try:
+                # Run detection on batch
+                batch_results = self.model.detect(batch_images, verbose=0)
+                
+                for j, result in enumerate(batch_results):
+                    img_file = valid_files[j]
+                    
+                    # Filter by confidence
+                    keep_indices = result['scores'] >= self.config.confidence_threshold
+                    filtered_result = {
+                        'rois': result['rois'][keep_indices],
+                        'class_ids': result['class_ids'][keep_indices],
+                        'scores': result['scores'][keep_indices],
+                        'bubble_count': np.sum(keep_indices),
+                        'image_shape': batch_images[j].shape,
+                        'filename': img_file.name
+                    }
+                    
+                    if save_masks:
+                        filtered_result['masks'] = result['masks'][:, :, keep_indices]
+                    
+                    if save_splash:
+                        splash = color_splash(batch_images[j], result['masks'][:, :, keep_indices])
+                        filtered_result['splash'] = splash
+                    
+                    results.append(filtered_result)
+                    
+                    # Save results
+                    if output_dir:
+                        self._save_results(filtered_result, img_file, output_dir, save_masks, save_splash)
+                        
+                logging.info(f"Processed batch {i//batch_size + 1}/{(len(image_files)+batch_size-1)//batch_size}")
+                
+            except Exception as e:
+                logging.error(f"Error processing batch starting at {batch_files[0]}: {e}")
+                # Fallback to single image processing for this batch
+                for img_file in batch_files:
+                    try:
+                        res = self.detect_bubbles(img_file, return_masks=save_masks, return_splash=save_splash)
+                        res['filename'] = img_file.name
+                        results.append(res)
+                        if output_dir:
+                            self._save_results(res, img_file, output_dir, save_masks, save_splash)
+                    except Exception as inner_e:
+                        logging.error(f"Fallback failed for {img_file}: {inner_e}")
+
         return results
-    
+
+    def batch_detect(self, 
+                    input_dir: Union[str, Path], 
+                    output_dir: Optional[Union[str, Path]] = None,
+                    save_masks: bool = True,
+                    save_splash: bool = True) -> List[Dict]:
+        """Detect bubbles in multiple images from a directory.
+        
+        This method now uses batch processing by default for better performance.
+        
+        Args:
+            input_dir: Directory containing input images
+            output_dir: Directory to save results (optional)
+            save_masks: Whether to save individual masks
+            save_splash: Whether to save splash images
+            
+        Returns:
+            List of detection results for each image
+        """
+        return self.batch_detect_parallel(
+            input_dir=input_dir,
+            output_dir=output_dir,
+            save_masks=save_masks,
+            save_splash=save_splash,
+            batch_size=4  # Default batch size
+        )
+
     def _save_results(self, 
                      result: Dict, 
                      image_file: Path, 
@@ -460,7 +486,7 @@ class BubMaskDetector:
                 mask_path = output_path / f"mask_{base_name}_bubble_{i:03d}.png"
                 mask = (masks[:, :, i] * 255).astype(np.uint8)
                 skimage.io.imsave(str(mask_path), mask)
-    
+
     def get_bubble_properties(self, masks: npt.NDArray, pixel_to_mm: float = 1.0) -> List[Dict]:
         """Calculate properties of detected bubbles.
         

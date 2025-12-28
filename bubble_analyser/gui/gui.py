@@ -221,7 +221,7 @@ class MainWindow(QMainWindow):
         self.bknd_img_exist = False
         self.calibration_confirmed = False
 
-        self.setWindowTitle("Bubble Analyser")
+        self.setWindowTitle("Bubble Analyser v0.3.0")
         self.setGeometry(100, 100, 1200, 800)
 
         # Create a Tab Widget
