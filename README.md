@@ -11,10 +11,10 @@ Bubble Analyser is a Python application for detecting, measuring, and analyzing 
 ## Features
 
 - **Image Processing**: Preprocess images with various transformations
-- **Bubble Detection**: Identify bubbles using advanced watershed segmentation algorithms
+- **Bubble Detection**: Identify bubbles using advanced watershed segmentation algorithms or **BubMask (Deep Learning)** 
+- **Interactive Ellipse Adjuster**: Brand new manual adjustment interface for pixel-perfect refinement of detected bubbles
 - **Measurement**: Calculate size, shape, and distribution of bubbles
 - **Calibration**: Convert pixel measurements to real-world units (mm)
-- **Manual Adjustment**: Fine-tune detected bubbles with interactive tools
 - **Results Visualization**: Generate histograms and statistics of bubble distributions
 - **User-Friendly GUI**: Intuitive interface for different functionalities
 
@@ -24,11 +24,15 @@ Bubble Analyser is a Python application for detecting, measuring, and analyzing 
 
 For users on either Windows or MacOS platform, a standalone executable is available for each one in the release:
 
+v0.3.0 <https://github.com/ImperialCollegeLondon/bubble_analyser/releases/tag/v0.3.0>
 v0.2.0 <https://github.com/ImperialCollegeLondon/bubble_analyser/releases/tag/v0.2.0>
 
 ### From Source
 
 To install from source, follow the developer setup instructions below.
+
+> [!IMPORTANT]
+> **Using CNN Detection**: For user running from source code, you must download `mask_rcnn_bubble.h5` from the [v0.3.0 release page](https://github.com/ImperialCollegeLondon/bubble_analyser/releases/tag/v0.3.0) and place it in the `bubble_analyser/weights` directory. 
 
 ## Usage
 
@@ -40,10 +44,11 @@ To install from source, follow the developer setup instructions below.
 
 ## Methods
 
-Bubble Analyser implements multiple watershed segmentation approaches:
+Bubble Analyser implements multiple segmentation approaches:
 
-- **Normal Watershed**: Standard watershed algorithm with triple threshold
-- **Iterative Watershed**: Advanced algorithm that iteratively applies thresholds to detect objects at different intensity levels
+- **Normal Watershed**: Standard watershed algorithm with triple threshold.
+- **Iterative Watershed**: Advanced algorithm that iteratively applies thresholds to detect objects at different intensity levels.
+- **BubMask (Deep Learning)**: Integrated BubMask (Kim & Park, 2021), a Mask R-CNN based deep learning model for superior accuracy in complex lighting or overlapping conditions.
 
 ## For Developers
 
@@ -92,6 +97,11 @@ To get started:
 - scikit-image
 - OpenCV
 - Matplotlib
+- H5py (for CNN weights)
+
+## Reference
+
+Kim, Y., Park, H. Deep learning-based automated and universal bubble detection and mask extraction in complex two-phase flows. Sci Rep 11, 8940 (2021). https://doi.org/10.1038/s41598-021-88334-0
 
 ## Contributing
 
