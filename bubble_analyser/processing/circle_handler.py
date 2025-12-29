@@ -166,7 +166,7 @@ class EllipseHandler:
         properties = measure.regionprops(labels)
         new_labels = np.copy(labels) if labels is not None else np.array([])
         mm2px = self.mm2px
-        
+
         # Get image dimensions for boundary detection
         if labels is not None:
             img_height, img_width = labels.shape
@@ -263,15 +263,22 @@ class EllipseHandler:
                     # Validate ellipse parameters before adding to list
                     center, axes, angle = ellipse
                     ellipse_width, ellipse_height = axes
-                    
+
                     # Only add valid ellipses (width and height > 0, finite values)
-                    if (ellipse_width > 0 and ellipse_height > 0 and 
-                        np.isfinite(ellipse_width) and np.isfinite(ellipse_height) and
-                        np.isfinite(center[0]) and np.isfinite(center[1]) and
-                        np.isfinite(angle)):
+                    if (
+                        ellipse_width > 0
+                        and ellipse_height > 0
+                        and np.isfinite(ellipse_width)
+                        and np.isfinite(ellipse_height)
+                        and np.isfinite(center[0])
+                        and np.isfinite(center[1])
+                        and np.isfinite(angle)
+                    ):
                         ellipses.append(ellipse)
                     else:
-                        print(f"Warning: Skipping invalid ellipse with dimensions: width={ellipse_width}, height={ellipse_height}")
+                        print(
+                            f"Warning: Skipping invalid ellipse with dimensions: width={ellipse_width}, height={ellipse_height}"
+                        )
 
         self.ellipses = ellipses  # type: ignore
 
@@ -279,43 +286,51 @@ class EllipseHandler:
 
     def overlay_ellipses_on_image(self, thickness: int = 5) -> npt.NDArray[np.int_]:
         """Overlay detected ellipses on the RGB image.
-    
+
         Draws each detected ellipse on the RGB image with the specified thickness.
         Also creates a labeled image from the ellipses.
-    
+
         Args:
             thickness (int, optional): Thickness of the ellipse outlines. Defaults to 20.
-    
+
         Returns:
             npt.NDArray[np.int_]: The RGB image with ellipses overlaid.
         """
         if self.img_rgb is None:
             raise ValueError("img_rgb is not initialized")
         ellipse_image = self.img_rgb.copy()
-    
+
         for ellipse in self.ellipses:
             # Validate ellipse parameters before drawing
             center, axes, angle = ellipse
             ellipse_width, ellipse_height = axes
-            
+
             # Check if ellipse dimensions are valid (positive, finite values)
-            if (ellipse_width > 0 and ellipse_height > 0 and thickness > 0 and
-                np.isfinite(ellipse_width) and np.isfinite(ellipse_height) and
-                np.isfinite(center[0]) and np.isfinite(center[1]) and
-                np.isfinite(angle)):
+            if (
+                ellipse_width > 0
+                and ellipse_height > 0
+                and thickness > 0
+                and np.isfinite(ellipse_width)
+                and np.isfinite(ellipse_height)
+                and np.isfinite(center[0])
+                and np.isfinite(center[1])
+                and np.isfinite(angle)
+            ):
                 try:
                     cv2.ellipse(ellipse_image, ellipse, (0, 0, 255), thickness)  # type: ignore
                 except cv2.error as e:
                     logging.warning(f"Failed to draw ellipse {ellipse}: {e}")
                     continue
             else:
-                logging.warning(f"Invalid ellipse dimensions: width={ellipse_width}, height={ellipse_height}, thickness={thickness}")
+                logging.warning(
+                    f"Invalid ellipse dimensions: width={ellipse_width}, height={ellipse_height}, thickness={thickness}"
+                )
                 continue
-                
+
         self.ellipses_on_image = ellipse_image
-    
+
         self.create_labelled_image_from_ellipses()
-    
+
         return ellipse_image
 
     def create_labelled_image_from_ellipses(self) -> npt.NDArray[np.int_]:
@@ -340,12 +355,16 @@ class EllipseHandler:
             # Validate ellipse parameters before drawing
             center, axes, angle = ellipse
             ellipse_width, ellipse_height = axes
-            
+
             # Skip invalid ellipses (width or height <= 0, inf, or nan)
-            if (ellipse_width <= 0 or ellipse_height <= 0 or 
-                not np.isfinite(ellipse_width) or not np.isfinite(ellipse_height)):
+            if (
+                ellipse_width <= 0
+                or ellipse_height <= 0
+                or not np.isfinite(ellipse_width)
+                or not np.isfinite(ellipse_height)
+            ):
                 continue
-                
+
             # Create a mask for the current ellipse.
             mask = np.zeros((img_height, img_width), dtype=np.uint8)
             try:
