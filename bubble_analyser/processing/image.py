@@ -79,7 +79,8 @@ class MethodsHandler:
         if getattr(sys, "frozen", False):
             logging.info("Running in frozen mode, loading modules explicitly")
             try:
-                from bubble_analyser.methods import watershed_methods, bubmask_method
+                from bubble_analyser.methods import bubmask_method, watershed_methods
+
                 modules["watershed_methods"] = watershed_methods
                 modules["bubmask_method"] = bubmask_method
             except ImportError as e:
@@ -345,7 +346,7 @@ class Image:
                                 img_rgb=self.img_rgb,
                                 if_bknd_img=self.if_bknd_img,
                                 bknd_img=self.bknd_img,
-                                cnn_model=cnn_model
+                                cnn_model=cnn_model,
                             )  # type: ignore
                         else:
                             processing_instance.initialize_processing(  # type: ignore
@@ -355,8 +356,7 @@ class Image:
                                 if_bknd_img=self.if_bknd_img,
                                 bknd_img=self.bknd_img,
                             )  # type: ignore
-                        self.labels_on_img_before_filter, self.labels_before_filter, \
-                            self.img_grey_morph_eroded = (
+                        self.labels_on_img_before_filter, self.labels_before_filter, self.img_grey_morph_eroded = (
                             processing_instance.get_results_img()  # type: ignore
                         )
                 break
@@ -417,7 +417,7 @@ class Image:
         self.ellipses = ellipses
         self.new_circle_handler.ellipses = ellipses
         self.set_fine_tuned()
-    
+
     def set_fine_tuned(self):
         self.if_fine_tuned = True
 
