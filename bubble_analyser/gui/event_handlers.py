@@ -35,8 +35,8 @@ from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
-    QComboBox,
     QCheckBox,
+    QComboBox,
     QDialog,
     QFileDialog,
     QHBoxLayout,
@@ -475,9 +475,7 @@ class CalibrationTabHandler:
 
         img_path: Path = cast(Path, self.gui.pixel_img_name.text())
         if os.path.exists(img_path):
-            px2mm, img_drawed_line = self.calibration_model.get_px2mm_ratio(
-                pixel_img_path=img_path, gui=self.gui
-            )
+            px2mm, img_drawed_line = self.calibration_model.get_px2mm_ratio(pixel_img_path=img_path, gui=self.gui)
 
             px2mm_display = px2mm
 
@@ -712,7 +710,7 @@ class ImageProcessingTabHandler(QThread):
         #     except ValidationError as e:
         #         self._show_warning("Invalid if_gaussianblur value", str(e))
         #         return False
-                
+
         if name == "ksize":
             try:
                 new_checker.ksize = cast(int, value)
@@ -916,7 +914,7 @@ class ImageProcessingTabHandler(QThread):
 
         logging.info("Initializing algorithm combo box...")
         self.gui.algorithm_combo.clear()
-        
+
         for algorithm, params in self.model.all_methods_n_params.items():
             logging.info(f"Initialize algorithm: {algorithm}")
             self.algorithm_list.append(algorithm)
@@ -924,10 +922,14 @@ class ImageProcessingTabHandler(QThread):
         self.gui.algorithm_combo.addItems(self.algorithm_list)
         self.update_model_algorithm(self.algorithm_list[0])
         logging.info("Algorithm combo box initialized.")
-        
+
         # Update description
         try:
-            description = getattr(self.model.methods_handler.all_classes[self.algorithm_list[0]], "description", "No description available.")
+            description = getattr(
+                self.model.methods_handler.all_classes[self.algorithm_list[0]],
+                "description",
+                "No description available.",
+            )
             self.gui.algorithm_description_label.setText(description)
         except Exception as e:
             logging.error(f"Error updating description: {e}")
@@ -949,7 +951,6 @@ class ImageProcessingTabHandler(QThread):
 
         for algorithm_name, params in self.model.all_methods_n_params.items():
             if algorithm_name == self.current_algorithm:
-
                 self.gui.param_sandbox1.setRowCount(len(params))
 
                 for (
@@ -963,7 +964,7 @@ class ImageProcessingTabHandler(QThread):
                         # Create a dropdown with True/False options
                         combo_box = QComboBox()
                         combo_box.addItems(["True", "False"])
-                        
+
                         # Set the current value
                         current_value = str(value)
                         if current_value in ["True", "False"]:
@@ -971,52 +972,52 @@ class ImageProcessingTabHandler(QThread):
                         else:
                             # Default to False if value is not boolean
                             combo_box.setCurrentText("False")
-                        
+
                         # Set the combo box as the cell widget
                         self.gui.param_sandbox1.setCellWidget(row, 1, combo_box)
-                    
+
                     elif name == "element_size":
                         combo_box = QComboBox()
-                        combo_box.addItems(["0","3","5"])
+                        combo_box.addItems(["0", "3", "5"])
 
                         # Set the current value
                         current_value = str(value)
-                        if current_value in ["0","3","5"]:
+                        if current_value in ["0", "3", "5"]:
                             combo_box.setCurrentText(current_value)
                         else:
                             # Default to False if value is not boolean
                             combo_box.setCurrentText("3")
-                        
+
                         # Set the combo box as the cell widget
                         self.gui.param_sandbox1.setCellWidget(row, 1, combo_box)
-                    
+
                     elif name == "connectivity":
                         combo_box = QComboBox()
-                        combo_box.addItems(["4","8"])
+                        combo_box.addItems(["4", "8"])
 
                         # Set the current value
                         current_value = str(value)
-                        if current_value in ["4","8"]:
+                        if current_value in ["4", "8"]:
                             combo_box.setCurrentText(current_value)
                         else:
                             # Default to False if value is not boolean
                             combo_box.setCurrentText("8")
-                        
+
                         # Set the combo box as the cell widget
                         self.gui.param_sandbox1.setCellWidget(row, 1, combo_box)
 
                     elif name == "ksize":
                         combo_box = QComboBox()
-                        combo_box.addItems(["1","3","5","7"])
+                        combo_box.addItems(["1", "3", "5", "7"])
 
                         # Set the current value
                         current_value = str(value)
-                        if current_value in ["1","3","5","7"]:
+                        if current_value in ["1", "3", "5", "7"]:
                             combo_box.setCurrentText(current_value)
                         else:
                             # Default to False if value is not boolean
                             combo_box.setCurrentText("3")
-                        
+
                         # Set the combo box as the cell widget
                         self.gui.param_sandbox1.setCellWidget(row, 1, combo_box)
 
@@ -1046,7 +1047,9 @@ class ImageProcessingTabHandler(QThread):
 
         # Update description
         try:
-            description = getattr(self.model.methods_handler.all_classes[new_algorithm], "description", "No description available.")
+            description = getattr(
+                self.model.methods_handler.all_classes[new_algorithm], "description", "No description available."
+            )
             self.gui.algorithm_description_label.setText(description)
         except Exception as e:
             logging.error(f"Error updating description: {e}")
@@ -1159,11 +1162,11 @@ class ImageProcessingTabHandler(QThread):
         and updates the preview with the results.
         """
         logging.info("------------------------------Processing Started------------------------------")
-        
+
         # Create and show processing dialog
         self.processing_dialog = ProcessingDialog(self.gui, "Processing Step 1...")
         self.processing_dialog.show()
-        
+
         # Create and start worker thread
         self.step_1_worker = Step1Worker(self.model, self.current_index)
         self.step_1_worker.finished.connect(self.on_step_1_finished)
@@ -1177,9 +1180,9 @@ class ImageProcessingTabHandler(QThread):
             img (npt.NDArray[np.int_]): The processed image.
         """
         # Close dialog
-        if hasattr(self, 'processing_dialog'):
+        if hasattr(self, "processing_dialog"):
             self.processing_dialog.close()
-            
+
         self.update_label_before_filtering(img)
         logging.info("Step 1 processing completed.")
 
@@ -1314,7 +1317,7 @@ class ImageProcessingTabHandler(QThread):
         # Create and show processing dialog
         self.processing_dialog = ProcessingDialog(self.gui, "Processing Step 2...")
         self.processing_dialog.show()
-        
+
         # Create and start worker thread
         self.step_2_worker = Step2Worker(self.model, self.current_index)
         self.step_2_worker.finished.connect(self.on_step_2_finished)
@@ -1328,9 +1331,9 @@ class ImageProcessingTabHandler(QThread):
             img (npt.NDArray[np.int_]): The processed image.
         """
         # Close dialog
-        if hasattr(self, 'processing_dialog'):
+        if hasattr(self, "processing_dialog"):
             self.processing_dialog.close()
-            
+
         self.update_process_image_preview(img)
         logging.info("Step 2 processing completed.")
 
@@ -1362,14 +1365,15 @@ class ImageProcessingTabHandler(QThread):
         If confirmed, initiates the batch processing operation.
         """
         self.if_save_processed_images = False
-        confirm_dialog = self.create_confirm_dialog("Batch Processing Confirmation", 
-        "The parameters will be applied to all the images. Confirm to process.")
+        confirm_dialog = self.create_confirm_dialog(
+            "Batch Processing Confirmation", "The parameters will be applied to all the images. Confirm to process."
+        )
         self.create_save_images_checkbox(confirm_dialog)
 
         response = confirm_dialog.exec()
 
         if response == QMessageBox.StandardButton.Ok:
-            self.check_for_export_path.emit() # Let Main handler check if export being properlly set
+            self.check_for_export_path.emit()  # Let Main handler check if export being properlly set
 
         else:
             logging.info("Batch processing canceled.")
@@ -1377,23 +1381,26 @@ class ImageProcessingTabHandler(QThread):
     def finalise_analysis(self) -> None:
         """Finalise the analysis by setting the if_finish_analysis flag to True."""
         if not self.model.if_batched:
-            QMessageBox.information(self.gui, "Information", "Please finish at least one time of batch processing first.")
+            QMessageBox.information(
+                self.gui, "Information", "Please finish at least one time of batch processing first."
+            )
             return
-        
+
         else:
-            confirm_dialog = self.create_confirm_dialog("Finalise Analysis Confirmation", 
-            "The analysis will be finalised. \n Make sure you are satisfied with the segmentation of all images. Confirm to finalise.")
+            confirm_dialog = self.create_confirm_dialog(
+                "Finalise Analysis Confirmation",
+                "The analysis will be finalised. \n Make sure you are satisfied with the segmentation of all images. Confirm to finalise.",
+            )
             self.create_save_images_checkbox(confirm_dialog)
 
             response = confirm_dialog.exec()
 
             if response == QMessageBox.StandardButton.Ok:
                 self.model.if_finalise_analysis = True
-                self.check_for_export_path.emit() # Let Main handler check if export being properlly set
+                self.check_for_export_path.emit()  # Let Main handler check if export being properlly set
 
             else:
                 logging.info("Analysis finalisation canceled.")
-
 
     def create_confirm_dialog(self, title: str, text: str) -> QMessageBox:
         """Create a confirmation dialog for batch processing.
@@ -1533,16 +1540,14 @@ class ImageProcessingTabHandler(QThread):
             error_message (str): The error message and details from the worker thread.
         """
         # Close the progress dialog if it's open
-        if hasattr(self, 'progress_dialog') and self.progress_dialog:
+        if hasattr(self, "progress_dialog") and self.progress_dialog:
             self.progress_dialog.close()
 
         # Show error dialog on main thread
         QMessageBox.critical(
-            self.gui,
-            "Processing Error",
-            "An error occurred during batch processing:\n\n" + error_message
+            self.gui, "Processing Error", "An error occurred during batch processing:\n\n" + error_message
         )
-        
+
         logging.error(f"Worker thread error handled on main thread: {error_message}")
 
 
@@ -2087,12 +2092,12 @@ class MainHandler:
             os.environ.setdefault("QT_MAC_NO_NATIVE_MENUBAR", "1")
 
         self.app = QApplication(sys.argv)
-        
+
         # Set application properties for better macOS compatibility
         self.app.setApplicationName("Bubble Analyser")
         self.app.setApplicationVersion("1.0")
         self.app.setOrganizationName("Bubble Analyser")
-        
+
         self.gui = MainWindow()
         self.gui.show()
 
