@@ -11,7 +11,7 @@ Bubble Analyser is a Python application for detecting, measuring, and analyzing 
 ## Features
 
 - **Image Processing**: Preprocess images with various transformations
-- **Bubble Detection**: Identify bubbles using advanced watershed segmentation algorithms or **BubMask (Deep Learning)** 
+- **Bubble Detection**: Identify bubbles using advanced watershed segmentation algorithms or **[BubMask (Kim & Park, 2021)](https://github.com/ywflow/BubMask) (Deep Learning)** 
 - **Interactive Ellipse Adjuster**: Brand new manual adjustment interface for pixel-perfect refinement of detected bubbles
 - **Measurement**: Calculate size, shape, and distribution of bubbles
 - **Calibration**: Convert pixel measurements to real-world units (mm)
@@ -118,3 +118,4 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 - Dr Diego Alonso Álvarez - Imperial College London RSE Team, Imperial College London
 - Dr Paulina Quintanilla - Department of Chemical Engineering, Brunel University
 - Dr Francisco Reyes - IntelliSense.io, Queensland, Australia
+
