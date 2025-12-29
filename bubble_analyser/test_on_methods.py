@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
-from bubble_analyser.methods.watershed_methods import NormalWatershed, TestWatershed
+
+from bubble_analyser.methods.watershed_methods import TestWatershed
 
 if __name__ == "__main__":
     from matplotlib import pyplot as plt
@@ -8,7 +9,6 @@ if __name__ == "__main__":
     # Define paths
     img_grey_path = "../tests/test_image_grey.JPG"
     img_rgb_path = "../tests/test_image_rgb.JPG"
-    
 
     # Change to your desired output location
     background_path = None  # Change if you have a background image
@@ -64,9 +64,9 @@ if __name__ == "__main__":
     np.save("../tests/with_grng_DT/without_gaussianblur/test_labels_watershed.npy", labels_watershed)
     cv2.imwrite(str(img_grey_thresh_path), img_grey_thresh.astype(np.uint8))
     cv2.imwrite(str(img_dt_path), dist_transform)
-    cv2.imwrite(str(img_morph_save_path), img_morph*255)
+    cv2.imwrite(str(img_morph_save_path), img_morph * 255)
     cv2.imwrite(str(img_segmented_save_path), segmented_img)
-    cv2.imwrite(str(img_dt_thresh_save_path), img_grey_dt_thresh*255)
+    cv2.imwrite(str(img_dt_thresh_save_path), img_grey_dt_thresh * 255)
     # cv2.imwrite(str(img_morph_eroded_save_path), img_morph_eroded*255)
 
     # Save and display results
@@ -102,13 +102,12 @@ if __name__ == "__main__":
     plt.subplot(338)
     plt.imshow(normal_watershed.grad_img_rgb, cmap="gray")
     plt.title("grad_img_rgb", fontsize=14)
-    
+
     # Adjust layout and spacing
     plt.tight_layout(pad=2.0)
-    
+
     # Save with high resolution and quality
-    plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white')
+    plt.savefig(output_path, dpi=300, bbox_inches="tight", facecolor="white")
     plt.show()
 
     print(f"Segmentation completed! Output saved at: {output_path}")
-
