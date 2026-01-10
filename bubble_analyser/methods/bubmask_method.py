@@ -18,6 +18,7 @@ import time
 from pathlib import Path
 
 from bubble_analyser.cnn_methods.bubmask_wrapper import BubMaskDetector, BubMaskConfig
+from bubble_analyser.processing.image_postprocess import overlay_labels_on_rgb
 
 
 class BubMaskWatershed():
@@ -28,7 +29,7 @@ class BubMaskWatershed():
         Args:
             params (Dict[str, float | int]): Dictionary containing parameters for the method.
                 Must include 'weights_path', 'confidence_threshold', 'target_width',
-                'image_min_dim', 'image_max_dim', 'element_size', and 'connectivity'.
+                'image_min_dim', 'image_max_dim', 'element_size', 'connectivity', and 'alpha'.
         """
         self.name = "BubMask (Deep Learning)"
         self.description = "Detection of bubbles using Mask R-CNN model from MULTIPHASE FLOW & FLOW VISUALIZATION LAB, https://doi.org/10.1038/s41598-021-88334-0 (Kim & Park, 2021)."
@@ -39,6 +40,7 @@ class BubMaskWatershed():
         self.target_width: int = 1000
         self.image_min_dim: int = 192
         self.image_max_dim: int = 384
+        self.alpha: float = 0.5
 
         self.detector: BubMaskDetector | None = None
         self.detection_results: Dict = {}
@@ -62,6 +64,7 @@ class BubMaskWatershed():
             "resample": self.resample,
             "image_min_dim": self.image_min_dim,
             "image_max_dim": self.image_max_dim,
+            "alpha": self.alpha,
         }
 
     def update_params(self, params: Dict[str, Any]) -> None:
@@ -83,6 +86,8 @@ class BubMaskWatershed():
             self.image_min_dim = int(params["image_min_dim"])
         if "image_max_dim" in params:
             self.image_max_dim = int(params["image_max_dim"])
+        if "alpha" in params:
+            self.alpha = float(params["alpha"])
 
     def initialize_processing(
         self,
@@ -172,6 +177,7 @@ class BubMaskWatershed():
         height, width = self.img_grey.shape
         
         # Create labels array
+        # Label 1 is background, bubbles start from 2
         self.labels_watershed = np.zeros((height, width), dtype=np.int32)
         
         # Convert each mask to a labeled region
@@ -182,8 +188,8 @@ class BubMaskWatershed():
                 mask = cv2.resize(mask.astype(np.uint8), (width, height), 
                                 interpolation=cv2.INTER_NEAREST)
             
-            # Add to labels (i+1 because 0 is background)
-            self.labels_watershed[mask > 0] = i + 1
+            # Add to labels (i+2 because 1 is background)
+            self.labels_watershed[mask > 0] = i + 2
 
     def get_results_img(self) -> tuple[npt.NDArray[np.uint8], npt.NDArray[np.int32]]:
         """Get the results image with overlaid bubble detection.
@@ -199,23 +205,15 @@ class BubMaskWatershed():
         logging.info(f"BubMask detection completed in {end_time - start_time:.2f} seconds")
 
 
-        # Check if BubMask detection results are available
         if not hasattr(self, 'labels_watershed'):
             raise RuntimeError("BubMask detection not run yet. Call detect_bubbles first.")
         
-        # Create overlay image
-        labels_on_img = self.img_rgb.copy()
-        
-        # Generate colors for each bubble
-        num_bubbles = np.max(self.labels_watershed)
-        if num_bubbles > 0:
-            colors = np.random.randint(0, 255, size=(num_bubbles + 1, 3))
-            colors[0] = [0, 0, 0]  # Background is black
-            
-            # Create colored overlay
-            for label_id in range(1, num_bubbles + 1):
-                mask = self.labels_watershed == label_id
-                labels_on_img[mask] = colors[label_id]
+        # Create transparent overlay using the standard project function
+        labels_on_img = overlay_labels_on_rgb(
+            self.img_rgb, 
+            cast(npt.NDArray[np.int_], self.labels_watershed), 
+            alpha=self.alpha
+        )
         
         return labels_on_img.astype(np.uint8), self.labels_watershed, None
 

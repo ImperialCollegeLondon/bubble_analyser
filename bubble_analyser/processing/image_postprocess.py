@@ -38,7 +38,7 @@ def overlay_labels_on_rgb(
     colored_labels = np.zeros_like(imgRGB)
 
     for label in unique_labels:
-        if label == 1:  # Skip the background (assuming label 0 is background)
+        if label <= 1:  # Skip background (1) and any unassigned pixels (0)
             continue
         # Create a mask for the current label
         # Generate random hue (0-179 in OpenCV's HSV), max saturation,
@@ -47,11 +47,11 @@ def overlay_labels_on_rgb(
         saturation = 255  # Max saturation
         value = 255  # Max brightness
         color_hsv = np.array([[[hue, saturation, value]]], dtype=np.uint8)  # HSV color format
-        color_bgr = cv2.cvtColor(color_hsv, cv2.COLOR_HSV2BGR)[0][0]  # Convert HSV to BGR color
+        color_rgb = cv2.cvtColor(color_hsv, cv2.COLOR_HSV2RGB)[0][0]  # Convert HSV to RGB color
 
         # Create a mask for the current label
         mask = labels == label
-        colored_labels[mask] = color_bgr
+        colored_labels[mask] = color_rgb
 
     # Blend the colored labels with the original image using transparency (alpha)
     label_overlay = cv2.addWeighted(imgRGB, 1 - alpha, colored_labels, alpha, 0)

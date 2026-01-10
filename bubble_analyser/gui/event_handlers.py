@@ -1673,8 +1673,15 @@ class ResultsTabHandler(QThread):
             )
             return
 
-        x_min = float(np.min(equivalent_diameters_array))
-        x_max = float(np.max(equivalent_diameters_array))
+        try:
+            x_min = float(self.gui.min_x_axis_input.text())
+        except ValueError:
+            x_min = float(np.min(equivalent_diameters_array)) if len(equivalent_diameters_array) > 0 else 0.0
+
+        try:
+            x_max = float(self.gui.max_x_axis_input.text())
+        except ValueError:
+            x_max = float(np.max(equivalent_diameters_array)) if len(equivalent_diameters_array) > 0 else 5.0
 
         # Clear current graph
         self.gui.histogram_canvas.axes.set_xlabel("")
@@ -1703,14 +1710,14 @@ class ResultsTabHandler(QThread):
                 weights=volumes,  # Use volumes as weights
             )
             # Set graph labels for volume histogram
-            self.gui.histogram_canvas.axes.set_xlabel("Equivalent diameter [px]")
-            self.gui.histogram_canvas.axes.set_ylabel("Volume [px³]")
+            self.gui.histogram_canvas.axes.set_xlabel("Equivalent diameter [mm]")
+            self.gui.histogram_canvas.axes.set_ylabel("Volume [mm³]")
         else:  # Count histogram (default)
             counts, bins, patches = self.gui.histogram_canvas.axes.hist(
                 equivalent_diameters_array, bins=num_bins, range=(x_min, x_max)
             )
             # Set graph labels for count histogram
-            self.gui.histogram_canvas.axes.set_xlabel("Equivalent diameter [px]")
+            self.gui.histogram_canvas.axes.set_xlabel("Equivalent diameter [mm]")
             self.gui.histogram_canvas.axes.set_ylabel("Count [#]")
 
         dxy_x_power: int = int(self.gui.dxy_x_input.text())
@@ -1784,6 +1791,9 @@ class ResultsTabHandler(QThread):
                     labels1 + labels2,
                     loc=legend_location_map.get(legend_position, "upper right"),
                 )
+
+        # Apply x-axis limits
+        self.gui.histogram_canvas.axes.set_xlim(x_min, x_max)
 
         # Redraw the canvas
         self.gui.histogram_canvas.draw()

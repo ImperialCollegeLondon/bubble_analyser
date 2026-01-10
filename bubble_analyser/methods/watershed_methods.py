@@ -23,259 +23,259 @@ from numpy import typing as npt
 from bubble_analyser.processing.watershed_parent_class import WatershedSegmentation
 from bubble_analyser.processing.threshold_methods import ThresholdMethods
 
-class TestWatershed(WatershedSegmentation):
-    """Standard watershed segmentation implementation.
+# class TestWatershed(WatershedSegmentation):
+#     """Standard watershed segmentation implementation.
 
-    This class implements the standard watershed algorithm for image segmentation.
-    It uses a single threshold value to separate foreground and background regions,
-    followed by watershed segmentation to identify individual objects.
+#     This class implements the standard watershed algorithm for image segmentation.
+#     It uses a single threshold value to separate foreground and background regions,
+#     followed by watershed segmentation to identify individual objects.
 
-    Attributes:
-        name (str): Name identifier for this watershed method.
-        img_grey_dt_thresh (npt.NDArray[np.int_]): Thresholded distance transform image.
-        sure_fg (npt.NDArray[np.int_]): Sure foreground regions.
-        sure_bg (npt.NDArray[np.int_]): Sure background regions.
-        unknown (npt.NDArray[np.int_]): Unknown regions (neither sure foreground nor background).
-        threshold_value (float): Threshold value for distance transform.
-        target_width (int) : Target width for image resizing.
-        if_bknd_img (bool): Flag indicating if background image is used.
-    """
+#     Attributes:
+#         name (str): Name identifier for this watershed method.
+#         img_grey_dt_thresh (npt.NDArray[np.int_]): Thresholded distance transform image.
+#         sure_fg (npt.NDArray[np.int_]): Sure foreground regions.
+#         sure_bg (npt.NDArray[np.int_]): Sure background regions.
+#         unknown (npt.NDArray[np.int_]): Unknown regions (neither sure foreground nor background).
+#         threshold_value (float): Threshold value for distance transform.
+#         target_width (int) : Target width for image resizing.
+#         if_bknd_img (bool): Flag indicating if background image is used.
+#     """
 
-    def __init__(self, params: dict[str, float | int]) -> None:
-        """Initialize the NormalWatershed segmentation method.
+#     def __init__(self, params: dict[str, float | int]) -> None:
+#         """Initialize the NormalWatershed segmentation method.
 
-        Args:
-            params (dict[str, float | int]): Dictionary containing parameters for the watershed method.
-                Must include 'target_width', 'element_size', 'connectivity', and 'threshold_value'.
-        """
-        self.name = "NEW method"
-        self.description = "A new watershed method still in developing and testing (by Yiyang)."
-        self.img_grey_dt_thresh: MatLike
-        self.grad_img_rgb: MatLike
-        self.sure_fg: npt.NDArray[np.uint8]
-        self.sure_bg: npt.NDArray[np.uint8]
-        self.unknown: MatLike
-        self.threshold_value: float
-        self.resample: float
-        # self.target_width: int
-        self.if_bknd_img: bool = False
-        self.if_gaussianblur: bool = False
-        self.ksize: int = 3
-        self.update_params(params)
+#         Args:
+#             params (dict[str, float | int]): Dictionary containing parameters for the watershed method.
+#                 Must include 'target_width', 'element_size', 'connectivity', and 'threshold_value'.
+#         """
+#         self.name = "NEW method"
+#         self.description = "A new watershed method still in developing and testing (by Yiyang)."
+#         self.img_grey_dt_thresh: MatLike
+#         self.grad_img_rgb: MatLike
+#         self.sure_fg: npt.NDArray[np.uint8]
+#         self.sure_bg: npt.NDArray[np.uint8]
+#         self.unknown: MatLike
+#         self.threshold_value: float
+#         self.resample: float
+#         # self.target_width: int
+#         self.if_bknd_img: bool = False
+#         self.if_gaussianblur: bool = False
+#         self.ksize: int = 3
+#         self.update_params(params)
 
-    def get_needed_params(self) -> dict[str, float | int]:
-        """Get the parameters required for this watershed method.
+#     def get_needed_params(self) -> dict[str, float | int]:
+#         """Get the parameters required for this watershed method.
 
-        Returns:
-            dict[str, float | int]: Dictionary containing the required parameters and their current values.
-        """
-        return {
-            # "target_width": self.target_width,
-            "resample": self.resample,
-            "threshold_value": self.threshold_value,
-            "if_gaussianblur": self.if_gaussianblur,
-            "ksize": self.ksize,
-            "max_thresh": self.max_thresh,
-            "min_thresh": self.min_thresh,
-            "step_size": self.step_size,
-            "element_size": self.element_size,
-            "connectivity": self.connectivity,
-        }
+#         Returns:
+#             dict[str, float | int]: Dictionary containing the required parameters and their current values.
+#         """
+#         return {
+#             # "target_width": self.target_width,
+#             "resample": self.resample,
+#             "threshold_value": self.threshold_value,
+#             "if_gaussianblur": self.if_gaussianblur,
+#             "ksize": self.ksize,
+#             "max_thresh": self.max_thresh,
+#             "min_thresh": self.min_thresh,
+#             "step_size": self.step_size,
+#             "element_size": self.element_size,
+#             "connectivity": self.connectivity,
+#         }
 
-    def initialize_processing(
-        self,
-        params: dict[str, float | int],
-        img_grey: npt.NDArray[np.int_],
-        img_rgb: npt.NDArray[np.int_],
-        if_bknd_img: bool,
-        bknd_img: npt.NDArray[np.int_] = cast(npt.NDArray[np.int_], None),
-    ) -> None:
-        """Initialize the processing with input images and parameters.
+#     def initialize_processing(
+#         self,
+#         params: dict[str, float | int],
+#         img_grey: npt.NDArray[np.int_],
+#         img_rgb: npt.NDArray[np.int_],
+#         if_bknd_img: bool,
+#         bknd_img: npt.NDArray[np.int_] = cast(npt.NDArray[np.int_], None),
+#     ) -> None:
+#         """Initialize the processing with input images and parameters.
 
-        Args:
-            params (dict[str, float | int]): Dictionary containing parameters for the watershed method.
-            img_grey (npt.NDArray[np.int_]): Grayscale input image.
-            img_rgb (npt.NDArray[np.int_]): RGB input image.
-            if_bknd_img (bool): Flag indicating if background image is used.
-            bknd_img (npt.NDArray[np.int_], optional): Background image if available. Defaults to None.
-        """
-        self.img_grey = img_grey
-        self.img_rgb = img_rgb
-        self.bknd_img = bknd_img
-        self.if_bknd_img = if_bknd_img
-        self.update_params(params)
-        super().__init__(
-            img_grey,
-            img_rgb,
-            if_bknd_img=if_bknd_img,
-            bknd_img=bknd_img,
-            element_size=self.element_size,
-            connectivity=self.connectivity,
-        )
+#         Args:
+#             params (dict[str, float | int]): Dictionary containing parameters for the watershed method.
+#             img_grey (npt.NDArray[np.int_]): Grayscale input image.
+#             img_rgb (npt.NDArray[np.int_]): RGB input image.
+#             if_bknd_img (bool): Flag indicating if background image is used.
+#             bknd_img (npt.NDArray[np.int_], optional): Background image if available. Defaults to None.
+#         """
+#         self.img_grey = img_grey
+#         self.img_rgb = img_rgb
+#         self.bknd_img = bknd_img
+#         self.if_bknd_img = if_bknd_img
+#         self.update_params(params)
+#         super().__init__(
+#             img_grey,
+#             img_rgb,
+#             if_bknd_img=if_bknd_img,
+#             bknd_img=bknd_img,
+#             element_size=self.element_size,
+#             connectivity=self.connectivity,
+#         )
 
-    def update_params(self, params: dict[str, float | int]) -> None:
-        """Update the parameters for the watershed method.
+#     def update_params(self, params: dict[str, float | int]) -> None:
+#         """Update the parameters for the watershed method.
 
-        Args:
-            params (dict[str, float | int]): Dictionary containing parameters to update.
-                Must include 'target_width', 'element_size', 'connectivity', and 'threshold_value'.
-        """
-        # self.target_width = cast(int, params["target_width"])
-        self.resample = cast(float, params["resample"])
-        self.max_thresh = params["max_thresh"]
-        self.min_thresh = params["min_thresh"]
-        self.step_size = params["step_size"]
-        self.element_size = params["element_size"]  # type: ignore
-        self.connectivity = params["connectivity"]  # type: ignore
-        self.threshold_value = params["threshold_value"]
-        self.ksize = cast(int, params["ksize"])
+#         Args:
+#             params (dict[str, float | int]): Dictionary containing parameters to update.
+#                 Must include 'target_width', 'element_size', 'connectivity', and 'threshold_value'.
+#         """
+#         # self.target_width = cast(int, params["target_width"])
+#         self.resample = cast(float, params["resample"])
+#         self.max_thresh = params["max_thresh"]
+#         self.min_thresh = params["min_thresh"]
+#         self.step_size = params["step_size"]
+#         self.element_size = params["element_size"]  # type: ignore
+#         self.connectivity = params["connectivity"]  # type: ignore
+#         self.threshold_value = params["threshold_value"]
+#         self.ksize = cast(int, params["ksize"])
         
-        if params["if_gaussianblur"] == "True":
-            self.if_gaussianblur = True
-            logging.info("Gausssian Blur activated")
-        else:
-            self.if_gaussianblur = False
-            logging.info("Gausssian Blur deactivated")
+#         if params["if_gaussianblur"] == "True":
+#             self.if_gaussianblur = True
+#             logging.info("Gausssian Blur activated")
+#         else:
+#             self.if_gaussianblur = False
+#             logging.info("Gausssian Blur deactivated")
 
-    def __get_sure_fg_bg(
-        self, target_image: npt.NDArray[np.int_], dt_thresh_image: MatLike
-    ) -> tuple[npt.NDArray[np.uint8], npt.NDArray[np.uint8], MatLike]:
-        """Determine sure foreground and background regions.
+#     def __get_sure_fg_bg(
+#         self, target_image: npt.NDArray[np.int_], dt_thresh_image: MatLike
+#     ) -> tuple[npt.NDArray[np.uint8], npt.NDArray[np.uint8], MatLike]:
+#         """Determine sure foreground and background regions.
 
-        Creates masks for sure foreground (from thresholded distance transform),
-        sure background (from dilated original image), and unknown regions (the difference
-        between sure background and sure foreground).
-        """
-        sure_fg_initial = dt_thresh_image.copy()
+#         Creates masks for sure foreground (from thresholded distance transform),
+#         sure background (from dilated original image), and unknown regions (the difference
+#         between sure background and sure foreground).
+#         """
+#         sure_fg_initial = dt_thresh_image.copy()
 
-        sure_bg = np.array(
-            cv2.dilate(target_image, np.ones((3, 3), np.uint8), iterations=1),
-            dtype=np.uint8,
-        )  # type: ignore
-        sure_fg = np.array(sure_fg_initial, dtype=np.uint8)  # type: ignore
-        unknown = cv2.subtract(sure_bg, sure_fg)  # type: ignore
+#         sure_bg = np.array(
+#             cv2.dilate(target_image, np.ones((3, 3), np.uint8), iterations=1),
+#             dtype=np.uint8,
+#         )  # type: ignore
+#         sure_fg = np.array(sure_fg_initial, dtype=np.uint8)  # type: ignore
+#         unknown = cv2.subtract(sure_bg, sure_fg)  # type: ignore
 
-        return sure_fg, sure_bg, unknown
+#         return sure_fg, sure_bg, unknown
 
-    def _dilate_mask(self, mask: MatLike) -> MatLike:
-        """Dilate the mask to enhance object boundaries.
+#     def _dilate_mask(self, mask: MatLike) -> MatLike:
+#         """Dilate the mask to enhance object boundaries.
 
-        This method applies a morphological dilation operation to the input mask.
-        The dilation operation enlarges the foreground regions, which helps in
-        better defining the boundaries of objects.
-        """
-        kernel = np.ones((3, 3), np.uint8)
-        dilated_mask = cv2.dilate(mask, kernel, iterations=1)  # type: ignore
-        return dilated_mask
+#         This method applies a morphological dilation operation to the input mask.
+#         The dilation operation enlarges the foreground regions, which helps in
+#         better defining the boundaries of objects.
+#         """
+#         kernel = np.ones((3, 3), np.uint8)
+#         dilated_mask = cv2.dilate(mask, kernel, iterations=1)  # type: ignore
+#         return dilated_mask
 
-    def __iterative_threshold(self, image: MatLike) -> tuple[MatLike, int]:
-        """Apply iterative thresholding to detect objects at different intensity levels.
+#     def __iterative_threshold(self, image: MatLike) -> tuple[MatLike, int]:
+#         """Apply iterative thresholding to detect objects at different intensity levels.
 
-        This method iteratively applies decreasing thresholds to the distance transform image,
-        detecting objects at each threshold level. It accumulates non-overlapping objects into
-        a final mask, which is then used for watershed segmentation. This approach is effective
-        for detecting objects with varying intensities or sizes that might be missed by a single
-        threshold approach.
+#         This method iteratively applies decreasing thresholds to the distance transform image,
+#         detecting objects at each threshold level. It accumulates non-overlapping objects into
+#         a final mask, which is then used for watershed segmentation. This approach is effective
+#         for detecting objects with varying intensities or sizes that might be missed by a single
+#         threshold approach.
 
-        The method starts at max_thresh and decreases by step_size until reaching min_thresh,
-        keeping track of unique objects detected along the way.
-        """
-        logging.basicConfig(level=logging.INFO)
+#         The method starts at max_thresh and decreases by step_size until reaching min_thresh,
+#         keeping track of unique objects detected along the way.
+#         """
+#         logging.basicConfig(level=logging.INFO)
 
-        image = image.astype(np.uint8)
-        # Initialize the final mask to accumulate all detected objects
-        output_mask = np.zeros_like(image, dtype=np.uint8)
+#         image = image.astype(np.uint8)
+#         # Initialize the final mask to accumulate all detected objects
+#         output_mask = np.zeros_like(image, dtype=np.uint8)
 
-        # Set the initial threshold
-        current_thresh = self.max_thresh
-        no_overlap_count = 0  # Reset counter
+#         # Set the initial threshold
+#         current_thresh = self.max_thresh
+#         no_overlap_count = 0  # Reset counter
 
-        while current_thresh >= self.min_thresh:
-            # Apply binary thresholding
-            _, thresholded = cv2.threshold(image, current_thresh * image.max(), 255, cv2.THRESH_BINARY)
+#         while current_thresh >= self.min_thresh:
+#             # Apply binary thresholding
+#             _, thresholded = cv2.threshold(image, current_thresh * image.max(), 255, cv2.THRESH_BINARY)
 
-            # Label the thresholded image
-            num_labels, labels = cv2.connectedComponents(thresholded, connectivity=self.connectivity)
-            logging.basicConfig(level=logging.DEBUG)
-            logging.info(f"Threshold {current_thresh:.2f}: {num_labels} components found.")
+#             # Label the thresholded image
+#             num_labels, labels = cv2.connectedComponents(thresholded, connectivity=self.connectivity)
+#             logging.basicConfig(level=logging.DEBUG)
+#             logging.info(f"Threshold {current_thresh:.2f}: {num_labels} components found.")
 
-            # Detect new objects by comparing with the final mask
-            for label in range(1, num_labels):  # Skip label 0 (background)
-                # Create a mask for the current label
-                component_mask = (labels == label).astype(np.uint8) * 255
+#             # Detect new objects by comparing with the final mask
+#             for label in range(1, num_labels):  # Skip label 0 (background)
+#                 # Create a mask for the current label
+#                 component_mask = (labels == label).astype(np.uint8) * 255
 
-                # component_max_intensity = cv2.minMaxLoc(image, mask=component_mask)[1]
-                # Check if the object is already in the final mask
-                overlap = cv2.bitwise_and(output_mask, component_mask)
+#                 # component_max_intensity = cv2.minMaxLoc(image, mask=component_mask)[1]
+#                 # Check if the object is already in the final mask
+#                 overlap = cv2.bitwise_and(output_mask, component_mask)
 
-                if not np.any(overlap):  # If no overlap, it's a new object
-                    no_overlap_count += 1
-                    output_mask = cv2.bitwise_or(output_mask, component_mask * 255)  # type: ignore
+#                 if not np.any(overlap):  # If no overlap, it's a new object
+#                     no_overlap_count += 1
+#                     output_mask = cv2.bitwise_or(output_mask, component_mask * 255)  # type: ignore
 
-            # Decrease the threshold for the next iteration
-            current_thresh -= self.step_size
+#             # Decrease the threshold for the next iteration
+#             current_thresh -= self.step_size
 
-        final_label_count, _ = cv2.connectedComponents(output_mask)
-        logging.info(f"Total unique labels in output_mask_for_labels: {final_label_count}")
-        logging.info(f"Total number of no overlap occurrences: {no_overlap_count}")
-        return output_mask, final_label_count
+#         final_label_count, _ = cv2.connectedComponents(output_mask)
+#         logging.info(f"Total unique labels in output_mask_for_labels: {final_label_count}")
+#         logging.info(f"Total number of no overlap occurrences: {no_overlap_count}")
+#         return output_mask, final_label_count
 
-    def _gradient_topography(self, img: MatLike):
-        # 1) Preprocess (optional but recommended)
-        if self.if_gaussianblur:
-            g = cv2.GaussianBlur(img, (0, 0), 1.2)
-        else:
-            g = img
-        # g = cv2.GaussianBlur(img, (0, 0), 1.2)
+#     def _gradient_topography(self, img: MatLike):
+#         # 1) Preprocess (optional but recommended)
+#         if self.if_gaussianblur:
+#             g = cv2.GaussianBlur(img, (0, 0), 1.2)
+#         else:
+#             g = img
+#         # g = cv2.GaussianBlur(img, (0, 0), 1.2)
 
-        # Ensure the image is in uint8 format for cv2.Sobel compatibility
-        if g.dtype != np.uint8:
-            g = g.astype(np.uint8)
+#         # Ensure the image is in uint8 format for cv2.Sobel compatibility
+#         if g.dtype != np.uint8:
+#             g = g.astype(np.uint8)
 
-        # 2) Gradient magnitude = "topography"
-        gx = cv2.Sobel(g, cv2.CV_32F, 1, 0, ksize=self.ksize)
-        gy = cv2.Sobel(g, cv2.CV_32F, 0, 1, ksize=self.ksize)
-        grad = cv2.magnitude(gx, gy)
+#         # 2) Gradient magnitude = "topography"
+#         gx = cv2.Sobel(g, cv2.CV_32F, 1, 0, ksize=self.ksize)
+#         gy = cv2.Sobel(g, cv2.CV_32F, 0, 1, ksize=self.ksize)
+#         grad = cv2.magnitude(gx, gy)
 
-        # normalize to 8-bit for display + watershed input
-        grad_u8 = cv2.normalize(grad, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8) # type: ignore
-        grad_bgr = cv2.cvtColor(grad_u8, cv2.COLOR_GRAY2BGR)
-        self.img_grey = grad_u8
-        self.grad_img_rgb = grad_bgr
+#         # normalize to 8-bit for display + watershed input
+#         grad_u8 = cv2.normalize(grad, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8) # type: ignore
+#         grad_bgr = cv2.cvtColor(grad_u8, cv2.COLOR_GRAY2BGR)
+#         self.img_grey = grad_u8
+#         self.grad_img_rgb = grad_bgr
         
-    def get_results_img(self) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_], npt.NDArray[np.int_]]:
-        """Execute the complete watershed segmentation process and return results.
+#     def get_results_img(self) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_], npt.NDArray[np.int_]]:
+#         """Execute the complete watershed segmentation process and return results.
 
-        Performs the full sequence of operations for watershed segmentation:
-        thresholding, morphological processing, distance transform, determining foreground/background,
-        initializing labels, watershed segmentation, and overlaying results on the RGB image.
+#         Performs the full sequence of operations for watershed segmentation:
+#         thresholding, morphological processing, distance transform, determining foreground/background,
+#         initializing labels, watershed segmentation, and overlaying results on the RGB image.
 
-        Returns:
-            tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]: A tuple containing:
-                - The RGB image with segmentation labels overlaid
-                - The watershed segmentation labels array
-        """
-        self._gradient_topography(self.img_grey)
-        # self.img_grey_thresholded = self._threshold(self.img_grey)
-        threshold_method = ThresholdMethods()
-        self.img_grey_thresholded = threshold_method.normal_threshold(self.img_grey, self.threshold_value)
-        self.img_grey_morph, self.img_grey_morph_eroded = self._morph_process(~self.img_grey_thresholded)
-        self.img_grey_dt = self._dist_transform(self.img_grey_morph)
-        self.output_mask_for_labels, self.final_label_count = self.__iterative_threshold(self.img_grey_dt)
+#         Returns:
+#             tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]: A tuple containing:
+#                 - The RGB image with segmentation labels overlaid
+#                 - The watershed segmentation labels array
+#         """
+#         self._gradient_topography(self.img_grey)
+#         # self.img_grey_thresholded = self._threshold(self.img_grey)
+#         threshold_method = ThresholdMethods()
+#         self.img_grey_thresholded = threshold_method.normal_threshold(self.img_grey, self.threshold_value)
+#         self.img_grey_morph, self.img_grey_morph_eroded = self._morph_process(~self.img_grey_thresholded)
+#         self.img_grey_dt = self._dist_transform(self.img_grey_morph)
+#         self.output_mask_for_labels, self.final_label_count = self.__iterative_threshold(self.img_grey_dt)
 
-        self.dilated_mask = self._dilate_mask(self.output_mask_for_labels)
-        self.labels = self._initialize_labels(self.dilated_mask)
-        # img_grey_morph_rgb = cv2.cvtColor(self.img_grey_morph_eroded, cv2.COLOR_GRAY2RGB)  # type: ignore
-        self.labels_watershed = self._watershed_segmentation(self.grad_img_rgb, self.labels)
+#         self.dilated_mask = self._dilate_mask(self.output_mask_for_labels)
+#         self.labels = self._initialize_labels(self.dilated_mask)
+#         # img_grey_morph_rgb = cv2.cvtColor(self.img_grey_morph_eroded, cv2.COLOR_GRAY2RGB)  # type: ignore
+#         self.labels_watershed = self._watershed_segmentation(self.grad_img_rgb, self.labels)
         
-        # self.labels_watershed_filled = self._fill_ellipses(self.labels_watershed)
-        self.labels_on_img = self._overlay_labels_on_rgb(
-            self.img_rgb, cast(npt.NDArray[np.int_], self.labels_watershed)
-        )
+#         # self.labels_watershed_filled = self._fill_ellipses(self.labels_watershed)
+#         self.labels_on_img = self._overlay_labels_on_rgb(
+#             self.img_rgb, cast(npt.NDArray[np.int_], self.labels_watershed)
+#         )
 
-        return cast(npt.NDArray[np.int_], self.labels_on_img), \
-            cast(npt.NDArray[np.int_], self.labels_watershed),\
-                cast(npt.NDArray[np.int_], self.img_grey_morph_eroded)
+#         return cast(npt.NDArray[np.int_], self.labels_on_img), \
+#             cast(npt.NDArray[np.int_], self.labels_watershed),\
+#                 cast(npt.NDArray[np.int_], self.img_grey_morph_eroded)
 
 class IterativeWatershed(WatershedSegmentation):
     """Iterative watershed segmentation implementation.
@@ -500,9 +500,7 @@ class NormalWatershed(WatershedSegmentation):
                 Must include 'target_width', 'element_size', 'connectivity', and 'threshold_value'.
         """
         self.name = "Default"
-        self.description = "The default watershed method that applies thresholds by three times (by Yiyang)."
-
-        self.img_grey_dt_thresh: MatLike
+        self.description = "The default watershed method that applies thresholds by three times, improved based on the first version of Bubble Analyser (Mesa et al., 2022), https://doi.org/10.1016/j.mineng.2022.107497"
         self.sure_fg: npt.NDArray[np.uint8]
         self.sure_bg: npt.NDArray[np.uint8]
         self.unknown: MatLike

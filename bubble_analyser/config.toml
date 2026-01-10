@@ -21,7 +21,7 @@ target_width = 1000
 target_width_range = [500, 2000]
 
 # Images can be resampled with factors to make processing faster
-resample = 0.3
+resample = 0.7
 resample_range = [0.01, 1.0]
 
 # Batch processing flag
