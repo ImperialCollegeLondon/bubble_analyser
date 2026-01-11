@@ -12,24 +12,24 @@ authors = [
 
 [tool.poetry.dependencies]
 python = ">=3.11, <3.13"
-matplotlib = "^3.9.1.post1"
+matplotlib = "^3.10.7"
 toml = "^0.10.2"
-numpy = "<=1.26.4"
-scikit-image = "^0.25.1"
-scipy = "^1.14.0"
-pydantic = "^2.11.1"
-typing-extensions = "^4.12.2"
-pyside6 = "^6.8.3"
+numpy = "1.26.4"
+scikit-image = "^0.25.2"
+scipy = "^1.15.3"
+pydantic = "^2.12.3"
+typing-extensions = "^4.15.0"
+pyside6 = "^6.10.0"
 datetime = "^5.5"
-numba = "^0.60.0"
-opencv-python = "^4.11.0.86"
+numba = "^0.62.1"
 mkdocstrings-python = ">=0.18"
-pandas = "^2.3.2"
+pandas = "^2.3.3"
 openpyxl = "^3.1.5"
-h5py = "^3.14.0"
-xlsxwriter = "^3.2.5"
+h5py = "^3.15.1"
+xlsxwriter = "^3.2.9"
 tensorflow = "^2.20.0"
-ipython = "^9.8.0"
+ipython = "^8.37.0"
+
 imgaug = "^0.4.0"
 
 [tool.poetry.group.docs.dependencies]
@@ -37,14 +37,14 @@ mkdocs = "^1.6.1"
 mkdocs-material = "^9.6.11"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.3.3"
+pytest = "^8.4.2"
 pytest-cov = "^6.0.0"
 pytest-mypy = "^1.0.0"
 pytest-mock = "^3.7.0"
 pre-commit = "^4.2.0"
 ruff = "^0.11.2"
 types-toml = "^0.10.8.20240310"
-pyinstaller = "^6.12.0"
+pyinstaller = "^6.16.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
