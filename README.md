@@ -6,7 +6,7 @@
 
 ## Overview
 
-Bubble Analyser is a Python application for detecting, measuring, and analyzing bubbles in images. It provides advanced image processing capabilities using watershed segmentation algorithms to accurately identify and measure bubbles of various sizes and distributions. Additionally, it offers manual adjustment tools for fine-tuning segmentation results when needed.
+Bubble Analyser is a Python application for detecting, measuring, and analyzing bubbles in images。 It provides advanced image processing capabilities using watershed segmentation algorithms to accurately identify and measure bubbles of various sizes and distributions. Additionally, it offers manual adjustment tools for fine-tuning segmentation results when needed. This project is improved based on the first version of [Bubble Analyser (Mesa et al., 2022)](https://doi.org/10.1016/j.mineng.2022.107497).
 
 ## Features
 
@@ -25,6 +25,7 @@ Bubble Analyser is a Python application for detecting, measuring, and analyzing 
 For users on either Windows or MacOS platform, a standalone executable is available for each one in the release:
 
 v0.3.0 <https://github.com/ImperialCollegeLondon/bubble_analyser/releases/tag/v0.3.0>
+
 v0.2.0 <https://github.com/ImperialCollegeLondon/bubble_analyser/releases/tag/v0.2.0>
 
 ### From Source
@@ -46,17 +47,10 @@ To install from source, follow the developer setup instructions below.
 
 Bubble Analyser implements multiple segmentation approaches:
 
-- **Normal Watershed**: Standard watershed algorithm with triple threshold.
+- **Normal Watershed**: Standard watershed algorithm with triple threshold, based on the first version of [Bubble Analyser (Mesa et al., 2022)](https://doi.org/10.1016/j.mineng.2022.107497).
 - **Iterative Watershed**: Advanced algorithm that iteratively applies thresholds to detect objects at different intensity levels.
 - **BubMask (Deep Learning)**: Integrated BubMask (Kim & Park, 2021), a Mask R-CNN based deep learning model for superior accuracy in complex lighting or overlapping conditions.
 
-## For Developers
-
-This is a Python application that uses [poetry](https://python-poetry.org) for packaging
-and dependency management. It also provides [pre-commit](https://pre-commit.com/) hooks
-for various linters and formatters and automated tests using
-[pytest](https://pytest.org/) and [GitHub Actions](https://github.com/features/actions).
-Pre-commit hooks are automatically kept updated with a dedicated GitHub Action.
 
 To get started:
 
@@ -87,11 +81,14 @@ To get started:
    ```bash
    python -m bubble_analyser
    ```
+   
+or, you can build up the virtual environment based on the requirements.txt file in the root directory.
 
 ## Dependencies
 
 - Python 3.12
 - PySide6 (Qt for Python)
+- Tensorflow
 - NumPy
 - SciPy
 - scikit-image
@@ -118,4 +115,5 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 - Dr Diego Alonso Álvarez - Imperial College London RSE Team, Imperial College London
 - Dr Paulina Quintanilla - Department of Chemical Engineering, Brunel University
 - Dr Francisco Reyes - IntelliSense.io, Queensland, Australia
+
 
