@@ -163,6 +163,7 @@ class EllipseHandler:
         """
         labels = self.labels_before_filtering
 
+        logging.basicConfig(level=logging.INFO)
         properties = measure.regionprops(labels)
         new_labels = np.copy(labels) if labels is not None else np.array([])
         mm2px = self.mm2px
@@ -196,6 +197,7 @@ class EllipseHandler:
         for prop in properties:
             if prop.label == 1:  # Ignore the background
                 continue
+
 
             # Calculate circle properties in mm
             area = prop.area * (mm2px**2)
@@ -250,7 +252,7 @@ class EllipseHandler:
 
         # Create an empty image to draw ellipses
         for label in np.unique(self.labels_after_filtering):
-            if label == 0:
+            if label == 0 or label == 1:
                 continue  # Skip the background label
 
             mask = np.zeros_like(self.labels_after_filtering, dtype=np.uint8)
@@ -313,7 +315,7 @@ class EllipseHandler:
                 continue
                 
         self.ellipses_on_image = ellipse_image
-    
+
         self.create_labelled_image_from_ellipses()
     
         return ellipse_image

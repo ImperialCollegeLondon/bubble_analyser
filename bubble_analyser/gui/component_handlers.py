@@ -173,7 +173,6 @@ class Step2Worker(QThread):
             error_details = traceback.format_exc()
             self.error.emit(f"Error in Step 2 processing: {str(e)}\n\n{error_details}")
 
-
 class InputFilesModel:
     """A model class for managing input image files and their paths.
 
