@@ -89,10 +89,10 @@ class WorkerThread(QThread):
             # Log the error instead of showing a dialog from worker thread
             import logging
             import traceback
-            
+
             error_details = traceback.format_exc()
             logging.error(f"Error in worker thread: {error_details}")
-            
+
             # Emit error signal to be handled on the main thread
             self.error_occurred.emit(f"Processing error: {str(e)}\n\nDetails:\n{error_details}")
 
@@ -440,19 +440,32 @@ class ImageProcessingModel:
         logging.info(f"Find circles filtering parameters: {self.filter_param_dict_2}")
 
     def initialize_cnn_model(self) -> None:
-        # Initialize BubMask detector if not already done
-        if self.detector is None and self.weights_path:
-            try:
-                config = BubMaskConfig(
-                    confidence_threshold=self.confidence_threshold,
-                    image_min_dim=self.image_min_dim,
-                    image_max_dim=self.image_max_dim
-                )
-                self.detector = BubMaskDetector(self.weights_path, config)
-                logging.info("BubMask detector initialized successfully")
-            except Exception as e:
-                logging.error(f"Failed to initialize BubMask detector: {e}")
-                raise
+            import os
+
+            # Initialize BubMask detector if not already done
+            if self.detector is None and self.weights_path:
+
+                # 1. Safety Check: Does the file actually exist?
+                if not os.path.exists(self.weights_path):
+                    logging.warning(f"Weights file not found at: {self.weights_path}")
+                    logging.warning("CNN-based segmentation will be disabled.")
+                    self.detector = None
+                    return  # Exit gracefully, do not crash!
+
+                # 2. File exists, proceed to load
+                try:
+                    config = BubMaskConfig(
+                        confidence_threshold=self.confidence_threshold,
+                        image_min_dim=self.image_min_dim,
+                        image_max_dim=self.image_max_dim
+                    )
+                    self.detector = BubMaskDetector(self.weights_path, config)
+                    logging.info("BubMask detector initialized successfully")
+                except Exception as e:
+                    # 3. Catch other errors (e.g. corrupt file) without crashing app
+                    logging.error(f"Failed to initialize BubMask detector: {e}")
+                    self.detector = None
+                    # removed 'raise' so the app continues running
 
     def confirm_folder_selection(self, folder_path_list: list[Path]) -> None:
         """Set the list of image paths to be processed.
@@ -636,7 +649,7 @@ class ImageProcessingModel:
         self.bubble_count = 0
         self.ellipses_properties = []
         logging.info("------------------------------Batch Process Started------------------------------")
-        
+
         # Process every image in the list
         for index, name in enumerate(self.img_path_list):
             logging.info(f"***Processing image {index + 1}/{len(self.img_path_list)}: {name}***")

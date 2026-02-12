@@ -8,6 +8,8 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
+from PySide6.QtWidgets import QApplication, QMessageBox, QProgressDialog
+from PySide6.QtCore import Qt, QThread, Signal
 
 def setup_basic_logging() -> None:
     """Set up cross-platform, user-writable logging before the main app runs."""
@@ -27,10 +29,9 @@ def setup_basic_logging() -> None:
         logs_dir = Path(tempfile.gettempdir()) / "BubbleAnalyser" / "logs"
         logs_dir.mkdir(parents=True, exist_ok=True)
 
-    # Generate timestamp for unique log file names
     now = datetime.now()
-    date_str = now.strftime("%d%m%Y")  # DDMMYYYY format
-    timestamp_str = now.strftime("%H%M%S")  # HHMMSS format
+    date_str = now.strftime("%d%m%Y")
+    timestamp_str = now.strftime("%H%M%S")
     log_filename = f"bubble_analyser_{date_str}_{timestamp_str}.log"
     log_file = logs_dir / log_filename
 
@@ -43,41 +44,101 @@ def setup_basic_logging() -> None:
         ],
     )
 
+class DownloadWorker(QThread):
+    """Thread to handle the 250MB weight download without freezing the GUI."""
+    progress_changed = Signal(int)
+    finished = Signal(bool, str)
+
+    def __init__(self, url, destination):
+        super().__init__()
+        self.url = url
+        self.destination = destination
+
+    def run(self):
+        import requests
+        try:
+            response = requests.get(self.url, stream=True, timeout=30)
+            response.raise_for_status()
+            total_size = int(response.headers.get('content-length', 0))
+            downloaded = 0
+
+            with open(self.destination, "wb") as f:
+                for chunk in response.iter_content(chunk_size=16384):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if total_size > 0:
+                            self.progress_changed.emit(int((downloaded / total_size) * 100))
+            self.finished.emit(True, "Success")
+        except Exception as e:
+            self.finished.emit(False, str(e))
+
+def handle_weights_download(url, destination):
+    """Shows a progress dialog for the weight download."""
+    progress = QProgressDialog("Downloading ML Weights (mask_rcnn_bubble.h5)...", "Cancel", 0, 100)
+    progress.setWindowModality(Qt.ApplicationModal)
+    progress.setMinimumDuration(0)
+    progress.setWindowTitle("First Time Setup")
+
+    worker = DownloadWorker(url, destination)
+    worker.progress_changed.connect(progress.setValue)
+
+    # Start thread and enter event loop
+    worker.start()
+    while worker.isRunning():
+        QApplication.processEvents()
+        if progress.wasCanceled():
+            worker.terminate()
+            return False
+    return True
 
 if __name__ == "__main__":
+    # 1. Create the Application Singleton first
+    app = QApplication.instance() or QApplication(sys.argv)
+
     try:
         setup_basic_logging()
+
         from bubble_analyser.gui.event_handlers import MainHandler
         from bubble_analyser.processing.error_handler import install_global_exception_handler
+        from bubble_analyser.weights.loader import get_weights_path
 
-        # Install the global exception handler
         install_global_exception_handler()
 
-        # Start the application
-        MainHandler()
-    except Exception as e:
-        # Catch any exceptions during startup
-        import traceback
+        # 2. Check for weights
+        w_path, w_url = get_weights_path(download_if_missing=False)
 
+        if not w_path:
+            # The weights are missing. Ask the user what to do.
+            reply = QMessageBox.question(
+                None,
+                "Missing ML Weights",
+                "The Machine Learning weights (mask_rcnn_bubble.h5, ~250 MB) are missing.\n\n"
+                "These are required for CNN-based segmentation methods.\n"
+                "Would you like to download them now?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+
+            if reply == QMessageBox.StandardButton.Yes:
+                # User accepted: Start the download with progress bar
+                target_path = Path(__file__).parent / "weights" / "mask_rcnn_bubble.h5"
+                logging.info(f"User accepted download. Target: {target_path}")
+
+                success = handle_weights_download(w_url, target_path)
+
+                if not success:
+                    logging.warning("Download failed or cancelled during progress.")
+            else:
+                # User declined: Log it and proceed (CNN will be disabled in GUI)
+                logging.info("User declined weight download. CNN methods will be unavailable.")
+
+        # 3. Start the GUI
+        # (The MainHandler will auto-detect the existing 'app' instance due to your previous fix)
+        MainHandler()
+        sys.exit(app.exec())
+
+    except Exception as e:
+        import traceback
         error_details = traceback.format_exc()
         logging.error(f"Error during application startup: {error_details}")
-
-        # If GUI is not available yet, print to console
         print(f"Error during application startup: {e}\n{error_details}")
-
-        # Try to show a basic error dialog if possible
-        try:
-            import sys
-
-            from PySide6.QtWidgets import QApplication, QMessageBox
-
-            app = QApplication.instance() or QApplication(sys.argv)
-            error_box = QMessageBox()
-            error_box.setIcon(QMessageBox.Icon.Critical)
-            error_box.setWindowTitle("Startup Error")
-            error_box.setText(f"Error during application startup: {e}")
-            error_box.setDetailedText(error_details)
-            error_box.exec()
-        except Exception:
-            # If we can't show a dialog, at least the error is logged and printed
-            pass
