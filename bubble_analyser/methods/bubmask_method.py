@@ -10,20 +10,20 @@ Classes:
 
 import logging
 import os
-from typing import cast, Dict, Any
-import numpy as np
-from numpy import typing as npt
-import cv2
 import time
 from pathlib import Path
+from typing import Any, cast
 
-from bubble_analyser.cnn_methods.bubmask_wrapper import BubMaskDetector, BubMaskConfig
+import cv2
+import numpy as np
+from numpy import typing as npt
+
+from bubble_analyser.cnn_methods.bubmask_wrapper import BubMaskConfig, BubMaskDetector
 from bubble_analyser.processing.image_postprocess import overlay_labels_on_rgb
 
 
-class BubMaskWatershed():
-
-    def __init__(self, params: Dict[str, float | int]) -> None:
+class BubMaskWatershed:
+    def __init__(self, params: dict[str, float | int]) -> None:
         """Initialize the BubMask watershed segmentation method.
 
         Args:
@@ -43,15 +43,15 @@ class BubMaskWatershed():
         self.alpha: float = 0.5
 
         self.detector: BubMaskDetector | None = None
-        self.detection_results: Dict = {}
-        
+        self.detection_results: dict = {}
+
         # Initialize parent class attributes
         super().__init__()
         logging.info("Initializing BubMask detector...")
         # Update with provided parameters
         self.update_params(params)
 
-    def get_needed_params(self) -> Dict[str, float | int | str]:
+    def get_needed_params(self) -> dict[str, float | int | str]:
         """Get the parameters required for this watershed method.
 
         Returns:
@@ -67,7 +67,7 @@ class BubMaskWatershed():
             "alpha": self.alpha,
         }
 
-    def update_params(self, params: Dict[str, Any]) -> None:
+    def update_params(self, params: dict[str, Any]) -> None:
         """Update the parameters for this watershed method.
 
         Args:
@@ -91,7 +91,7 @@ class BubMaskWatershed():
 
     def initialize_processing(
         self,
-        params: Dict[str, float | int],
+        params: dict[str, float | int],
         img_grey: npt.NDArray[np.int_],
         img_rgb: npt.NDArray[np.int_],
         if_bknd_img: bool,
@@ -111,7 +111,7 @@ class BubMaskWatershed():
         self.img_rgb = img_rgb
         self.if_bknd_img = if_bknd_img
         self.bknd_img = bknd_img
-        
+
         # Update parameters
         self.update_params(params)
         self.detector = cnn_model
@@ -121,7 +121,7 @@ class BubMaskWatershed():
                 config = BubMaskConfig(
                     confidence_threshold=self.confidence_threshold,
                     image_min_dim=self.image_min_dim,
-                    image_max_dim=self.image_max_dim
+                    image_max_dim=self.image_max_dim,
                 )
                 self.detector = BubMaskDetector(self.weights_path, config)
                 logging.info("BubMask detector initialized successfully")
@@ -131,63 +131,58 @@ class BubMaskWatershed():
 
     def detect_bubbles(self) -> None:
         """Run the BubMask detection process.
-        
+
         This method replaces traditional watershed segmentation with BubMask detection.
         """
         if self.detector is None:
             raise RuntimeError("BubMask detector not initialized. Call initialize_processing first.")
-        
+
         try:
             # Save the RGB image temporarily for BubMask processing
             import tempfile
+
             import skimage.io
-            
-            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
+
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
                 temp_path = tmp_file.name
                 skimage.io.imsave(temp_path, self.img_rgb)
-            
-            
+
             # Run BubMask detection
-            self.detection_results = self.detector.detect_bubbles(
-                temp_path, 
-                return_masks=True, 
-                return_splash=False
-            )
-            
+            self.detection_results = self.detector.detect_bubbles(temp_path, return_masks=True, return_splash=False)
+
             # Clean up temporary file
             Path(temp_path).unlink()
-            
+
             # Convert BubMask results to watershed format
             self._convert_bubmask_to_watershed()
-            
+
             logging.info(f"BubMask detected {self.detection_results['bubble_count']} bubbles")
-            
+
         except Exception as e:
             logging.error(f"Error running BubMask detection: {e}")
             raise
 
     def _convert_bubmask_to_watershed(self) -> None:
         """Convert BubMask detection results to watershed segmentation format."""
-        if not self.detection_results or 'masks' not in self.detection_results:
+        if not self.detection_results or "masks" not in self.detection_results:
             # No bubbles detected, create empty labels
             self.labels_watershed = np.zeros(self.img_grey.shape, dtype=np.int32)
             return
-        
-        masks = self.detection_results['masks']
+
+        masks = self.detection_results["masks"]
         height, width = self.img_grey.shape
-        
+
         # Create labels array
         # Label 1 is background, bubbles start from 2
         self.labels_watershed = np.zeros((height, width), dtype=np.int32)
-        
+
         # Convert each mask to a labeled region
         for i in range(masks.shape[2]):
             mask = masks[:, :, i]
             # Resize mask to match original image size if needed
             if mask.shape != (height, width):
-                mask = cv2.resize(mask.astype(np.uint8), (width, height), 
-                                interpolation=cv2.INTER_NEAREST)
-            
+                mask = cv2.resize(mask.astype(np.uint8), (width, height), interpolation=cv2.INTER_NEAREST)
+
             # Add to labels (i+2 because 1 is background)
             self.labels_watershed[mask > 0] = i + 2
 
@@ -195,7 +190,7 @@ class BubMaskWatershed():
         """Get the results image with overlaid bubble detection.
 
         Returns:
-            tuple: (labels_on_img, labels_watershed) where labels_on_img is the 
+            tuple: (labels_on_img, labels_watershed) where labels_on_img is the
                   overlayed image with bubble masks and labels_watershed is just the masks.
         """
         start_time = time.time()
@@ -204,20 +199,17 @@ class BubMaskWatershed():
         end_time = time.time()
         logging.info(f"BubMask detection completed in {end_time - start_time:.2f} seconds")
 
-
-        if not hasattr(self, 'labels_watershed'):
+        if not hasattr(self, "labels_watershed"):
             raise RuntimeError("BubMask detection not run yet. Call detect_bubbles first.")
-        
+
         # Create transparent overlay using the standard project function
         labels_on_img = overlay_labels_on_rgb(
-            self.img_rgb, 
-            cast(npt.NDArray[np.int_], self.labels_watershed), 
-            alpha=self.alpha
+            self.img_rgb, cast(npt.NDArray[np.int_], self.labels_watershed), alpha=self.alpha
         )
-        
+
         return labels_on_img.astype(np.uint8), self.labels_watershed, None
 
-    def get_bubble_properties(self, pixel_to_mm: float = 1.0) -> list[Dict]:
+    def get_bubble_properties(self, pixel_to_mm: float = 1.0) -> list[dict]:
         """Get detailed properties of detected bubbles.
 
         Args:
@@ -226,13 +218,10 @@ class BubMaskWatershed():
         Returns:
             list[Dict]: List of dictionaries containing bubble properties.
         """
-        if not self.detection_results or 'masks' not in self.detection_results:
+        if not self.detection_results or "masks" not in self.detection_results:
             return []
-        
-        return self.detector.get_bubble_properties(
-            self.detection_results['masks'], 
-            pixel_to_mm
-        )
+
+        return self.detector.get_bubble_properties(self.detection_results["masks"], pixel_to_mm)
 
     def get_detection_confidence(self) -> list[float]:
         """Get confidence scores for detected bubbles.
@@ -240,10 +229,10 @@ class BubMaskWatershed():
         Returns:
             list[float]: List of confidence scores for each detected bubble.
         """
-        if not self.detection_results or 'scores' not in self.detection_results:
+        if not self.detection_results or "scores" not in self.detection_results:
             return []
-        
-        return self.detection_results['scores'].tolist()
+
+        return self.detection_results["scores"].tolist()
 
     def get_bounding_boxes(self) -> list[tuple]:
         """Get bounding boxes for detected bubbles.
@@ -251,7 +240,7 @@ class BubMaskWatershed():
         Returns:
             list[tuple]: List of bounding boxes as (y1, x1, y2, x2) tuples.
         """
-        if not self.detection_results or 'rois' not in self.detection_results:
+        if not self.detection_results or "rois" not in self.detection_results:
             return []
-        
-        return [tuple(roi) for roi in self.detection_results['rois']]
+
+        return [tuple(roi) for roi in self.detection_results["rois"]]
