@@ -5,6 +5,7 @@ and millimeters in images. It includes an interactive QLabel subclass for measur
 distances in images and utility functions for image loading and processing.
 """
 
+import logging
 from pathlib import Path
 from typing import cast
 
@@ -24,7 +25,7 @@ from PySide6.QtWidgets import (
 )
 
 from .image_preprocess import load_image
-import logging
+
 
 class ImageLabel(QLabel):
     """A custom QLabel widget for interactive distance measurement in images.
