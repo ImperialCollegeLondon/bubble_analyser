@@ -30,7 +30,7 @@ cycler==0.12.1
 Cython==3.1.6
 dataclasses-json==0.6.7
 DateTime==5.5
-debugpy==1.8.17
+debugpy==1.8.20
 decorator==5.2.1
 deepmerge==2.0
 defusedxml==0.7.1
