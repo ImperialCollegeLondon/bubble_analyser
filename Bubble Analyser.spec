@@ -1,5 +1,27 @@
 # -*- mode: python ; coding: utf-8 -*-
+from PyInstaller.utils.hooks import copy_metadata, collect_data_files
 
+# copy_metadata bundles the .dist-info folder for packages that call
+# importlib.metadata.version() at import time (imgaug, imageio, etc.)
+metadata_datas = []
+for pkg in [
+    'imageio',
+    'imgaug',
+    'numpy',
+    'scipy',
+    'matplotlib',
+    'tqdm',
+    'scikit-image',
+    'Pillow',
+    'h5py',
+    'tensorflow-cpu',
+    'tensorflow-directml-plugin',
+    'tensorflow-io-gcs-filesystem',
+]:
+    try:
+        metadata_datas += copy_metadata(pkg)
+    except Exception:
+        pass  # Skip if not installed (e.g. on a machine without that package)
 
 a = Analysis(
     ['C:\\Users\\23239560\\bubble\\bubble_analyser\\bubble_analyser\\__main__.py'],
@@ -16,7 +38,7 @@ a = Analysis(
         ('C:\\Users\\23239560\\bubble\\bubble_analyser\\bubble_analyser\\methods', 'bubble_analyser/methods'),
         # tensorflow-plugins folder so TF can find the DirectML plugin at runtime
         ('C:\\Users\\23239560\\bubble\\bubble_analyser\\.venv\\Lib\\site-packages\\tensorflow-plugins', 'tensorflow-plugins'),
-    ],
+    ] + metadata_datas,
     hiddenimports=[
         'scipy.special.cython_special',
         'sklearn.utils._cython_blas',
