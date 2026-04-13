@@ -8,8 +8,9 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtWidgets import QApplication, QMessageBox, QProgressDialog
 from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtWidgets import QApplication, QMessageBox, QProgressDialog
+
 
 def setup_basic_logging() -> None:
     """Set up cross-platform, user-writable logging before the main app runs."""
@@ -44,8 +45,10 @@ def setup_basic_logging() -> None:
         ],
     )
 
+
 class DownloadWorker(QThread):
     """Thread to handle the 250MB weight download without freezing the GUI."""
+
     progress_changed = Signal(int)
     finished = Signal(bool, str)
 
@@ -56,10 +59,11 @@ class DownloadWorker(QThread):
 
     def run(self):
         import requests
+
         try:
             response = requests.get(self.url, stream=True, timeout=30)
             response.raise_for_status()
-            total_size = int(response.headers.get('content-length', 0))
+            total_size = int(response.headers.get("content-length", 0))
             downloaded = 0
 
             with open(self.destination, "wb") as f:
@@ -72,6 +76,7 @@ class DownloadWorker(QThread):
             self.finished.emit(True, "Success")
         except Exception as e:
             self.finished.emit(False, str(e))
+
 
 def handle_weights_download(url, destination):
     """Shows a progress dialog for the weight download."""
@@ -91,6 +96,7 @@ def handle_weights_download(url, destination):
             worker.terminate()
             return False
     return True
+
 
 if __name__ == "__main__":
     # 1. Create the Application Singleton first
@@ -116,7 +122,7 @@ if __name__ == "__main__":
                 "The Machine Learning weights (mask_rcnn_bubble.h5, ~250 MB) are missing.\n\n"
                 "These are required for CNN-based segmentation methods.\n"
                 "Would you like to download them now?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             )
 
             if reply == QMessageBox.StandardButton.Yes:
@@ -139,6 +145,7 @@ if __name__ == "__main__":
 
     except Exception as e:
         import traceback
+
         error_details = traceback.format_exc()
         logging.error(f"Error during application startup: {error_details}")
         print(f"Error during application startup: {e}\n{error_details}")
