@@ -64,7 +64,7 @@ class ThresholdMethods:
         """
         binary_image = target_img > (threshold_value * 255)  # Binary image using thresholding
         return ~binary_image
-        
+
     def otsu_threshold(self, target_img: npt.NDArray[np.int_]) -> npt.NDArray[np.bool_]:
         """Apply Otsu's thresholding to the target image and return an inverted binary mask.
 
@@ -131,6 +131,14 @@ class ThresholdMethods:
         # Ensure both images are in grayscale
         target_img = self.convert_grayscale(target_img)
         background_img = self.convert_grayscale(bknd_img)
+
+        # Ensure background image shape matches the target image shape
+        if background_img.shape != target_img.shape:
+            background_img = cv2.resize(
+                background_img,
+                (target_img.shape[1], target_img.shape[0]),
+                interpolation=cv2.INTER_AREA,
+            )
 
         # Subtract the background image from the target image
         difference_img = self.background_subtraction(target_img, background_img)
