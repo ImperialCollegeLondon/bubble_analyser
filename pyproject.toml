@@ -11,7 +11,7 @@ authors = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.10, <3.11"
+python = ">=3.11, <3.13"
 matplotlib = "^3.10.7"
 toml = "^0.10.2"
 numpy = "1.26.4"
@@ -27,9 +27,7 @@ pandas = "^2.3.3"
 openpyxl = "^3.1.5"
 h5py = "^3.15.1"
 xlsxwriter = "^3.2.9"
-tensorflow-cpu = "==2.10.0"
-tensorflow-directml-plugin = {version = "*", allow-prereleases = true}
-tensorflow-io-gcs-filesystem = "==0.31.0"
+tensorflow = "^2.20.0"
 ipython = "^8.37.0"
 
 imgaug = "^0.4.0"

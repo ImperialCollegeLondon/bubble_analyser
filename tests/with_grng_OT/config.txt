@@ -1,0 +1,10 @@
+    params = {
+        "target_width": 1000,
+        "high_thresh": 0.9,
+        "mid_thresh": 0.5,
+        "low_thresh": 0.05,
+        "h_value": 0.5,
+        "element_size": 0,
+        "connectivity": 4,
+        "threshold_value": 0.5,
+    }

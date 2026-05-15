@@ -1,0 +1,5 @@
+# Config file for bubble analyser
+
+[image_resolution]
+value = 183.06589
+units = "px/mm"
