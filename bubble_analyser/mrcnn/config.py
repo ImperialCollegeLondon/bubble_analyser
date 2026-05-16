@@ -1,5 +1,4 @@
-"""
-Mask R-CNN
+"""Mask R-CNN
 Base Configurations class.
 
 Copyright (c) 2017 Matterport, Inc.
@@ -12,16 +11,17 @@ Written by Waleed Abdulla
 
 import numpy as np
 
-
 # Base Configuration Class
 # Don't use this class directly. Instead, sub-class it and override
 # the configurations you need to change.
 
-class Config(object):
+
+class Config:
     """Base configuration class. For custom configurations, create a
     sub-class that inherits from this one and override properties
     that need to be changed.
     """
+
     # Name the configurations. For example, 'COCO', 'Experiment 3', ...etc.
     # Useful if your code needs to do things differently depending on which
     # experiment is running.
@@ -93,7 +93,7 @@ class Config(object):
 
     # How many anchors per image to use for RPN training
     RPN_TRAIN_ANCHORS_PER_IMAGE = 256
-    
+
     # ROIs kept after tf.nn.top_k and before non-maximum suppression
     PRE_NMS_LIMIT = 6000
 
@@ -184,7 +184,7 @@ class Config(object):
     LEARNING_RATE = 0.001
     LEARNING_MOMENTUM = 0.9
     BETA_1 = 0.9
-    BETA_2 = 0.999    
+    BETA_2 = 0.999
 
     # Weight decay regularization
     WEIGHT_DECAY = 0.0001
@@ -192,11 +192,11 @@ class Config(object):
     # Loss weights for more precise optimization.
     # Can be used for R-CNN training setup.
     LOSS_WEIGHTS = {
-        "rpn_class_loss": 1.,
-        "rpn_bbox_loss": 1.,
-        "mrcnn_class_loss": 1.,
-        "mrcnn_bbox_loss": 1.,
-        "mrcnn_mask_loss": 1.
+        "rpn_class_loss": 1.0,
+        "rpn_bbox_loss": 1.0,
+        "mrcnn_class_loss": 1.0,
+        "mrcnn_bbox_loss": 1.0,
+        "mrcnn_mask_loss": 1.0,
     }
 
     # Use RPN ROIs or externally generated ROIs for training
@@ -222,22 +222,21 @@ class Config(object):
 
         # Input image size
         if self.IMAGE_RESIZE_MODE == "crop":
-            self.IMAGE_SHAPE = np.array([self.IMAGE_MIN_DIM, self.IMAGE_MIN_DIM,
-                self.IMAGE_CHANNEL_COUNT])
+            self.IMAGE_SHAPE = np.array([self.IMAGE_MIN_DIM, self.IMAGE_MIN_DIM, self.IMAGE_CHANNEL_COUNT])
         else:
-            self.IMAGE_SHAPE = np.array([self.IMAGE_MAX_DIM, self.IMAGE_MAX_DIM,
-                self.IMAGE_CHANNEL_COUNT])
+            self.IMAGE_SHAPE = np.array([self.IMAGE_MAX_DIM, self.IMAGE_MAX_DIM, self.IMAGE_CHANNEL_COUNT])
 
         # Image meta data length
         # See compose_image_meta() for details
         self.IMAGE_META_SIZE = 1 + 3 + 3 + 4 + 1 + self.NUM_CLASSES
-        
+
         # Number of Conv2DTranspose layers in build_fpn_mask_graph
         assert self.MASK_SHAPE[0] == self.MASK_SHAPE[1], "Only support square mask currently!"
         num_deconv_layers = np.log2(self.MASK_SHAPE[0] / self.MASK_POOL_SIZE)
         # make sure num_deconv_layers is a positive integer
-        assert num_deconv_layers == int(num_deconv_layers) and num_deconv_layers >= 1, \
+        assert num_deconv_layers == int(num_deconv_layers) and num_deconv_layers >= 1, (
             "MASK_SHAPE[0] should be MASK_POOL_SIZE*(2**n), where n>=1"
+        )
         self.NUM_DECONV_LAYERS = int(num_deconv_layers)
 
     def display(self):
@@ -245,5 +244,5 @@ class Config(object):
         print("\nConfigurations:")
         for a in dir(self):
             if not a.startswith("__") and not callable(getattr(self, a)):
-                print("{:30} {}".format(a, getattr(self, a)))
+                print(f"{a:30} {getattr(self, a)}")
         print("\n")

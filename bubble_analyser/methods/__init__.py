@@ -1,6 +1,6 @@
 """Methods package for the Bubble Analyser application."""
 
-from bubble_analyser.methods.watershed_methods import IterativeWatershed, NormalWatershed
 from bubble_analyser.methods.bubmask_method import BubMaskWatershed
+from bubble_analyser.methods.watershed_methods import IterativeWatershed, NormalWatershed
 
-__all__ = ["IterativeWatershed", "NormalWatershed", "BubMaskWatershed"]
+__all__ = ["BubMaskWatershed", "IterativeWatershed", "NormalWatershed"]

@@ -11,7 +11,7 @@ Bubble Analyser is a Python application for detecting, measuring, and analyzing 
 ## Features
 
 - **Image Processing**: Preprocess images with various transformations
-- **Bubble Detection**: Identify bubbles using advanced watershed segmentation algorithms or **[BubMask (Kim & Park, 2021)](https://github.com/ywflow/BubMask) (Deep Learning)** 
+- **Bubble Detection**: Identify bubbles using advanced watershed segmentation algorithms or **[BubMask (Kim & Park, 2021)](https://github.com/ywflow/BubMask) (Deep Learning)**
 - **Interactive Ellipse Adjuster**: Brand new manual adjustment interface for pixel-perfect refinement of detected bubbles
 - **Measurement**: Calculate size, shape, and distribution of bubbles
 - **Calibration**: Convert pixel measurements to real-world units (mm)
@@ -33,7 +33,7 @@ v0.2.0 <https://github.com/ImperialCollegeLondon/bubble_analyser/releases/tag/v0
 To install from source, follow the developer setup instructions below.
 
 > [!IMPORTANT]
-> **Using CNN Detection**: For user running from source code, you must download `mask_rcnn_bubble.h5` from the [v0.3.0 release page](https://github.com/ImperialCollegeLondon/bubble_analyser/releases/tag/v0.3.0) and place it in the `bubble_analyser/weights` directory. 
+> **Using CNN Detection**: For user running from source code, you must download `mask_rcnn_bubble.h5` from the [v0.3.0 release page](https://github.com/ImperialCollegeLondon/bubble_analyser/releases/tag/v0.3.0) and place it in the `bubble_analyser/weights` directory.
 
 ## Usage
 
@@ -50,7 +50,6 @@ Bubble Analyser implements multiple segmentation approaches:
 - **Normal Watershed**: Standard watershed algorithm with triple threshold, based on the first version of [Bubble Analyser (Mesa et al., 2022)](https://doi.org/10.1016/j.mineng.2022.107497).
 - **Iterative Watershed**: Advanced algorithm that iteratively applies thresholds to detect objects at different intensity levels.
 - **BubMask (Deep Learning)**: Integrated BubMask (Kim & Park, 2021), a Mask R-CNN based deep learning model for superior accuracy in complex lighting or overlapping conditions.
-
 
 To get started:
 
@@ -81,7 +80,7 @@ To get started:
    ```bash
    python -m bubble_analyser
    ```
-   
+
 or, you can build up the virtual environment based on the requirements.txt file in the root directory.
 
 ## Dependencies
@@ -98,7 +97,7 @@ or, you can build up the virtual environment based on the requirements.txt file 
 
 ## Reference
 
-Kim, Y., Park, H. Deep learning-based automated and universal bubble detection and mask extraction in complex two-phase flows. Sci Rep 11, 8940 (2021). https://doi.org/10.1038/s41598-021-88334-0
+Kim, Y., Park, H. Deep learning-based automated and universal bubble detection and mask extraction in complex two-phase flows. Sci Rep 11, 8940 (2021). <https://doi.org/10.1038/s41598-021-88334-0>
 
 ## Contributing
 
@@ -115,5 +114,3 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 - Dr Diego Alonso Álvarez - Imperial College London RSE Team, Imperial College London
 - Dr Paulina Quintanilla - Department of Chemical Engineering, Brunel University
 - Dr Francisco Reyes - IntelliSense.io, Queensland, Australia
-
-

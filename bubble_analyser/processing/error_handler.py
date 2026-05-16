@@ -22,13 +22,14 @@ def show_error_dialog(title: str, message: str, details: str | None = None) -> N
         message: The main error message to display.
         details: Optional detailed error information (e.g., traceback).
     """
+
     def _show_dialog() -> None:
         """Internal function to show the dialog on the main thread."""
         app = QApplication.instance()
         if app is None:
             # No QApplication instance, can't show dialog
             return
-            
+
         error_box = QMessageBox()
         error_box.setIcon(QMessageBox.Icon.Critical)
         error_box.setWindowTitle(title)
@@ -45,11 +46,7 @@ def show_error_dialog(title: str, message: str, details: str | None = None) -> N
         _show_dialog()
     else:
         # We're on a worker thread, invoke on main thread
-        QMetaObject.invokeMethod(
-            QApplication.instance(),
-            _show_dialog,
-            Qt.ConnectionType.QueuedConnection
-        )
+        QMetaObject.invokeMethod(QApplication.instance(), _show_dialog, Qt.ConnectionType.QueuedConnection)
 
 
 def exception_handler(exctype: type[BaseException], value: BaseException, tb) -> None:  # type: ignore

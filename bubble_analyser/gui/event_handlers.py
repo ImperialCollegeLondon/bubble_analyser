@@ -35,8 +35,8 @@ from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
-    QComboBox,
     QCheckBox,
+    QComboBox,
     QDialog,
     QFileDialog,
     QHBoxLayout,
@@ -475,9 +475,7 @@ class CalibrationTabHandler:
 
         img_path: Path = cast(Path, self.gui.pixel_img_name.text())
         if os.path.exists(img_path):
-            px2mm, img_drawed_line = self.calibration_model.get_px2mm_ratio(
-                pixel_img_path=img_path, gui=self.gui
-            )
+            px2mm, img_drawed_line = self.calibration_model.get_px2mm_ratio(pixel_img_path=img_path, gui=self.gui)
 
             px2mm_display = px2mm
 
@@ -912,6 +910,7 @@ class ImageProcessingTabHandler(QThread):
 
         # Check if weights exist locally
         from bubble_analyser.weights.loader import get_weights_path
+
         weights_path, _ = get_weights_path(download_if_missing=False)
         weights_missing = weights_path is None
 
@@ -921,10 +920,7 @@ class ImageProcessingTabHandler(QThread):
 
             # Keywords that indicate a Machine Learning method
             is_ml_method = (
-                "cnn" in algo_name or
-                "rcnn" in algo_name or
-                "bubmask" in algo_name or
-                "deep learning" in algo_name
+                "cnn" in algo_name or "rcnn" in algo_name or "bubmask" in algo_name or "deep learning" in algo_name
             )
 
             # If weights are missing, skip any ML/DL method
@@ -943,7 +939,11 @@ class ImageProcessingTabHandler(QThread):
 
             # Update description safely
             try:
-                description = getattr(self.model.methods_handler.all_classes[self.algorithm_list[0]], "description", "No description available.")
+                description = getattr(
+                    self.model.methods_handler.all_classes[self.algorithm_list[0]],
+                    "description",
+                    "No description available.",
+                )
                 self.gui.algorithm_description_label.setText(description)
             except Exception as e:
                 logging.error(f"Error updating description: {e}")
@@ -967,7 +967,6 @@ class ImageProcessingTabHandler(QThread):
 
         for algorithm_name, params in self.model.all_methods_n_params.items():
             if algorithm_name == self.current_algorithm:
-
                 self.gui.param_sandbox1.setRowCount(len(params))
 
                 for (
@@ -995,11 +994,11 @@ class ImageProcessingTabHandler(QThread):
 
                     elif name == "element_size":
                         combo_box = QComboBox()
-                        combo_box.addItems(["0","3","5"])
+                        combo_box.addItems(["0", "3", "5"])
 
                         # Set the current value
                         current_value = str(value)
-                        if current_value in ["0","3","5"]:
+                        if current_value in ["0", "3", "5"]:
                             combo_box.setCurrentText(current_value)
                         else:
                             # Default to False if value is not boolean
@@ -1010,11 +1009,11 @@ class ImageProcessingTabHandler(QThread):
 
                     elif name == "connectivity":
                         combo_box = QComboBox()
-                        combo_box.addItems(["4","8"])
+                        combo_box.addItems(["4", "8"])
 
                         # Set the current value
                         current_value = str(value)
-                        if current_value in ["4","8"]:
+                        if current_value in ["4", "8"]:
                             combo_box.setCurrentText(current_value)
                         else:
                             # Default to False if value is not boolean
@@ -1025,11 +1024,11 @@ class ImageProcessingTabHandler(QThread):
 
                     elif name == "ksize":
                         combo_box = QComboBox()
-                        combo_box.addItems(["1","3","5","7"])
+                        combo_box.addItems(["1", "3", "5", "7"])
 
                         # Set the current value
                         current_value = str(value)
-                        if current_value in ["1","3","5","7"]:
+                        if current_value in ["1", "3", "5", "7"]:
                             combo_box.setCurrentText(current_value)
                         else:
                             # Default to False if value is not boolean
@@ -1064,7 +1063,9 @@ class ImageProcessingTabHandler(QThread):
 
         # Update description
         try:
-            description = getattr(self.model.methods_handler.all_classes[new_algorithm], "description", "No description available.")
+            description = getattr(
+                self.model.methods_handler.all_classes[new_algorithm], "description", "No description available."
+            )
             self.gui.algorithm_description_label.setText(description)
         except Exception as e:
             logging.error(f"Error updating description: {e}")
@@ -1195,7 +1196,7 @@ class ImageProcessingTabHandler(QThread):
             img (npt.NDArray[np.int_]): The processed image.
         """
         # Close dialog
-        if hasattr(self, 'processing_dialog'):
+        if hasattr(self, "processing_dialog"):
             self.processing_dialog.close()
 
         self.update_label_before_filtering(img)
@@ -1346,7 +1347,7 @@ class ImageProcessingTabHandler(QThread):
             img (npt.NDArray[np.int_]): The processed image.
         """
         # Close dialog
-        if hasattr(self, 'processing_dialog'):
+        if hasattr(self, "processing_dialog"):
             self.processing_dialog.close()
 
         self.update_process_image_preview(img)
@@ -1380,14 +1381,15 @@ class ImageProcessingTabHandler(QThread):
         If confirmed, initiates the batch processing operation.
         """
         self.if_save_processed_images = False
-        confirm_dialog = self.create_confirm_dialog("Batch Processing Confirmation",
-        "The parameters will be applied to all the images. Confirm to process.")
+        confirm_dialog = self.create_confirm_dialog(
+            "Batch Processing Confirmation", "The parameters will be applied to all the images. Confirm to process."
+        )
         self.create_save_images_checkbox(confirm_dialog)
 
         response = confirm_dialog.exec()
 
         if response == QMessageBox.StandardButton.Ok:
-            self.check_for_export_path.emit() # Let Main handler check if export being properlly set
+            self.check_for_export_path.emit()  # Let Main handler check if export being properlly set
 
         else:
             logging.info("Batch processing canceled.")
@@ -1395,23 +1397,26 @@ class ImageProcessingTabHandler(QThread):
     def finalise_analysis(self) -> None:
         """Finalise the analysis by setting the if_finish_analysis flag to True."""
         if not self.model.if_batched:
-            QMessageBox.information(self.gui, "Information", "Please finish at least one time of batch processing first.")
+            QMessageBox.information(
+                self.gui, "Information", "Please finish at least one time of batch processing first."
+            )
             return
 
         else:
-            confirm_dialog = self.create_confirm_dialog("Finalise Analysis Confirmation",
-            "The analysis will be finalised. \n Make sure you are satisfied with the segmentation of all images. Confirm to finalise.")
+            confirm_dialog = self.create_confirm_dialog(
+                "Finalise Analysis Confirmation",
+                "The analysis will be finalised. \n Make sure you are satisfied with the segmentation of all images. Confirm to finalise.",
+            )
             self.create_save_images_checkbox(confirm_dialog)
 
             response = confirm_dialog.exec()
 
             if response == QMessageBox.StandardButton.Ok:
                 self.model.if_finalise_analysis = True
-                self.check_for_export_path.emit() # Let Main handler check if export being properlly set
+                self.check_for_export_path.emit()  # Let Main handler check if export being properlly set
 
             else:
                 logging.info("Analysis finalisation canceled.")
-
 
     def create_confirm_dialog(self, title: str, text: str) -> QMessageBox:
         """Create a confirmation dialog for batch processing.
@@ -1551,14 +1556,12 @@ class ImageProcessingTabHandler(QThread):
             error_message (str): The error message and details from the worker thread.
         """
         # Close the progress dialog if it's open
-        if hasattr(self, 'progress_dialog') and self.progress_dialog:
+        if hasattr(self, "progress_dialog") and self.progress_dialog:
             self.progress_dialog.close()
 
         # Show error dialog on main thread
         QMessageBox.critical(
-            self.gui,
-            "Processing Error",
-            "An error occurred during batch processing:\n\n" + error_message
+            self.gui, "Processing Error", "An error occurred during batch processing:\n\n" + error_message
         )
 
         logging.error(f"Worker thread error handled on main thread: {error_message}")

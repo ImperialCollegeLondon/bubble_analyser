@@ -77,7 +77,7 @@ def resize_for_RGB(image: npt.NDArray[np.int_], resample: float) -> npt.NDArray[
     aspect_ratio = original_height / original_width
     target_width = int(original_width * resample)
     target_height = int(target_width * aspect_ratio)
-    
+
     image_resized = cv2.resize(image, (target_width, target_height), interpolation=cv2.INTER_AREA)
     return cast(npt.NDArray[np.int_], image_resized)
 
@@ -96,7 +96,7 @@ def resize_for_original_image(image: npt.NDArray[np.int_], resample: float) -> n
     aspect_ratio = original_height / original_width
     target_width = int(original_width * resample)
     target_height = int(target_width * aspect_ratio)
-    
+
     resize_image: npt.NDArray[np.int_] = cv2.resize(
         image,
         (target_width, target_height),
