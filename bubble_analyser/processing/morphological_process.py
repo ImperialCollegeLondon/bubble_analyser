@@ -82,6 +82,7 @@ def morphological_process(
     # Convert filled image to int type and return with eroded image (which is None)
     # return np.array(image_processed_filled, dtype=np.int_), image_processed_cleard_eroded
 
+
 if __name__ == "__main__":
     # Define the image path
     img_path = Path("../../tests/test_image_thresholded_otsu.JPG")

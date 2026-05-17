@@ -162,11 +162,11 @@ class WatershedSegmentation:
                     # Validate ellipse parameters before drawing
                     center, axes, angle = ellipse
                     ellipse_width, ellipse_height = axes
-                    
+
                     # Skip invalid ellipses (width or height <= 0)
                     if ellipse_width <= 0 or ellipse_height <= 0:
                         continue
-                        
+
                     try:
                         cv2.ellipse(mask, ellipse, color=255, thickness=-1)  # type: ignore
                         ellipses.append(ellipse)
