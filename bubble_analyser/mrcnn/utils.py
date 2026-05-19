@@ -1,5 +1,4 @@
-"""
-Mask R-CNN
+"""Mask R-CNN
 Common utility functions and classes.
 
 Copyright (c) 2017 Matterport, Inc.
@@ -10,20 +9,21 @@ Written by Waleed Abdulla
 ------------------------------------------------------------
 """
 
-import sys
-import os
 import logging
-import math
 import random
+import shutil
+import urllib.request
+import warnings
+from collections.abc import Callable
+from typing import cast
+
 import numpy as np
-import tensorflow as tf
+import numpy.typing as npt
 import scipy
 import skimage.color
 import skimage.io
 import skimage.transform
-import urllib.request
-import shutil
-import warnings
+import tensorflow as tf
 from distutils.version import LooseVersion
 
 # URL from which to download the latest COCO trained weights
@@ -34,13 +34,14 @@ COCO_MODEL_URL = "https://github.com/matterport/Mask_RCNN/releases/download/v2.0
 #  Bounding Boxes
 ############################################################
 
-def extract_bboxes(mask):
+
+def extract_bboxes(mask: npt.NDArray[np.int32]) -> npt.NDArray[np.int32]:
     """Compute bounding boxes from masks.
     mask: [height, width, num_instances]. Mask pixels are either 1 or 0.
 
     Returns: bbox array [num_instances, (y1, x1, y2, x2)].
     """
-    boxes = np.zeros([mask.shape[-1], 4], dtype=np.int32)
+    boxes: npt.NDArray[np.int32] = np.zeros([mask.shape[-1], 4], dtype=np.int32)
     for i in range(mask.shape[-1]):
         m = mask[:, :, i]
         # Bounding box.
@@ -60,7 +61,12 @@ def extract_bboxes(mask):
     return boxes.astype(np.int32)
 
 
-def compute_iou(box, boxes, box_area, boxes_area):
+def compute_iou(
+    box: npt.NDArray[np.int32 | np.float32],
+    boxes: npt.NDArray[np.int32 | np.float32],
+    box_area: float,
+    boxes_area: npt.NDArray[np.float32],
+) -> npt.NDArray[np.float64]:
     """Calculates IoU of the given box with the array of the given boxes.
     box: 1D vector [y1, x1, y2, x2]
     boxes: [boxes_count, (y1, x1, y2, x2)]
@@ -81,7 +87,7 @@ def compute_iou(box, boxes, box_area, boxes_area):
     return iou
 
 
-def compute_overlaps(boxes1, boxes2):
+def compute_overlaps(boxes1: npt.NDArray[np.float32], boxes2: npt.NDArray[np.float32]) -> npt.NDArray[np.float64]:
     """Computes IoU overlaps between two sets of boxes.
     boxes1, boxes2: [N, (y1, x1, y2, x2)].
 
@@ -100,17 +106,16 @@ def compute_overlaps(boxes1, boxes2):
     return overlaps
 
 
-def compute_overlaps_masks(masks1, masks2):
+def compute_overlaps_masks(masks1: npt.NDArray[np.bool_], masks2: npt.NDArray[np.bool_]) -> npt.NDArray[np.float64]:
     """Computes IoU overlaps between two sets of masks.
-    masks1, masks2: [Height, Width, instances]
+    masks1, masks2: [Height, Width, instances].
     """
-    
     # If either set of masks is empty return empty result
     if masks1.shape[-1] == 0 or masks2.shape[-1] == 0:
         return np.zeros((masks1.shape[-1], masks2.shape[-1]))
     # flatten masks and compute their areas
-    masks1 = np.reshape(masks1 > .5, (-1, masks1.shape[-1])).astype(np.float32)
-    masks2 = np.reshape(masks2 > .5, (-1, masks2.shape[-1])).astype(np.float32)
+    masks1 = np.reshape(masks1 > 0.5, (-1, masks1.shape[-1])).astype(np.float32)
+    masks2 = np.reshape(masks2 > 0.5, (-1, masks2.shape[-1])).astype(np.float32)
     area1 = np.sum(masks1, axis=0)
     area2 = np.sum(masks2, axis=0)
 
@@ -122,7 +127,9 @@ def compute_overlaps_masks(masks1, masks2):
     return overlaps
 
 
-def non_max_suppression(boxes, scores, threshold):
+def non_max_suppression(
+    boxes: npt.NDArray[np.float32], scores: npt.NDArray[np.float32], threshold: float
+) -> npt.NDArray[np.int32]:
     """Performs non-maximum suppression and returns indices of kept boxes.
     boxes: [N, (y1, x1, y2, x2)]. Notice that (y2, x2) lays outside the box.
     scores: 1-D array of box scores.
@@ -159,10 +166,10 @@ def non_max_suppression(boxes, scores, threshold):
     return np.array(pick, dtype=np.int32)
 
 
-def apply_box_deltas(boxes, deltas):
+def apply_box_deltas(boxes: npt.NDArray[np.float32], deltas: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
     """Applies the given deltas to the given boxes.
     boxes: [N, (y1, x1, y2, x2)]. Note that (y2, x2) is outside the box.
-    deltas: [N, (dy, dx, log(dh), log(dw))]
+    deltas: [N, (dy, dx, log(dh), log(dw))].
     """
     boxes = boxes.astype(np.float32)
     # Convert to y, x, h, w
@@ -183,9 +190,9 @@ def apply_box_deltas(boxes, deltas):
     return np.stack([y1, x1, y2, x2], axis=1)
 
 
-def box_refinement_graph(box, gt_box):
+def box_refinement_graph(box: tf.Tensor, gt_box: tf.Tensor) -> tf.Tensor:
     """Compute refinement needed to transform box to gt_box.
-    box and gt_box are [N, (y1, x1, y2, x2)]
+    box and gt_box are [N, (y1, x1, y2, x2)].
     """
     box = tf.cast(box, tf.float32)
     gt_box = tf.cast(gt_box, tf.float32)
@@ -209,23 +216,23 @@ def box_refinement_graph(box, gt_box):
     return result
 
 
-def box_refinement(box, gt_box):
+def box_refinement(boxes: npt.NDArray[np.float32], gt_boxes: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
     """Compute refinement needed to transform box to gt_box.
     box and gt_box are [N, (y1, x1, y2, x2)]. (y2, x2) is
     assumed to be outside the box.
     """
-    box = box.astype(np.float32)
-    gt_box = gt_box.astype(np.float32)
+    boxes = boxes.astype(np.float32)
+    gt_boxes = gt_boxes.astype(np.float32)
 
-    height = box[:, 2] - box[:, 0]
-    width = box[:, 3] - box[:, 1]
-    center_y = box[:, 0] + 0.5 * height
-    center_x = box[:, 1] + 0.5 * width
+    height = boxes[:, 2] - boxes[:, 0]
+    width = boxes[:, 3] - boxes[:, 1]
+    center_y = boxes[:, 0] + 0.5 * height
+    center_x = boxes[:, 1] + 0.5 * width
 
-    gt_height = gt_box[:, 2] - gt_box[:, 0]
-    gt_width = gt_box[:, 3] - gt_box[:, 1]
-    gt_center_y = gt_box[:, 0] + 0.5 * gt_height
-    gt_center_x = gt_box[:, 1] + 0.5 * gt_width
+    gt_height = gt_boxes[:, 2] - gt_boxes[:, 0]
+    gt_width = gt_boxes[:, 3] - gt_boxes[:, 1]
+    gt_center_y = gt_boxes[:, 0] + 0.5 * gt_height
+    gt_center_x = gt_boxes[:, 1] + 0.5 * gt_width
 
     dy = (gt_center_y - center_y) / height
     dx = (gt_center_x - center_x) / width
@@ -239,7 +246,8 @@ def box_refinement(box, gt_box):
 #  Dataset
 ############################################################
 
-class Dataset(object):
+
+class Dataset:
     """The base class for dataset classes.
     To use it, create a new class that adds functions specific to the dataset
     you want to use. For example:
@@ -255,29 +263,31 @@ class Dataset(object):
     See COCODataset and ShapesDataset as examples.
     """
 
-    def __init__(self, class_map=None):
-        self._image_ids = []
-        self.image_info = []
+    def __init__(self, class_map: dict[str, int] | None = None) -> None:
+        self._image_ids: npt.NDArray[np.int32] = np.array([], dtype=np.int32)
+        self.image_info: list[dict[str, object]] = []
         # Background is always the first class
-        self.class_info = [{"source": "", "id": 0, "name": "BG"}]
-        self.source_class_ids = {}
+        self.class_info: list[dict[str, object]] = [{"source": "", "id": 0, "name": "BG"}]
+        self.source_class_ids: dict[str, list[int]] = {}
 
-    def add_class(self, source, class_id, class_name):
+    def add_class(self, source: str, class_id: int, class_name: str) -> None:
         assert "." not in source, "Source name cannot contain a dot"
         # Does the class exist already?
         for info in self.class_info:
-            if info['source'] == source and info["id"] == class_id:
+            if info["source"] == source and info["id"] == class_id:
                 # source.class_id combination already available, skip
                 return
         # Add the class
-        self.class_info.append({
-            "source": source,
-            "id": class_id,
-            "name": class_name,
-        })
+        self.class_info.append(
+            {
+                "source": source,
+                "id": class_id,
+                "name": class_name,
+            }
+        )
 
-    def add_image(self, source, image_id, path, **kwargs):
-        image_info = {
+    def add_image(self, source: str, image_id: int | str, path: str, **kwargs: object) -> None:
+        image_info: dict[str, object] = {
             "id": image_id,
             "source": source,
             "path": path,
@@ -285,7 +295,7 @@ class Dataset(object):
         image_info.update(kwargs)
         self.image_info.append(image_info)
 
-    def image_reference(self, image_id):
+    def image_reference(self, image_id: int) -> str:
         """Return a link to the image in its source Website or details about
         the image that help looking it up or debugging it.
 
@@ -294,32 +304,34 @@ class Dataset(object):
         """
         return ""
 
-    def prepare(self, class_map=None):
+    def prepare(self, class_map: dict[str, int] | None = None) -> None:
         """Prepares the Dataset class for use.
 
         TODO: class map is not supported yet. When done, it should handle mapping
               classes from different datasets to the same class ID.
         """
 
-        def clean_name(name):
+        def clean_name(name: str) -> str:
             """Returns a shorter version of object names for cleaner display."""
             return ",".join(name.split(",")[:1])
 
         # Build (or rebuild) everything else from the info dicts.
-        self.num_classes = len(self.class_info)
-        self.class_ids = np.arange(self.num_classes)
-        self.class_names = [clean_name(c["name"]) for c in self.class_info]
-        self.num_images = len(self.image_info)
-        self._image_ids = np.arange(self.num_images)
+        self.num_classes: int = len(self.class_info)
+        self.class_ids: npt.NDArray[np.int32] = np.arange(self.num_classes, dtype=np.int32)
+        self.class_names: list[str] = [clean_name(str(c["name"])) for c in self.class_info]
+        self.num_images: int = len(self.image_info)
+        self._image_ids = np.arange(self.num_images, dtype=np.int32)
 
         # Mapping from source class and image IDs to internal IDs
-        self.class_from_source_map = {"{}.{}".format(info['source'], info['id']): id
-                                      for info, id in zip(self.class_info, self.class_ids)}
-        self.image_from_source_map = {"{}.{}".format(info['source'], info['id']): id
-                                      for info, id in zip(self.image_info, self.image_ids)}
+        self.class_from_source_map: dict[str, int] = {
+            "{}.{}".format(info["source"], info["id"]): int(id) for info, id in zip(self.class_info, self.class_ids)
+        }
+        self.image_from_source_map: dict[str, int] = {
+            "{}.{}".format(info["source"], info["id"]): int(id) for info, id in zip(self.image_info, self._image_ids)
+        }
 
         # Map sources to class_ids they support
-        self.sources = list(set([i['source'] for i in self.class_info]))
+        self.sources: list[str] = list(set([str(i["source"]) for i in self.class_info]))
         self.source_class_ids = {}
         # Loop over datasets
         for source in self.sources:
@@ -327,10 +339,10 @@ class Dataset(object):
             # Find classes that belong to this dataset
             for i, info in enumerate(self.class_info):
                 # Include BG class in all datasets
-                if i == 0 or source == info['source']:
+                if i == 0 or source == info["source"]:
                     self.source_class_ids[source].append(i)
 
-    def map_source_class_id(self, source_class_id):
+    def map_source_class_id(self, source_class_id: str) -> int:
         """Takes a source class ID and returns the int class ID assigned to it.
 
         For example:
@@ -338,28 +350,27 @@ class Dataset(object):
         """
         return self.class_from_source_map[source_class_id]
 
-    def get_source_class_id(self, class_id, source):
+    def get_source_class_id(self, class_id: int, source: str) -> int | str:
         """Map an internal class ID to the corresponding class ID in the source dataset."""
         info = self.class_info[class_id]
-        assert info['source'] == source
-        return info['id']
+        assert info["source"] == source
+        return info["id"]  # type: ignore
 
     @property
-    def image_ids(self):
+    def image_ids(self) -> npt.NDArray[np.int32]:
         return self._image_ids
 
-    def source_image_link(self, image_id):
+    def source_image_link(self, image_id: int) -> str:
         """Returns the path or URL to the image.
         Override this to return a URL to the image if it's available online for easy
         debugging.
         """
-        return self.image_info[image_id]["path"]
+        return str(self.image_info[image_id]["path"])
 
-    def load_image(self, image_id):
-        """Load the specified image and return a [H,W,3] Numpy array.
-        """
+    def load_image(self, image_id: int) -> npt.NDArray[np.uint8]:
+        """Load the specified image and return a [H,W,3] Numpy array."""
         # Load image
-        image = skimage.io.imread(self.image_info[image_id]['path'])
+        image = skimage.io.imread(str(self.image_info[image_id]["path"]))
         # If grayscale. Convert to RGB for consistency.
         if image.ndim != 3:
             image = skimage.color.gray2rgb(image)
@@ -368,7 +379,7 @@ class Dataset(object):
             image = image[..., :3]
         return image
 
-    def load_mask(self, image_id):
+    def load_mask(self, image_id: int) -> tuple[npt.NDArray[np.bool_], npt.NDArray[np.int32]]:
         """Load instance masks for the given image.
 
         Different datasets use different ways to store masks. Override this
@@ -383,12 +394,24 @@ class Dataset(object):
         # Override this function to load a mask from your dataset.
         # Otherwise, it returns an empty mask.
         logging.warning("You are using the default load_mask(), maybe you need to define your own one.")
-        mask = np.empty([0, 0, 0])
-        class_ids = np.empty([0], np.int32)
+        mask: npt.NDArray[np.bool_] = np.empty([0, 0, 0], dtype=bool)
+        class_ids: npt.NDArray[np.int32] = np.empty([0], np.int32)
         return mask, class_ids
 
 
-def resize_image(image, min_dim=None, max_dim=None, min_scale=None, mode="square"):
+def resize_image(
+    image: npt.NDArray[np.uint8 | np.float32 | np.int32],
+    min_dim: int | None = None,
+    max_dim: int | None = None,
+    min_scale: float | None = None,
+    mode: str = "square",
+) -> tuple[
+    npt.NDArray[np.uint8 | np.float32 | np.int32],
+    tuple[int, int, int, int],
+    float,
+    list[tuple[int, int]],
+    tuple[int, int, int, int] | None,
+]:
     """Resizes an image keeping the aspect ratio unchanged.
 
     min_dim: if provided, resizes the image such that it's smaller
@@ -425,7 +448,7 @@ def resize_image(image, min_dim=None, max_dim=None, min_scale=None, mode="square
     # Default window (y1, x1, y2, x2) and default scale == 1.
     h, w = image.shape[:2]
     window = (0, 0, h, w)
-    scale = 1
+    scale: float = 1.0
     padding = [(0, 0), (0, 0), (0, 0)]
     crop = None
 
@@ -435,7 +458,7 @@ def resize_image(image, min_dim=None, max_dim=None, min_scale=None, mode="square
     # Scale?
     if min_dim:
         # Scale up but not down
-        scale = max(1, min_dim / min(h, w))
+        scale = max(1.0, float(min_dim / min(h, w)))
     if min_scale and scale < min_scale:
         scale = min_scale
 
@@ -443,28 +466,31 @@ def resize_image(image, min_dim=None, max_dim=None, min_scale=None, mode="square
     if max_dim and mode == "square":
         image_max = max(h, w)
         if round(image_max * scale) > max_dim:
-            scale = max_dim / image_max
+            scale = float(max_dim / image_max)
 
     # Resize image using bilinear interpolation
     if scale != 1:
-        image = resize(image, (round(h * scale), round(w * scale)),
-                       preserve_range=True)
+        image = cast(
+            npt.NDArray[np.uint8 | np.float32 | np.int32],
+            resize(image, (round(h * scale), round(w * scale)), preserve_range=True),
+        )
 
     # Need padding or cropping?
     if mode == "square":
         # Get new height and width
         h, w = image.shape[:2]
+        assert max_dim is not None
         top_pad = (max_dim - h) // 2
         bottom_pad = max_dim - h - top_pad
         left_pad = (max_dim - w) // 2
         right_pad = max_dim - w - left_pad
         padding = [(top_pad, bottom_pad), (left_pad, right_pad), (0, 0)]
-        image = np.pad(image, padding, mode='constant', constant_values=0)
+        image = np.pad(image, padding, mode="constant", constant_values=0)
         window = (top_pad, left_pad, h + top_pad, w + left_pad)
     elif mode == "pad64":
         h, w = image.shape[:2]
         # Both sides must be divisible by 64
-        assert min_dim % 64 == 0, "Minimum dimension must be a multiple of 64"
+        assert min_dim is not None and min_dim % 64 == 0, "Minimum dimension must be a multiple of 64"
         # Height
         if h % 64 > 0:
             max_h = h - (h % 64) + 64
@@ -480,22 +506,28 @@ def resize_image(image, min_dim=None, max_dim=None, min_scale=None, mode="square
         else:
             left_pad = right_pad = 0
         padding = [(top_pad, bottom_pad), (left_pad, right_pad), (0, 0)]
-        image = np.pad(image, padding, mode='constant', constant_values=0)
+        image = np.pad(image, padding, mode="constant", constant_values=0)
         window = (top_pad, left_pad, h + top_pad, w + left_pad)
     elif mode == "crop":
         # Pick a random crop
         h, w = image.shape[:2]
+        assert min_dim is not None
         y = random.randint(0, (h - min_dim))
         x = random.randint(0, (w - min_dim))
         crop = (y, x, min_dim, min_dim)
-        image = image[y:y + min_dim, x:x + min_dim]
+        image = image[y : y + min_dim, x : x + min_dim]
         window = (0, 0, min_dim, min_dim)
     else:
-        raise Exception("Mode {} not supported".format(mode))
+        raise Exception(f"Mode {mode} not supported")
     return image.astype(image_dtype), window, scale, padding, crop
 
 
-def resize_mask(mask, scale, padding, crop=None):
+def resize_mask(
+    mask: npt.NDArray[np.bool_],
+    scale: float,
+    padding: list[tuple[int, int]],
+    crop: tuple[int, int, int, int] | None = None,
+) -> npt.NDArray[np.bool_]:
     """Resizes a mask using the given scale and padding.
     Typically, you get the scale and padding from resize_image() to
     ensure both, the image and the mask, are resized consistently.
@@ -511,19 +543,21 @@ def resize_mask(mask, scale, padding, crop=None):
         mask = scipy.ndimage.zoom(mask, zoom=[scale, scale, 1], order=0)
     if crop is not None:
         y, x, h, w = crop
-        mask = mask[y:y + h, x:x + w]
+        mask = mask[y : y + h, x : x + w]
     else:
-        mask = np.pad(mask, padding, mode='constant', constant_values=0)
+        mask = np.pad(mask, padding, mode="constant", constant_values=0)
     return mask
 
 
-def minimize_mask(bbox, mask, mini_shape):
+def minimize_mask(
+    bbox: npt.NDArray[np.int32], mask: npt.NDArray[np.bool_], mini_shape: tuple[int, int]
+) -> npt.NDArray[np.bool_]:
     """Resize masks to a smaller version to reduce memory load.
-    Mini-masks can be resized back to image scale using expand_masks()
+    Mini-masks can be resized back to image scale using expand_masks().
 
     See inspect_data.ipynb notebook for more details.
     """
-    mini_mask = np.zeros(mini_shape + (mask.shape[-1],), dtype=bool)
+    mini_mask = np.zeros((*mini_shape, mask.shape[-1]), dtype=bool)
     for i in range(mask.shape[-1]):
         # Pick slice and cast to bool in case load_mask() returned wrong dtype
         m = mask[:, :, i].astype(bool)
@@ -532,35 +566,39 @@ def minimize_mask(bbox, mask, mini_shape):
         if m.size == 0:
             raise Exception("Invalid bounding box with area of zero")
         # Resize with bilinear interpolation
-        m = resize(m, mini_shape)
-        mini_mask[:, :, i] = np.around(m).astype(np.bool)
+        m_resized = resize(m.astype(np.float32), mini_shape)
+        mini_mask[:, :, i] = np.around(m_resized).astype(bool)
     return mini_mask
 
 
-def expand_mask(bbox, mini_mask, image_shape):
+def expand_mask(
+    bbox: npt.NDArray[np.int32], mini_mask: npt.NDArray[np.bool_], image_shape: tuple[int, int] | tuple[int, int, int]
+) -> npt.NDArray[np.bool_]:
     """Resizes mini masks back to image size. Reverses the change
     of minimize_mask().
 
     See inspect_data.ipynb notebook for more details.
     """
-    mask = np.zeros(image_shape[:2] + (mini_mask.shape[-1],), dtype=bool)
-    for i in range(mask.shape[-1]):
+    mask = np.zeros((*image_shape[:2], mini_mask.shape[-1]), dtype=bool)
+    for i in range(mini_mask.shape[-1]):
         m = mini_mask[:, :, i]
         y1, x1, y2, x2 = bbox[i][:4]
         h = y2 - y1
         w = x2 - x1
         # Resize with bilinear interpolation
-        m = resize(m, (h, w))
-        mask[y1:y2, x1:x2, i] = np.around(m).astype(np.bool)
+        m_resized = resize(m.astype(np.float32), (h, w))
+        mask[y1:y2, x1:x2, i] = np.around(m_resized).astype(bool)
     return mask
 
 
 # TODO: Build and use this function to reduce code duplication
-def mold_mask(mask, config):
+def mold_mask(mask: npt.NDArray[np.bool_], config: object) -> None:
     pass
 
 
-def unmold_mask(mask, bbox, image_shape):
+def unmold_mask(
+    mask: npt.NDArray[np.float32], bbox: npt.NDArray[np.int32], image_shape: tuple[int, int] | tuple[int, int, int]
+) -> npt.NDArray[np.bool_]:
     """Converts a mask generated by the neural network to a format similar
     to its original shape.
     mask: [height, width] of type float. A small, typically 28x28 mask.
@@ -570,7 +608,7 @@ def unmold_mask(mask, bbox, image_shape):
     """
     threshold = 0.5
     y1, x1, y2, x2 = bbox
-    mask = resize(mask, (y2 - y1, x2 - x1))
+    mask = cast(npt.NDArray[np.float32], resize(mask, (y2 - y1, x2 - x1)))
     mask = np.where(mask >= threshold, 1, 0).astype(bool)
 
     # Put the mask in the right location.
@@ -583,9 +621,15 @@ def unmold_mask(mask, bbox, image_shape):
 #  Anchors
 ############################################################
 
-def generate_anchors(scales, ratios, shape, feature_stride, anchor_stride):
-    """
-    scales: 1D array of anchor sizes in pixels. Example: [32, 64, 128]
+
+def generate_anchors(
+    scales: tuple[int | float, ...] | list[int | float] | npt.NDArray[np.float32 | np.int32 | np.float64],
+    ratios: tuple[int | float, ...] | list[int | float] | npt.NDArray[np.float32 | np.int32 | np.float64],
+    shape: tuple[int, int] | npt.NDArray[np.int32],
+    feature_stride: int,
+    anchor_stride: int,
+) -> npt.NDArray[np.float64]:
+    """scales: 1D array of anchor sizes in pixels. Example: [32, 64, 128]
     ratios: 1D array of anchor ratios of width/height. Example: [0.5, 1, 2]
     shape: [height, width] spatial shape of the feature map over which
             to generate anchors.
@@ -594,36 +638,47 @@ def generate_anchors(scales, ratios, shape, feature_stride, anchor_stride):
         value is 2 then generate anchors for every other feature map pixel.
     """
     # Get all combinations of scales and ratios
-    scales, ratios = np.meshgrid(np.array(scales), np.array(ratios))
-    scales = scales.flatten()
-    ratios = ratios.flatten()
+    scales_grid: npt.NDArray[np.float64]
+    ratios_grid: npt.NDArray[np.float64]
+    scales_grid, ratios_grid = np.meshgrid(np.array(scales), np.array(ratios))
+    scales_flat = scales_grid.flatten()
+    ratios_flat = ratios_grid.flatten()
 
     # Enumerate heights and widths from scales and ratios
-    heights = scales / np.sqrt(ratios)
-    widths = scales * np.sqrt(ratios)
+    heights = scales_flat / np.sqrt(ratios_flat)
+    widths = scales_flat * np.sqrt(ratios_flat)
 
     # Enumerate shifts in feature space
     shifts_y = np.arange(0, shape[0], anchor_stride) * feature_stride
     shifts_x = np.arange(0, shape[1], anchor_stride) * feature_stride
-    shifts_x, shifts_y = np.meshgrid(shifts_x, shifts_y)
+    shifts_x_grid: npt.NDArray[np.int32]
+    shifts_y_grid: npt.NDArray[np.int32]
+    shifts_x_grid, shifts_y_grid = np.meshgrid(shifts_x, shifts_y)
 
     # Enumerate combinations of shifts, widths, and heights
-    box_widths, box_centers_x = np.meshgrid(widths, shifts_x)
-    box_heights, box_centers_y = np.meshgrid(heights, shifts_y)
+    box_widths: npt.NDArray[np.float64]
+    box_centers_x: npt.NDArray[np.float64]
+    box_widths, box_centers_x = np.meshgrid(widths, shifts_x_grid)
+    box_heights: npt.NDArray[np.float64]
+    box_centers_y: npt.NDArray[np.float64]
+    box_heights, box_centers_y = np.meshgrid(heights, shifts_y_grid)
 
     # Reshape to get a list of (y, x) and a list of (h, w)
-    box_centers = np.stack(
-        [box_centers_y, box_centers_x], axis=2).reshape([-1, 2])
+    box_centers = np.stack([box_centers_y, box_centers_x], axis=2).reshape([-1, 2])
     box_sizes = np.stack([box_heights, box_widths], axis=2).reshape([-1, 2])
 
     # Convert to corner coordinates (y1, x1, y2, x2)
-    boxes = np.concatenate([box_centers - 0.5 * box_sizes,
-                            box_centers + 0.5 * box_sizes], axis=1)
+    boxes = np.concatenate([box_centers - 0.5 * box_sizes, box_centers + 0.5 * box_sizes], axis=1)
     return boxes
 
 
-def generate_pyramid_anchors(scales, ratios, feature_shapes, feature_strides,
-                             anchor_stride):
+def generate_pyramid_anchors(
+    scales: tuple[int | float, ...] | list[int | float],
+    ratios: tuple[int | float, ...] | list[int | float],
+    feature_shapes: list[tuple[int, int] | npt.NDArray[np.int32]],
+    feature_strides: list[int],
+    anchor_stride: int,
+) -> npt.NDArray[np.float64]:
     """Generate anchors at different levels of a feature pyramid. Each scale
     is associated with a level of the pyramid, but each ratio is used in
     all levels of the pyramid.
@@ -637,8 +692,7 @@ def generate_pyramid_anchors(scales, ratios, feature_shapes, feature_strides,
     # [anchor_count, (y1, x1, y2, x2)]
     anchors = []
     for i in range(len(scales)):
-        anchors.append(generate_anchors(scales[i], ratios, feature_shapes[i],
-                                        feature_strides[i], anchor_stride))
+        anchors.append(generate_anchors(scales[i], ratios, feature_shapes[i], feature_strides[i], anchor_stride))  # type: ignore
     return np.concatenate(anchors, axis=0)
 
 
@@ -646,7 +700,8 @@ def generate_pyramid_anchors(scales, ratios, feature_shapes, feature_strides,
 #  Miscellaneous
 ############################################################
 
-def trim_zeros(x):
+
+def trim_zeros(x: npt.NDArray[np.float32 | np.int32 | np.float64]) -> npt.NDArray[np.float32 | np.int32 | np.float64]:
     """It's common to have tensors larger than the available data and
     pad with zeros. This function removes rows that are all zeros.
 
@@ -656,9 +711,17 @@ def trim_zeros(x):
     return x[~np.all(x == 0, axis=1)]
 
 
-def compute_matches(gt_boxes, gt_class_ids, gt_masks,
-                    pred_boxes, pred_class_ids, pred_scores, pred_masks,
-                    iou_threshold=0.5, score_threshold=0.0):
+def compute_matches(
+    gt_boxes: npt.NDArray[np.int32 | np.float32],
+    gt_class_ids: npt.NDArray[np.int32],
+    gt_masks: npt.NDArray[np.bool_],
+    pred_boxes: npt.NDArray[np.int32 | np.float32],
+    pred_class_ids: npt.NDArray[np.int32],
+    pred_scores: npt.NDArray[np.float32],
+    pred_masks: npt.NDArray[np.bool_],
+    iou_threshold: float = 0.5,
+    score_threshold: float = 0.0,
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64], npt.NDArray[np.float64]]:
     """Finds matches between prediction and ground truth instances.
 
     Returns:
@@ -670,10 +733,10 @@ def compute_matches(gt_boxes, gt_class_ids, gt_masks,
     """
     # Trim zero padding
     # TODO: cleaner to do zero unpadding upstream
-    gt_boxes = trim_zeros(gt_boxes)
-    gt_masks = gt_masks[..., :gt_boxes.shape[0]]
-    pred_boxes = trim_zeros(pred_boxes)
-    pred_scores = pred_scores[:pred_boxes.shape[0]]
+    gt_boxes = cast(npt.NDArray[np.int32 | np.float32], trim_zeros(gt_boxes))
+    gt_masks = gt_masks[..., : gt_boxes.shape[0]]
+    pred_boxes = cast(npt.NDArray[np.int32 | np.float32], trim_zeros(pred_boxes))
+    pred_scores = pred_scores[: pred_boxes.shape[0]]
     # Sort predictions by score from high to low
     indices = np.argsort(pred_scores)[::-1]
     pred_boxes = pred_boxes[indices]
@@ -695,7 +758,7 @@ def compute_matches(gt_boxes, gt_class_ids, gt_masks,
         # 2. Remove low scores
         low_score_idx = np.where(overlaps[i, sorted_ixs] < score_threshold)[0]
         if low_score_idx.size > 0:
-            sorted_ixs = sorted_ixs[:low_score_idx[0]]
+            sorted_ixs = sorted_ixs[: low_score_idx[0]]
         # 3. Find the match
         for j in sorted_ixs:
             # If ground truth box is already matched, go to next one
@@ -715,9 +778,16 @@ def compute_matches(gt_boxes, gt_class_ids, gt_masks,
     return gt_match, pred_match, overlaps
 
 
-def compute_ap(gt_boxes, gt_class_ids, gt_masks,
-               pred_boxes, pred_class_ids, pred_scores, pred_masks,
-               iou_threshold=0.5):
+def compute_ap(
+    gt_boxes: npt.NDArray[np.int32 | np.float32],
+    gt_class_ids: npt.NDArray[np.int32],
+    gt_masks: npt.NDArray[np.bool_],
+    pred_boxes: npt.NDArray[np.int32 | np.float32],
+    pred_class_ids: npt.NDArray[np.int32],
+    pred_scores: npt.NDArray[np.float32],
+    pred_masks: npt.NDArray[np.bool_],
+    iou_threshold: float = 0.5,
+) -> tuple[float, npt.NDArray[np.float64], npt.NDArray[np.float64], npt.NDArray[np.float64]]:
     """Compute Average Precision at a set IoU threshold (default 0.5).
 
     Returns:
@@ -728,9 +798,8 @@ def compute_ap(gt_boxes, gt_class_ids, gt_masks,
     """
     # Get matches and overlaps
     gt_match, pred_match, overlaps = compute_matches(
-        gt_boxes, gt_class_ids, gt_masks,
-        pred_boxes, pred_class_ids, pred_scores, pred_masks,
-        iou_threshold)
+        gt_boxes, gt_class_ids, gt_masks, pred_boxes, pred_class_ids, pred_scores, pred_masks, iou_threshold
+    )
 
     # Compute precision and recall at each prediction box step
     precisions = np.cumsum(pred_match > -1) / (np.arange(len(pred_match)) + 1)
@@ -748,97 +817,127 @@ def compute_ap(gt_boxes, gt_class_ids, gt_masks,
 
     # Compute mean AP over recall range
     indices = np.where(recalls[:-1] != recalls[1:])[0] + 1
-    mAP = np.sum((recalls[indices] - recalls[indices - 1]) *
-                 precisions[indices])
+    mAP = np.sum((recalls[indices] - recalls[indices - 1]) * precisions[indices])
 
     return mAP, precisions, recalls, overlaps
 
 
-def compute_ap_range(gt_box, gt_class_id, gt_mask,
-                     pred_box, pred_class_id, pred_score, pred_mask,
-                     iou_thresholds=None, verbose=1):
+def compute_ap_range(
+    gt_box: npt.NDArray[np.int32 | np.float32],
+    gt_class_id: npt.NDArray[np.int32],
+    gt_mask: npt.NDArray[np.bool_],
+    pred_box: npt.NDArray[np.int32 | np.float32],
+    pred_class_id: npt.NDArray[np.int32],
+    pred_score: npt.NDArray[np.float32],
+    pred_mask: npt.NDArray[np.bool_],
+    iou_thresholds: npt.NDArray[np.float32] | None = None,
+    verbose: int = 1,
+) -> float:
     """Compute AP over a range or IoU thresholds. Default range is 0.5-0.95."""
     # Default is 0.5 to 0.95 with increments of 0.05
-    iou_thresholds = iou_thresholds or np.arange(0.5, 1.0, 0.05)
-    
+    iou_thresholds_arr: npt.NDArray[np.float32] = (
+        iou_thresholds if iou_thresholds is not None else np.arange(0.5, 1.0, 0.05, dtype=np.float32)
+    )
+
     # Compute AP over range of IoU thresholds
     AP = []
-    for iou_threshold in iou_thresholds:
-        ap, precisions, recalls, overlaps =\
-            compute_ap(gt_box, gt_class_id, gt_mask,
-                        pred_box, pred_class_id, pred_score, pred_mask,
-                        iou_threshold=iou_threshold)
+    for iou_threshold in iou_thresholds_arr:
+        ap, _precisions, _recalls, _overlaps = compute_ap(
+            gt_box,
+            gt_class_id,
+            gt_mask,
+            pred_box,
+            pred_class_id,
+            pred_score,
+            pred_mask,
+            iou_threshold=float(iou_threshold),
+        )
         if verbose:
-            print("AP @{:.2f}:\t {:.3f}".format(iou_threshold, ap))
+            print(f"AP @{iou_threshold:.2f}:\t {ap:.3f}")
         AP.append(ap)
-    AP = np.array(AP).mean()
+    AP_val = np.array(AP).mean()
     if verbose:
-        print("AP @{:.2f}-{:.2f}:\t {:.3f}".format(
-            iou_thresholds[0], iou_thresholds[-1], AP))
-    return AP
+        print(f"AP @{iou_thresholds_arr[0]:.2f}-{iou_thresholds_arr[-1]:.2f}:\t {AP_val:.3f}")
+    return float(AP_val)
 
-def compute_ap_size(gt_box, gt_class_id, gt_mask,
-                     pred_box, pred_class_id, pred_score, pred_mask,
-                     verbose=1):
+
+def compute_ap_size(
+    gt_box: npt.NDArray[np.int32 | np.float32],
+    gt_class_id: npt.NDArray[np.int32],
+    gt_mask: npt.NDArray[np.bool_],
+    pred_box: npt.NDArray[np.int32 | np.float32],
+    pred_class_id: npt.NDArray[np.int32],
+    pred_score: npt.NDArray[np.float32],
+    pred_mask: npt.NDArray[np.bool_],
+    verbose: int = 1,
+) -> npt.NDArray[np.float64]:
     """Compute AP over a range or IoU thresholds for each size range. Default range is 0.5-0.95."""
     # Default is 0.5 to 0.95 with increments of 0.05
-    iou_thresholds = np.arange(0.5, 1.0, 0.05)
-    
+    iou_thresholds: npt.NDArray[np.float64] = np.arange(0.5, 1.0, 0.05)
+
     # Compute AP over range of IoU thresholds
-    APs = []
-    for iou_threshold in iou_thresholds:     
+    APs: list[npt.NDArray[np.float64]] = []
+    for iou_threshold in iou_thresholds:
         # Get matches and overlaps
-        gt_match, pred_match, overlaps = compute_matches(
-            gt_box, gt_class_id, gt_mask,
-            pred_box, pred_class_id, pred_score, pred_mask,
-            iou_threshold)
-        
-        AP = np.zeros(3)
-        areaRng = np.array([[0 ** 2, 20 ** 2], [20 ** 2, 35** 2], [35 ** 2, 1e5 ** 2]])
+        gt_match, _pred_match, _overlaps = compute_matches(
+            gt_box, gt_class_id, gt_mask, pred_box, pred_class_id, pred_score, pred_mask, float(iou_threshold)
+        )
+
+        AP: npt.NDArray[np.float64] = np.zeros(3)
+        areaRng: npt.NDArray[np.float64] = np.array([[0**2, 20**2], [20**2, 35**2], [35**2, 1e5**2]])
         for i in range(3):
-            gt_mask_area = np.sum(gt_mask, axis= (0,1))
-            pred_mask_area = np.sum(pred_mask, axis= (0,1))
-            ind_size_gt = np.where(np.logical_and(gt_mask_area>=areaRng[i][0], gt_mask_area<areaRng[i][1]))
-            ind_size_gt = np.array(ind_size_gt)
-            ind_size_gt = ind_size_gt.flatten()
-            ind_size_pred = gt_match[ind_size_gt]
-            ind_size_pred = np.array(ind_size_pred)
-            ind_size_pred = ind_size_pred.astype(int)
-            if len(ind_size_pred)*len(ind_size_gt): 
-                gt_box1 = gt_box[ind_size_gt,:]
-                pred_box1 = pred_box[ind_size_pred,:]
-                gt_class_id1 = gt_class_id[ind_size_gt]
-                pred_class_id1 = pred_class_id[ind_size_pred]
-                gt_mask1 = gt_mask[:,:,ind_size_gt]
-                pred_score1 = pred_score[ind_size_pred]
-                pred_mask1 = pred_mask[:,:,ind_size_pred]
-                AP[i], _, _, _ = compute_ap(gt_box1, gt_class_id1, gt_mask1,
-                                            pred_box1, pred_class_id1, pred_score1, pred_mask1,
-                                            iou_threshold)
+            gt_mask_area = np.sum(gt_mask, axis=(0, 1))
+            np.sum(pred_mask, axis=(0, 1))
+            ind_size_gt = np.where(np.logical_and(gt_mask_area >= areaRng[i][0], gt_mask_area < areaRng[i][1]))
+            ind_size_gt_arr = np.array(ind_size_gt)
+            ind_size_gt_flat = ind_size_gt_arr.flatten()
+            ind_size_pred = gt_match[ind_size_gt_flat]
+            ind_size_pred_arr = np.array(ind_size_pred)
+            ind_size_pred_int = ind_size_pred_arr.astype(int)
+            if len(ind_size_pred_int) * len(ind_size_gt_flat):
+                gt_box1 = gt_box[ind_size_gt_flat, :]
+                pred_box1 = pred_box[ind_size_pred_int, :]
+                gt_class_id1 = gt_class_id[ind_size_gt_flat]
+                pred_class_id1 = pred_class_id[ind_size_pred_int]
+                gt_mask1 = gt_mask[:, :, ind_size_gt_flat]
+                pred_score1 = pred_score[ind_size_pred_int]
+                pred_mask1 = pred_mask[:, :, ind_size_pred_int]
+                AP[i], _, _, _ = compute_ap(
+                    gt_box1,
+                    gt_class_id1,
+                    gt_mask1,
+                    pred_box1,
+                    pred_class_id1,
+                    pred_score1,
+                    pred_mask1,
+                    float(iou_threshold),
+                )
             else:
                 AP[i] = -1
-        
+
             if verbose:
-                print("AP @ {:.2f}<= area <{:.2f}:\t {:.3f}".format(areaRng[i][0], areaRng[i][1], AP[i]))
-                
+                print(f"AP @ {areaRng[i][0]:.2f}<= area <{areaRng[i][1]:.2f}:\t {AP[i]:.3f}")
+
         APs.append(AP)
-        
-    mAP = np.array(APs)
+
+    mAP: npt.NDArray[np.float64] = np.array(APs)
     sess = tf.InteractiveSession()
-    mAP = tf.where(mAP == -1, tf.fill(mAP.shape, np.nan), mAP)
-    mAP = mAP.eval()
+    mAP_tf = tf.where(mAP == -1, tf.fill(mAP.shape, np.nan), mAP)
+    mAP_eval = mAP_tf.eval()
     sess.close()
-    mAP = np.nanmean(mAP,axis = 0)  
-    
+    mAP_final: npt.NDArray[np.float64] = np.nanmean(mAP_eval, axis=0)
+
     if verbose:
-        print("AP small: {:.2f}   AP medium: {:.2f}   AP large: {:.2f}".format(
-            mAP[0], mAP[1], mAP[2]))
-        
-    return mAP
+        print(f"AP small: {mAP_final[0]:.2f}   AP medium: {mAP_final[1]:.2f}   AP large: {mAP_final[2]:.2f}")
+
+    return mAP_final
 
 
-
-def compute_recall(pred_boxes, gt_boxes, iou):
+def compute_recall(
+    pred_boxes: npt.NDArray[np.int32 | np.float32],
+    gt_boxes: npt.NDArray[np.int32 | np.float32],
+    iou: float,
+) -> tuple[float, npt.NDArray[np.int32]]:
     """Compute the recall at the given IoU threshold. It's an indication
     of how many GT boxes were found by the given prediction boxes.
 
@@ -846,14 +945,14 @@ def compute_recall(pred_boxes, gt_boxes, iou):
     gt_boxes: [N, (y1, x1, y2, x2)] in image coordinates
     """
     # Measure overlaps
-    overlaps = compute_overlaps(pred_boxes, gt_boxes)
+    overlaps = compute_overlaps(pred_boxes.astype(np.float32), gt_boxes.astype(np.float32))
     iou_max = np.max(overlaps, axis=1)
     iou_argmax = np.argmax(overlaps, axis=1)
     positive_ids = np.where(iou_max >= iou)[0]
     matched_gt_boxes = iou_argmax[positive_ids]
 
-    recall = len(set(matched_gt_boxes)) / gt_boxes.shape[0]
-    return recall, positive_ids
+    recall = float(len(set(matched_gt_boxes))) / float(gt_boxes.shape[0])
+    return recall, positive_ids.astype(np.int32)
 
 
 # ## Batch Slicing
@@ -863,7 +962,12 @@ def compute_recall(pred_boxes, gt_boxes, iou):
 # an easy way to support batches > 1 quickly with little code modification.
 # In the long run, it's more efficient to modify the code to support large
 # batches and getting rid of this function. Consider this a temporary solution
-def batch_slice(inputs, graph_fn, batch_size, names=None):
+def batch_slice(
+    inputs: tf.Tensor | list[tf.Tensor],
+    graph_fn: Callable,  # type: ignore
+    batch_size: int,
+    names: list[str | None] | None = None,
+) -> tf.Tensor | list[tf.Tensor]:
     """Splits inputs into slices and feeds each slice to a copy of the given
     computation graph and then combines the results. It allows you to run a
     graph on a batch of inputs even if the graph is written to support one
@@ -887,36 +991,37 @@ def batch_slice(inputs, graph_fn, batch_size, names=None):
     # Change outputs from a list of slices where each is
     # a list of outputs to a list of outputs and each has
     # a list of slices
-    outputs = list(zip(*outputs))
+    outputs_zip = list(zip(*outputs))
 
     if names is None:
-        names = [None] * len(outputs)
+        names = [None] * len(outputs_zip)
 
-    result = [tf.stack(o, axis=0, name=n)
-              for o, n in zip(outputs, names)]
+    result = [tf.stack(o, axis=0, name=n) for o, n in zip(outputs_zip, names)]
     if len(result) == 1:
-        result = result[0]
+        return result[0]
 
     return result
 
 
-def download_trained_weights(coco_model_path, verbose=1):
+def download_trained_weights(coco_model_path: str, verbose: int = 1) -> None:
     """Download COCO trained weights from Releases.
 
     coco_model_path: local path of COCO trained weights
     """
     if verbose > 0:
         print("Downloading pretrained model to " + coco_model_path + " ...")
-    with urllib.request.urlopen(COCO_MODEL_URL) as resp, open(coco_model_path, 'wb') as out:
+    with urllib.request.urlopen(COCO_MODEL_URL) as resp, open(coco_model_path, "wb") as out:
         shutil.copyfileobj(resp, out)
     if verbose > 0:
         print("... done downloading pretrained model!")
 
 
-def norm_boxes(boxes, shape):
+def norm_boxes(
+    boxes: npt.NDArray[np.int32 | np.float32], shape: tuple[int, int] | npt.NDArray[np.int32]
+) -> npt.NDArray[np.float32]:
     """Converts boxes from pixel coordinates to normalized coordinates.
     boxes: [N, (y1, x1, y2, x2)] in pixel coordinates
-    shape: [..., (height, width)] in pixels
+    shape: [..., (height, width)] in pixels.
 
     Note: In pixel coordinates (y2, x2) is outside the box. But in normalized
     coordinates it's inside the box.
@@ -930,10 +1035,12 @@ def norm_boxes(boxes, shape):
     return np.divide((boxes - shift), scale).astype(np.float32)
 
 
-def denorm_boxes(boxes, shape):
+def denorm_boxes(
+    boxes: npt.NDArray[np.float32], shape: tuple[int, int] | npt.NDArray[np.int32]
+) -> npt.NDArray[np.int32]:
     """Converts boxes from normalized coordinates to pixel coordinates.
     boxes: [N, (y1, x1, y2, x2)] in normalized coordinates
-    shape: [..., (height, width)] in pixels
+    shape: [..., (height, width)] in pixels.
 
     Note: In pixel coordinates (y2, x2) is outside the box. But in normalized
     coordinates it's inside the box.
@@ -947,8 +1054,17 @@ def denorm_boxes(boxes, shape):
     return np.around(np.multiply(boxes, scale) + shift).astype(np.int32)
 
 
-def resize(image, output_shape, order=1, mode='constant', cval=0, clip=True,
-           preserve_range=False, anti_aliasing=False, anti_aliasing_sigma=None):
+def resize(
+    image: npt.NDArray[np.uint8 | np.float32 | np.int32],
+    output_shape: tuple[int, int] | tuple[int, int, int],
+    order: int = 1,
+    mode: str = "constant",
+    cval: int | float = 0,
+    clip: bool = True,
+    preserve_range: bool = False,
+    anti_aliasing: bool = False,
+    anti_aliasing_sigma: float | None = None,
+) -> npt.NDArray[np.uint8 | np.float32 | np.float64]:
     """A wrapper for Scikit-Image resize().
 
     Scikit-Image generates warnings on every call to resize() if it doesn't
@@ -956,16 +1072,21 @@ def resize(image, output_shape, order=1, mode='constant', cval=0, clip=True,
     of skimage. This solves the problem by using different parameters per
     version. And it provides a central place to control resizing defaults.
     """
-    if LooseVersion(skimage.__version__) >= LooseVersion("0.14"):
+    if LooseVersion(skimage.__version__) >= LooseVersion("0.14"):  # type: ignore
         # New in 0.14: anti_aliasing. Default it to False for backward
         # compatibility with skimage 0.13.
         return skimage.transform.resize(
-            image, output_shape,
-            order=order, mode=mode, cval=cval, clip=clip,
-            preserve_range=preserve_range, anti_aliasing=anti_aliasing,
-            anti_aliasing_sigma=anti_aliasing_sigma)
+            image,
+            output_shape,
+            order=order,
+            mode=mode,
+            cval=cval,
+            clip=clip,
+            preserve_range=preserve_range,
+            anti_aliasing=anti_aliasing,
+            anti_aliasing_sigma=anti_aliasing_sigma,
+        )
     else:
         return skimage.transform.resize(
-            image, output_shape,
-            order=order, mode=mode, cval=cval, clip=clip,
-            preserve_range=preserve_range)
+            image, output_shape, order=order, mode=mode, cval=cval, clip=clip, preserve_range=preserve_range
+        )

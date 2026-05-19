@@ -77,7 +77,7 @@ def resize_for_RGB(image: npt.NDArray[np.int_], resample: float) -> npt.NDArray[
     aspect_ratio = original_height / original_width
     target_width = int(original_width * resample)
     target_height = int(target_width * aspect_ratio)
-    
+
     image_resized = cv2.resize(image, (target_width, target_height), interpolation=cv2.INTER_AREA)
     return cast(npt.NDArray[np.int_], image_resized)
 
@@ -96,7 +96,7 @@ def resize_for_original_image(image: npt.NDArray[np.int_], resample: float) -> n
     aspect_ratio = original_height / original_width
     target_width = int(original_width * resample)
     target_height = int(target_width * aspect_ratio)
-    
+
     resize_image: npt.NDArray[np.int_] = cv2.resize(
         image,
         (target_width, target_height),
@@ -124,23 +124,23 @@ def image_preprocess(img_path: Path, resample: float) -> tuple[npt.NDArray[np.in
     logging.info("Image preprocessing...")
     start_time = time.perf_counter()
     image = load_image(img_path)
-    logging.info(f"Time used for load_image: {time.perf_counter() - start_time}")
+    logging.debug(f"Time used for load_image: {time.perf_counter() - start_time}")
 
     start_time = time.perf_counter()
     image_RGB = get_RGB(image)
-    logging.info(f"Time used for get_RGB:  {time.perf_counter() - start_time}")
+    logging.debug(f"Time used for get_RGB:  {time.perf_counter() - start_time}")
 
     start_time = time.perf_counter()
     image = resize_for_original_image(image, resample)
-    logging.info(f"Time used for resize_for_original_image:  {time.perf_counter() - start_time}")
+    logging.debug(f"Time used for resize_for_original_image:  {time.perf_counter() - start_time}")
 
     start_time = time.perf_counter()
     image = get_greyscale(image)
-    logging.info(f"Time used for get_greyscale:  {time.perf_counter() - start_time}")
+    logging.debug(f"Time used for get_greyscale:  {time.perf_counter() - start_time}")
 
     start_time = time.perf_counter()
     image_RGB = resize_for_RGB(image_RGB, resample)
-    logging.info(f"Time used for resize_for_RGB:  {time.perf_counter() - start_time}")
+    logging.debug(f"Time used for resize_for_RGB:  {time.perf_counter() - start_time}")
 
     logging.info("Image preprocessing finished.")
     return image, image_RGB

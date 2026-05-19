@@ -3,40 +3,44 @@
 # pip install numpy opencv-python scikit-image matplotlib
 
 from __future__ import annotations
+
 import os
-from typing import Tuple
-import numpy as np
+from typing import cast
+
 import cv2
+import numpy as np
 from matplotlib import pyplot as plt
-
-from skimage import img_as_float32, img_as_ubyte
+from numpy import typing as npt
 from skimage.color import rgb2gray
-from skimage.filters import unsharp_mask
 from skimage.exposure import equalize_adapthist
-from skimage.restoration import wiener, richardson_lucy
-
+from skimage.filters import unsharp_mask
+from skimage.restoration import richardson_lucy, wiener
+from skimage.util import img_as_ubyte
 
 # ---------------------------
 # Utilities
 # ---------------------------
 
+
 def _ensure_dir(path: str) -> None:
     if not os.path.exists(path):
         os.makedirs(path, exist_ok=True)
 
-def _read_image_keep_dtype(path: str) -> Tuple[np.ndarray, np.dtype]:
+
+def _read_image_keep_dtype(path: str) -> tuple[npt.NDArray[np.uint8], np.dtype[np.uint8]]:
     """Read RGB image (BGR from cv2 then convert to RGB). Returns image and original dtype."""
     bgr = cv2.imread(path, cv2.IMREAD_UNCHANGED)
     if bgr is None:
         raise FileNotFoundError(f"Could not read image: {path}")
-    orig_dtype = bgr.dtype
+    orig_dtype = cast(np.dtype[np.uint8], bgr.dtype)
     # Convert to 3-channel RGB for processing; if grayscale, promote to 3-ch for display consistency
     if len(bgr.shape) == 2:
         bgr = cv2.cvtColor(bgr, cv2.COLOR_GRAY2BGR)
-    rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+    rgb = cast(npt.NDArray[np.uint8], cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB))
     return rgb, orig_dtype
 
-def _to_float01(img: np.ndarray) -> np.ndarray:
+
+def _to_float01(img: npt.NDArray[np.uint8]) -> npt.NDArray[np.float32]:
     """Convert uint8/uint16/float to float32 in [0,1]."""
     if img.dtype == np.uint8:
         return img.astype(np.float32) / 255.0
@@ -49,7 +53,8 @@ def _to_float01(img: np.ndarray) -> np.ndarray:
         f = np.clip(f, 0.0, 1.0)
     return f
 
-def _from_float01_like(img_float: np.ndarray, like_dtype: np.dtype) -> np.ndarray:
+
+def _from_float01_like(img_float: npt.NDArray[np.float32], like_dtype: np.dtype[np.uint8]) -> npt.NDArray[np.uint8]:
     """Convert back to the original dtype (preserving 'pixel format')."""
     img_float = np.clip(img_float, 0.0, 1.0)
     if like_dtype == np.uint8:
@@ -58,12 +63,14 @@ def _from_float01_like(img_float: np.ndarray, like_dtype: np.dtype) -> np.ndarra
         return (img_float * 65535.0 + 0.5).astype(np.uint16)
     return img_float.astype(like_dtype)
 
-def _save_rgb(path: str, rgb: np.ndarray) -> None:
+
+def _save_rgb(path: str, rgb: npt.NDArray[np.uint8]) -> None:
     """Save RGB using cv2 (expects BGR)."""
     bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
     cv2.imwrite(path, bgr)
 
-def _variance_of_laplacian(gray_f: np.ndarray, ksize: int = 3) -> np.ndarray:
+
+def _variance_of_laplacian(gray_f: npt.NDArray[np.float32], ksize: int = 3) -> npt.NDArray[np.float32]:
     """Focus measure: higher = sharper."""
     lap = cv2.Laplacian(gray_f, cv2.CV_32F, ksize=ksize)
     # Local variance via box filter (fast)
@@ -77,7 +84,10 @@ def _variance_of_laplacian(gray_f: np.ndarray, ksize: int = 3) -> np.ndarray:
 # Methods
 # ---------------------------
 
-def method_unsharp_single_scale(rgb: np.ndarray, amount: float = 1.0, radius: float = 1.5, threshold: float = 0.0) -> np.ndarray:
+
+def method_unsharp_single_scale(
+    rgb: npt.NDArray[np.uint8], amount: float = 1.0, radius: float = 1.5, threshold: float = 0.0
+) -> npt.NDArray[np.float32]:
     """Classic Unsharp Mask (single scale)."""
     f = _to_float01(rgb)
     # apply per-channel USM
@@ -86,7 +96,10 @@ def method_unsharp_single_scale(rgb: np.ndarray, amount: float = 1.0, radius: fl
         out[..., c] = unsharp_mask(f[..., c], radius=radius, amount=amount, preserve_range=True)
     return np.clip(out, 0, 1)
 
-def method_unsharp_multi_scale(rgb: np.ndarray, radii=(1, 2, 4, 8), amounts=(0.8, 0.6, 0.4, 0.2)) -> np.ndarray:
+
+def method_unsharp_multi_scale(
+    rgb: npt.NDArray[np.uint8], radii: tuple[int, ...] = (1, 2, 4, 8), amounts: tuple[float, ...] = (0.8, 0.6, 0.4, 0.2)
+) -> npt.NDArray[np.float32]:
     """Multi-scale USM: stack several gentle passes to reduce halos."""
     f = _to_float01(rgb)
     out = f.copy()
@@ -95,7 +108,10 @@ def method_unsharp_multi_scale(rgb: np.ndarray, radii=(1, 2, 4, 8), amounts=(0.8
             out[..., c] = unsharp_mask(out[..., c], radius=float(r), amount=float(a), preserve_range=True)
     return np.clip(out, 0, 1)
 
-def method_clahe_then_usm(rgb: np.ndarray, clip_limit: float = 0.01, usm_radius: float = 1.5, usm_amount: float = 0.8) -> np.ndarray:
+
+def method_clahe_then_usm(
+    rgb: npt.NDArray[np.uint8], clip_limit: float = 0.01, usm_radius: float = 1.5, usm_amount: float = 0.8
+) -> npt.NDArray[np.float32]:
     """CLAHE (on luminance) → mild USM."""
     f = _to_float01(rgb)
     # convert to YUV and apply CLAHE to Y
@@ -110,7 +126,8 @@ def method_clahe_then_usm(rgb: np.ndarray, clip_limit: float = 0.01, usm_radius:
         out[..., c] = unsharp_mask(f_eq[..., c], radius=usm_radius, amount=usm_amount, preserve_range=True)
     return np.clip(out, 0, 1)
 
-def method_wiener_gaussian(rgb: np.ndarray, sigma: float = 1.2, K: float = 0.004) -> np.ndarray:
+
+def method_wiener_gaussian(rgb: npt.NDArray[np.uint8], sigma: float = 1.2, K: float = 0.004) -> npt.NDArray[np.float32]:
     """Wiener deconvolution assuming small Gaussian blur (applied on luminance)."""
     f = _to_float01(rgb)
     gray = rgb2gray(f)  # float in [0,1]
@@ -127,13 +144,14 @@ def method_wiener_gaussian(rgb: np.ndarray, sigma: float = 1.2, K: float = 0.004
     out = np.clip(f * ratio[..., None], 0, 1)
     return out
 
-def method_rl_disk(rgb: np.ndarray, radius_px: int = 3, iterations: int = 20) -> np.ndarray:
+
+def method_rl_disk(rgb: npt.NDArray[np.uint8], radius_px: int = 3, iterations: int = 20) -> npt.NDArray[np.float32]:
     """Richardson–Lucy with a disk PSF (defocus-like blur) on luminance."""
     f = _to_float01(rgb)
     gray = rgb2gray(f)
     # simple disk PSF
     size = radius_px * 2 + 1
-    Y, X = np.ogrid[-radius_px:radius_px+1, -radius_px:radius_px+1]
+    Y, X = np.ogrid[-radius_px : radius_px + 1, -radius_px : radius_px + 1]
     mask = X**2 + Y**2 <= radius_px**2
     psf = np.zeros((size, size), dtype=np.float32)
     psf[mask] = 1.0
@@ -145,12 +163,11 @@ def method_rl_disk(rgb: np.ndarray, radius_px: int = 3, iterations: int = 20) ->
     out = np.clip(f * ratio[..., None], 0, 1)
     return out
 
-def method_selective_defocus_rl(rgb: np.ndarray,
-                                defocus_threshold: float = 0.0008,
-                                disk_radius_if_blur: int = 3,
-                                iterations: int = 15) -> np.ndarray:
-    """
-    Estimate defocus map via variance of Laplacian.
+
+def method_selective_defocus_rl(
+    rgb: npt.NDArray[np.uint8], defocus_threshold: float = 0.0008, disk_radius_if_blur: int = 3, iterations: int = 15
+) -> npt.NDArray[np.float32]:
+    """Estimate defocus map via variance of Laplacian.
     Apply RL deconvolution only where defocus < threshold (blurred areas).
     Edge-aware (bilateral) blend back to avoid halos on already-sharp regions.
     """
@@ -170,7 +187,10 @@ def method_selective_defocus_rl(rgb: np.ndarray,
     rl = method_rl_disk(rgb, radius_px=disk_radius_if_blur, iterations=iterations)
     # edge-aware feathering via bilateral filter on the mask
     # (use bilateral on mask to align to edges)
-    m = cv2.bilateralFilter((blur_mask * 255).astype(np.uint8), d=9, sigmaColor=50, sigmaSpace=7).astype(np.float32) / 255.0
+    m = (
+        cv2.bilateralFilter((blur_mask * 255).astype(np.uint8), d=9, sigmaColor=50, sigmaSpace=7).astype(np.float32)
+        / 255.0
+    )
     m = m[..., None]  # to 3-ch
     out = rl * m + f * (1.0 - m)
     return np.clip(out, 0, 1)
@@ -180,11 +200,12 @@ def method_selective_defocus_rl(rgb: np.ndarray,
 # Pipeline Runner
 # ---------------------------
 
-def run_all_methods(img_rgb_path: str, output_dir: str) -> dict:
+
+def run_all_methods(img_rgb_path: str, output_dir: str) -> dict[str, npt.NDArray[np.uint8]]:
     _ensure_dir(output_dir)
     rgb, orig_dtype = _read_image_keep_dtype(img_rgb_path)
 
-    results = {}
+    results: dict[str, npt.NDArray[np.uint8]] = {}
     results["original"] = rgb
 
     # 1) Unsharp (single scale)
@@ -208,10 +229,12 @@ def run_all_methods(img_rgb_path: str, output_dir: str) -> dict:
     results["rl_disk"] = _from_float01_like(rl, orig_dtype)
 
     # 6) Selective RL guided by defocus
-    selective = method_selective_defocus_rl(rgb,
-                                            defocus_threshold=0.25,  # 0..1 after normalization; tweak based on image
-                                            disk_radius_if_blur=3,
-                                            iterations=15)
+    selective = method_selective_defocus_rl(
+        rgb,
+        defocus_threshold=0.25,  # 0..1 after normalization; tweak based on image
+        disk_radius_if_blur=3,
+        iterations=15,
+    )
     results["selective_rl"] = _from_float01_like(selective, orig_dtype)
 
     # Save results
@@ -220,7 +243,10 @@ def run_all_methods(img_rgb_path: str, output_dir: str) -> dict:
 
     return results
 
-def plot_comparison(results: dict, cols: int = 3, figsize: Tuple[int, int] = (18, 12)) -> None:
+
+def plot_comparison(
+    results: dict[str, npt.NDArray[np.uint8]], cols: int = 3, figsize: tuple[int, int] = (18, 12)
+) -> None:
     """Plot all results on one canvas."""
     names = list(results.keys())
     imgs = [results[k] for k in names]
@@ -230,7 +256,7 @@ def plot_comparison(results: dict, cols: int = 3, figsize: Tuple[int, int] = (18
         plt.subplot(rows, cols, i)
         plt.imshow(im)
         plt.title(nm, fontsize=12)
-        plt.axis('off')
+        plt.axis("off")
     plt.tight_layout()
     plt.show()
 
@@ -241,6 +267,7 @@ def plot_comparison(results: dict, cols: int = 3, figsize: Tuple[int, int] = (18
 
 if __name__ == "__main__":
     import os
+
     from matplotlib import pyplot as plt
 
     # Define paths

@@ -35,29 +35,29 @@ class WatershedSegmentation:
     implementations that can customize the segmentation process.
 
     Attributes:
-        img_grey (npt.NDArray[np.int_]): Input grayscale image.
+        img_grey (npt.NDArray[np.uint8]): Input grayscale image.
         img_grey_thresholded (npt.NDArray[np.bool_]): Binary image after thresholding.
-        img_grey_morph (npt.NDArray[np.int_]): Image after morphological operations.
-        img_grey_dt (npt.NDArray[np.int_]): Distance transform of the binary image.
-        img_rgb (npt.NDArray[np.int_]): Input RGB image for visualization.
+        img_grey_morph (npt.NDArray[np.uint8]): Image after morphological operations.
+        img_grey_dt (npt.NDArray[np.float32]): Distance transform of the binary image.
+        img_rgb (npt.NDArray[np.uint8]): Input RGB image for visualization.
         element_size (int): Size of structuring element for morphological operations.
         connectivity (int): Pixel connectivity for connected components labeling.
-        labels (npt.NDArray[np.int_]): Connected component labels.
-        labels_watershed (npt.NDArray[np.int_]): Final watershed segmentation labels.
-        labels_on_img (npt.NDArray[np.int_]): Visualization of labels on RGB image.
+        labels (npt.NDArray[np.int32]): Connected component labels.
+        labels_watershed (npt.NDArray[np.int32]): Final watershed segmentation labels.
+        labels_on_img (npt.NDArray[np.uint8]): Visualization of labels on RGB image.
         if_bknd_img (bool): Flag indicating if background image is used.
-        bknd_img (npt.NDArray[np.int_]): Background image for subtraction if used.
+        bknd_img (npt.NDArray[np.uint8]): Background image for subtraction if used.
     """
 
     def __init__(
         self,
-        img_grey: npt.NDArray[np.int_],
-        img_rgb: npt.NDArray[np.int_],
+        img_grey: npt.NDArray[np.uint8],
+        img_rgb: npt.NDArray[np.uint8],
         element_size: int = 5,
         connectivity: int = 4,
         if_bknd_img: bool = False,
         h_value: float = 0.1,
-        bknd_img: npt.NDArray[np.int_] = cast(npt.NDArray[np.int_], None),
+        bknd_img: npt.NDArray[np.uint8] = cast(npt.NDArray[np.uint8], None),
     ) -> None:
         """Initialize the watershed segmentation base class.
 
@@ -70,31 +70,31 @@ class WatershedSegmentation:
             if_bknd_img: Flag indicating if background image should be used.
             bknd_img: Optional background image for background subtraction.
         """
-        self.img_grey: npt.NDArray[np.int_] = img_grey
+        self.img_grey: npt.NDArray[np.uint8] = img_grey
         self.img_grey_morph_thresholded: npt.NDArray[np.bool_]
-        self.img_grey_morph: npt.NDArray[np.int_]
+        self.img_grey_morph: npt.NDArray[np.uint8]
         self.img_grey_eroded: MatLike
         self.img_grey_dt: MatLike
-        self.img_grey_dt_imhmin: npt.NDArray[np.int_]
-        self.img_rgb: npt.NDArray[np.int_] = img_rgb
+        self.img_grey_dt_imhmin: npt.NDArray[np.float32]
+        self.img_rgb: npt.NDArray[np.uint8] = img_rgb
 
         self.element_size: int = element_size
         self.connectivity: int = connectivity
         self.labels: MatLike
         self.labels_watershed: MatLike
-        self.labels_on_img: npt.NDArray[np.int_]
-        self.ellipses: list[tuple[tuple[float, float], tuple[int, int], float]]
+        self.labels_on_img: npt.NDArray[np.uint8]
+        self.ellipses: list[tuple[tuple[float, float], tuple[float, float], float]]
 
         self.if_bknd_img: bool = if_bknd_img
-        self.bknd_img: npt.NDArray[np.int_] = bknd_img
+        self.bknd_img: npt.NDArray[np.uint8] = bknd_img
 
-    def _threshold(self, image: npt.NDArray[np.int_]) -> npt.NDArray[np.bool_]:
+    def _threshold(self, image: npt.NDArray[np.uint8]) -> npt.NDArray[np.bool_]:
         """Apply thresholding to the input image.
 
         Uses either background subtraction thresholding if a background image is provided,
         or standard thresholding if no background image is available.
         """
-        logging.info(f"If background image: {self.if_bknd_img}")
+        logging.debug(f"If background image: {self.if_bknd_img}")
         threshold_methods = ThresholdMethods()
         if self.if_bknd_img is True:
             thresholded_img = threshold_methods.threshold_with_background(image, self.bknd_img)
@@ -102,16 +102,16 @@ class WatershedSegmentation:
             thresholded_img = threshold_methods.threshold_without_background(image)
         return thresholded_img
 
-    def _morph_process(self, image: npt.NDArray[np.bool_]) -> tuple[npt.NDArray[np.int_], MatLike]:
+    def _morph_process(self, image: npt.NDArray[np.bool_]) -> tuple[npt.NDArray[np.uint8], MatLike]:
         """Apply morphological operations to the thresholded image.
 
         Uses the morphological_process function to clean up the binary image by
         filling holes and removing noise.
         """
         morph_processed_image, eroded = morphological_process(image, self.element_size)
-        return morph_processed_image, eroded
+        return cast(npt.NDArray[np.uint8], morph_processed_image), eroded
 
-    def _dist_transform(self, image: npt.NDArray[np.int_]) -> MatLike:
+    def _dist_transform(self, image: npt.NDArray[np.uint8]) -> MatLike:
         """Apply distance transform to the morphologically processed image.
 
         Computes the distance transform using L2 (Euclidean) distance metric.
@@ -119,7 +119,7 @@ class WatershedSegmentation:
         """
         image_uint8 = image.astype(np.uint8)
         dt_image = cv2.distanceTransform(image_uint8, cv2.DIST_L2, self.element_size)  # type: ignore
-        return dt_image
+        return cast(MatLike, dt_image)
 
     def _initialize_labels(self, img: MatLike) -> MatLike:
         """Initialize label markers for watershed segmentation.
@@ -160,13 +160,13 @@ class WatershedSegmentation:
                 if len(contour) >= 5:
                     ellipse = cv2.fitEllipse(contour)
                     # Validate ellipse parameters before drawing
-                    center, axes, angle = ellipse
+                    _center, axes, _angle = ellipse
                     ellipse_width, ellipse_height = axes
-                    
+
                     # Skip invalid ellipses (width or height <= 0)
                     if ellipse_width <= 0 or ellipse_height <= 0:
                         continue
-                        
+
                     try:
                         cv2.ellipse(mask, ellipse, color=255, thickness=-1)  # type: ignore
                         ellipses.append(ellipse)
@@ -181,11 +181,13 @@ class WatershedSegmentation:
         self.ellipses = ellipses  # type: ignore
         return labelled_img
 
-    def _overlay_labels_on_rgb(self, img: npt.NDArray[np.int_], labels: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
+    def _overlay_labels_on_rgb(
+        self, img: npt.NDArray[np.uint8], labels: npt.NDArray[np.int32]
+    ) -> npt.NDArray[np.uint8]:
         """Overlay the watershed segmentation labels on the RGB image.
 
         Creates a visualization of the segmentation results by overlaying
         the watershed labels on the original RGB image.
         """
         labels_on_img = overlay_labels_on_rgb(img, labels)
-        return labels_on_img
+        return cast(npt.NDArray[np.uint8], labels_on_img)

@@ -35,8 +35,8 @@ from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
-    QComboBox,
     QCheckBox,
+    QComboBox,
     QDialog,
     QFileDialog,
     QHBoxLayout,
@@ -475,9 +475,7 @@ class CalibrationTabHandler:
 
         img_path: Path = cast(Path, self.gui.pixel_img_name.text())
         if os.path.exists(img_path):
-            px2mm, img_drawed_line = self.calibration_model.get_px2mm_ratio(
-                pixel_img_path=img_path, gui=self.gui
-            )
+            px2mm, img_drawed_line = self.calibration_model.get_px2mm_ratio(pixel_img_path=img_path, gui=self.gui)
 
             px2mm_display = px2mm
 
@@ -691,7 +689,7 @@ class ImageProcessingTabHandler(QThread):
         """
         new_checker: Config = self.params_checker.model_copy()
 
-        logging.info(f"Checking parameter: {name} {value}")
+        logging.debug(f"Checking parameter: {name} {value}")
         if name == "element_size":
             try:
                 new_checker.element_size = cast(int, value)
@@ -862,7 +860,7 @@ class ImageProcessingTabHandler(QThread):
             return
 
         current_item = self.gui.image_list.currentItem()
-        if current_item is None:
+        if current_item is None:  # type: ignore[unreachable]
             self.gui.sample_image_info_label.setText("No image selected")
             return
 
@@ -878,7 +876,7 @@ class ImageProcessingTabHandler(QThread):
 
         If the current image has been processed, the preview processed image button is enabled.
         """
-        if_img, img_before_filter, img_after_filter = self.model.preview_processed_image(self.current_index)
+        if_img, _img_before_filter, _img_after_filter = self.model.preview_processed_image(self.current_index)
         if if_img:
             logging.info("Preview processed image enabled for current image.")
             self.gui.preview_processed_images_button.setEnabled(True)
@@ -912,6 +910,7 @@ class ImageProcessingTabHandler(QThread):
 
         # Check if weights exist locally
         from bubble_analyser.weights.loader import get_weights_path
+
         weights_path, _ = get_weights_path(download_if_missing=False)
         weights_missing = weights_path is None
 
@@ -919,12 +918,13 @@ class ImageProcessingTabHandler(QThread):
             # Create a lower-case version of the name for checking
             algo_name = algorithm.lower()
 
+            # Skip the "NEW method" as requested by the user
+            if algo_name == "new method":
+                continue
+
             # Keywords that indicate a Machine Learning method
             is_ml_method = (
-                "cnn" in algo_name or
-                "rcnn" in algo_name or
-                "bubmask" in algo_name or
-                "deep learning" in algo_name
+                "cnn" in algo_name or "rcnn" in algo_name or "bubmask" in algo_name or "deep learning" in algo_name
             )
 
             # If weights are missing, skip any ML/DL method
@@ -943,7 +943,11 @@ class ImageProcessingTabHandler(QThread):
 
             # Update description safely
             try:
-                description = getattr(self.model.methods_handler.all_classes[self.algorithm_list[0]], "description", "No description available.")
+                description = getattr(
+                    self.model.methods_handler.all_classes[self.algorithm_list[0]],
+                    "description",
+                    "No description available.",
+                )
                 self.gui.algorithm_description_label.setText(description)
             except Exception as e:
                 logging.error(f"Error updating description: {e}")
@@ -967,7 +971,6 @@ class ImageProcessingTabHandler(QThread):
 
         for algorithm_name, params in self.model.all_methods_n_params.items():
             if algorithm_name == self.current_algorithm:
-
                 self.gui.param_sandbox1.setRowCount(len(params))
 
                 for (
@@ -995,11 +998,11 @@ class ImageProcessingTabHandler(QThread):
 
                     elif name == "element_size":
                         combo_box = QComboBox()
-                        combo_box.addItems(["0","3","5"])
+                        combo_box.addItems(["0", "3", "5"])
 
                         # Set the current value
                         current_value = str(value)
-                        if current_value in ["0","3","5"]:
+                        if current_value in ["0", "3", "5"]:
                             combo_box.setCurrentText(current_value)
                         else:
                             # Default to False if value is not boolean
@@ -1010,11 +1013,11 @@ class ImageProcessingTabHandler(QThread):
 
                     elif name == "connectivity":
                         combo_box = QComboBox()
-                        combo_box.addItems(["4","8"])
+                        combo_box.addItems(["4", "8"])
 
                         # Set the current value
                         current_value = str(value)
-                        if current_value in ["4","8"]:
+                        if current_value in ["4", "8"]:
                             combo_box.setCurrentText(current_value)
                         else:
                             # Default to False if value is not boolean
@@ -1025,11 +1028,11 @@ class ImageProcessingTabHandler(QThread):
 
                     elif name == "ksize":
                         combo_box = QComboBox()
-                        combo_box.addItems(["1","3","5","7"])
+                        combo_box.addItems(["1", "3", "5", "7"])
 
                         # Set the current value
                         current_value = str(value)
-                        if current_value in ["1","3","5","7"]:
+                        if current_value in ["1", "3", "5", "7"]:
                             combo_box.setCurrentText(current_value)
                         else:
                             # Default to False if value is not boolean
@@ -1064,7 +1067,9 @@ class ImageProcessingTabHandler(QThread):
 
         # Update description
         try:
-            description = getattr(self.model.methods_handler.all_classes[new_algorithm], "description", "No description available.")
+            description = getattr(
+                self.model.methods_handler.all_classes[new_algorithm], "description", "No description available."
+            )
             self.gui.algorithm_description_label.setText(description)
         except Exception as e:
             logging.error(f"Error updating description: {e}")
@@ -1120,10 +1125,10 @@ class ImageProcessingTabHandler(QThread):
             value = float(text)
             # Return an int if the number is integer
             if value.is_integer():
-                logging.info(f"{value} determined as integer.")
+                logging.debug(f"{value} determined as integer.")
                 return int(value)
             else:
-                logging.info(f"{value} determined as float.")
+                logging.debug(f"{value} determined as float.")
                 return value
             # return int(value) if value.is_integer() else value
         except ValueError:
@@ -1165,7 +1170,7 @@ class ImageProcessingTabHandler(QThread):
         for algorithm_name, params_in_dict in self.model.all_methods_n_params.items():
             if algorithm_name == self.model.algorithm:
                 for name, value in params.items():
-                    logging.info(f"Updating {name} to {value}")
+                    logging.debug(f"Updating {name} to {value}")
                     params_in_dict[name] = value
 
         return True
@@ -1195,7 +1200,7 @@ class ImageProcessingTabHandler(QThread):
             img (npt.NDArray[np.int_]): The processed image.
         """
         # Close dialog
-        if hasattr(self, 'processing_dialog'):
+        if hasattr(self, "processing_dialog"):
             self.processing_dialog.close()
 
         self.update_label_before_filtering(img)
@@ -1346,7 +1351,7 @@ class ImageProcessingTabHandler(QThread):
             img (npt.NDArray[np.int_]): The processed image.
         """
         # Close dialog
-        if hasattr(self, 'processing_dialog'):
+        if hasattr(self, "processing_dialog"):
             self.processing_dialog.close()
 
         self.update_process_image_preview(img)
@@ -1380,14 +1385,15 @@ class ImageProcessingTabHandler(QThread):
         If confirmed, initiates the batch processing operation.
         """
         self.if_save_processed_images = False
-        confirm_dialog = self.create_confirm_dialog("Batch Processing Confirmation",
-        "The parameters will be applied to all the images. Confirm to process.")
+        confirm_dialog = self.create_confirm_dialog(
+            "Batch Processing Confirmation", "The parameters will be applied to all the images. Confirm to process."
+        )
         self.create_save_images_checkbox(confirm_dialog)
 
         response = confirm_dialog.exec()
 
         if response == QMessageBox.StandardButton.Ok:
-            self.check_for_export_path.emit() # Let Main handler check if export being properlly set
+            self.check_for_export_path.emit()  # Let Main handler check if export being properlly set
 
         else:
             logging.info("Batch processing canceled.")
@@ -1395,23 +1401,26 @@ class ImageProcessingTabHandler(QThread):
     def finalise_analysis(self) -> None:
         """Finalise the analysis by setting the if_finish_analysis flag to True."""
         if not self.model.if_batched:
-            QMessageBox.information(self.gui, "Information", "Please finish at least one time of batch processing first.")
+            QMessageBox.information(
+                self.gui, "Information", "Please finish at least one time of batch processing first."
+            )
             return
 
         else:
-            confirm_dialog = self.create_confirm_dialog("Finalise Analysis Confirmation",
-            "The analysis will be finalised. \n Make sure you are satisfied with the segmentation of all images. Confirm to finalise.")
+            confirm_dialog = self.create_confirm_dialog(
+                "Finalise Analysis Confirmation",
+                "The analysis will be finalised. \n Make sure you are satisfied with the segmentation of all images. Confirm to finalise.",
+            )
             self.create_save_images_checkbox(confirm_dialog)
 
             response = confirm_dialog.exec()
 
             if response == QMessageBox.StandardButton.Ok:
                 self.model.if_finalise_analysis = True
-                self.check_for_export_path.emit() # Let Main handler check if export being properlly set
+                self.check_for_export_path.emit()  # Let Main handler check if export being properlly set
 
             else:
                 logging.info("Analysis finalisation canceled.")
-
 
     def create_confirm_dialog(self, title: str, text: str) -> QMessageBox:
         """Create a confirmation dialog for batch processing.
@@ -1551,14 +1560,12 @@ class ImageProcessingTabHandler(QThread):
             error_message (str): The error message and details from the worker thread.
         """
         # Close the progress dialog if it's open
-        if hasattr(self, 'progress_dialog') and self.progress_dialog:
+        if hasattr(self, "progress_dialog") and self.progress_dialog:
             self.progress_dialog.close()
 
         # Show error dialog on main thread
         QMessageBox.critical(
-            self.gui,
-            "Processing Error",
-            "An error occurred during batch processing:\n\n" + error_message
+            self.gui, "Processing Error", "An error occurred during batch processing:\n\n" + error_message
         )
 
         logging.error(f"Worker thread error handled on main thread: {error_message}")
@@ -1731,7 +1738,7 @@ class ResultsTabHandler(QThread):
             self.gui.histogram_canvas.axes.set_xlabel("Equivalent diameter [mm]")
             self.gui.histogram_canvas.axes.set_ylabel("Volume [mm³]")
         else:  # Count histogram (default)
-            counts, bins, patches = self.gui.histogram_canvas.axes.hist(
+            counts, bins, _patches = self.gui.histogram_canvas.axes.hist(
                 equivalent_diameters_array, bins=num_bins, range=(x_min, x_max)
             )
             # Set graph labels for count histogram
@@ -2134,7 +2141,8 @@ class MainHandler:
 
         Ensures that the application exits gracefully when the main window is closed.
         """
-        sys.exit(self.app.exec())
+        if self.app is not None:
+            sys.exit(self.app.exec())
 
     def load_gui_for_handlers(self) -> None:
         """Load GUI references into all handlers.

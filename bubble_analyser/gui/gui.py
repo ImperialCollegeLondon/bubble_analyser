@@ -34,11 +34,12 @@ from typing import cast
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QAction, QColor, QPainter, QPaintEvent, QPen
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
+    QDialog,
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -54,10 +55,7 @@ from PySide6.QtWidgets import (
     QTabWidget,
     QVBoxLayout,
     QWidget,
-    QDialog,
 )
-from PySide6.QtCore import QTimer
-from PySide6.QtGui import QPainter, QPen, QColor
 
 
 class SpinnerWidget(QWidget):
@@ -66,7 +64,7 @@ class SpinnerWidget(QWidget):
     This widget draws a rotating arc to indicate an indeterminate process.
     """
 
-    def __init__(self, parent: QWidget = None) -> None:
+    def __init__(self, parent: QWidget | None = None) -> None:
         """Initialize the spinner widget.
 
         Args:
@@ -84,7 +82,7 @@ class SpinnerWidget(QWidget):
         self.angle = (self.angle + 10) % 360
         self.update()
 
-    def paintEvent(self, event) -> None:
+    def paintEvent(self, event: QPaintEvent) -> None:
         """Paint the spinner.
 
         Args:
@@ -92,32 +90,34 @@ class SpinnerWidget(QWidget):
         """
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        
+
         width = self.width()
         height = self.height()
-        
+
         # Center point
         center_x = width / 2
         center_y = height / 2
-        
+
         # Radius
         radius = min(width, height) / 2 - 10
-        
+
         # Draw background circle (optional, faint)
         pen = QPen(QColor(200, 200, 200))
         pen.setWidth(6)
         painter.setPen(pen)
         painter.drawEllipse(int(center_x - radius), int(center_y - radius), int(radius * 2), int(radius * 2))
-        
+
         # Draw rotating arc
         pen.setColor(QColor(66, 135, 245))  # Blue color
         painter.setPen(pen)
-        
+
         # Draw a 90 degree arc
-        span_angle = 90 * 16 # Angles are in 1/16th of a degree
+        span_angle = 90 * 16  # Angles are in 1/16th of a degree
         start_angle = -self.angle * 16
-        
-        painter.drawArc(int(center_x - radius), int(center_y - radius), int(radius * 2), int(radius * 2), start_angle, span_angle)
+
+        painter.drawArc(
+            int(center_x - radius), int(center_y - radius), int(radius * 2), int(radius * 2), start_angle, span_angle
+        )
 
 
 class ProcessingDialog(QDialog):
@@ -126,7 +126,7 @@ class ProcessingDialog(QDialog):
     This dialog is used to block user interaction while a background task is running.
     """
 
-    def __init__(self, parent: QWidget = None, title: str = "Processing...") -> None:
+    def __init__(self, parent: QWidget | None = None, title: str = "Processing...") -> None:
         """Initialize the processing dialog.
 
         Args:
@@ -137,15 +137,15 @@ class ProcessingDialog(QDialog):
         self.setWindowTitle(title)
         self.setModal(True)
         self.setFixedSize(200, 230)  # Increased height for time label
-        
+
         # Remove the close button
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowCloseButtonHint)
 
         layout = QVBoxLayout(self)
-        
+
         self.spinner = SpinnerWidget(self)
         layout.addWidget(self.spinner, 0, Qt.AlignmentFlag.AlignCenter)
-        
+
         self.label = QLabel(title, self)
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.label)
@@ -463,7 +463,7 @@ class MainWindow(QMainWindow):
 
         first_column_layout.addWidget(QLabel("Select image and preview"))
         first_column_layout.addWidget(self.sample_image_preview)
-        
+
         # Add filename and index display label
         self.sample_image_info_label = QLabel("No image selected")
         self.sample_image_info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -600,7 +600,7 @@ class MainWindow(QMainWindow):
 
         # Connect to auto-update
         self.options_label = QLabel("Histogram Options:")
-        
+
         # PDF/CDF Checkboxes
         self.pdf_checkbox = QCheckBox("PDF")
         self.cdf_checkbox = QCheckBox("CDF")

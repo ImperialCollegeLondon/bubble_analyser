@@ -17,16 +17,17 @@ data management, and user interface interaction in the Bubble Analyser applicati
 
 import logging
 import os
+import sys
 from pathlib import Path
 from typing import cast
 
 import cv2
-import sys
 import numpy as np
 from cv2.typing import MatLike
 from numpy import typing as npt
 from PySide6.QtCore import QEventLoop, QThread, Signal
 
+from bubble_analyser.cnn_methods.bubmask_wrapper import BubMaskConfig, BubMaskDetector
 from bubble_analyser.processing import (
     Config,
     EllipseAdjuster,
@@ -35,7 +36,7 @@ from bubble_analyser.processing import (
     MethodsHandler,
     calculate_px2mm,
 )
-from bubble_analyser.cnn_methods.bubmask_wrapper import BubMaskDetector, BubMaskConfig
+
 
 class WorkerThread(QThread):
     """A worker thread class for handling batch image processing operations.
@@ -57,9 +58,9 @@ class WorkerThread(QThread):
     processing_done = Signal()
     error_occurred = Signal(str)
 
-    def __init__(  # type: ignore
+    def __init__(
         self,
-        model,
+        model: "ImageProcessingModel",
         if_save_processed_image: bool = False,
         save_path: Path = cast(Path, None),
     ) -> None:
@@ -94,7 +95,7 @@ class WorkerThread(QThread):
             logging.error(f"Error in worker thread: {error_details}")
 
             # Emit error signal to be handled on the main thread
-            self.error_occurred.emit(f"Processing error: {str(e)}\n\nDetails:\n{error_details}")
+            self.error_occurred.emit(f"Processing error: {e!s}\n\nDetails:\n{error_details}")
 
     def update_progress_bar(self, value: int) -> None:
         """Emit a signal to update the progress bar in the GUI.
@@ -111,6 +112,7 @@ class WorkerThread(QThread):
         """
         self.processing_done.emit()
 
+
 class Step1Worker(QThread):
     """A worker thread for handling the first step of image processing (segmentation).
 
@@ -121,7 +123,7 @@ class Step1Worker(QThread):
     finished = Signal(object)  # Emits the processed image (numpy array)
     error = Signal(str)
 
-    def __init__(self, model, index: int) -> None:
+    def __init__(self, model: "ImageProcessingModel", index: int) -> None:
         """Initialize the Step 1 worker.
 
         Args:
@@ -139,8 +141,10 @@ class Step1Worker(QThread):
             self.finished.emit(img)
         except Exception as e:
             import traceback
+
             error_details = traceback.format_exc()
-            self.error.emit(f"Error in Step 1 processing: {str(e)}\n\n{error_details}")
+            self.error.emit(f"Error in Step 1 processing: {e!s}\n\n{error_details}")
+
 
 class Step2Worker(QThread):
     """A worker thread for handling the second step of image processing (filtering).
@@ -152,7 +156,7 @@ class Step2Worker(QThread):
     finished = Signal(object)  # Emits the processed image (numpy array)
     error = Signal(str)
 
-    def __init__(self, model, index: int) -> None:
+    def __init__(self, model: "ImageProcessingModel", index: int) -> None:
         """Initialize the Step 2 worker.
 
         Args:
@@ -170,8 +174,10 @@ class Step2Worker(QThread):
             self.finished.emit(img)
         except Exception as e:
             import traceback
+
             error_details = traceback.format_exc()
-            self.error.emit(f"Error in Step 2 processing: {str(e)}\n\n{error_details}")
+            self.error.emit(f"Error in Step 2 processing: {e!s}\n\n{error_details}")
+
 
 class InputFilesModel:
     """A model class for managing input image files and their paths.
@@ -256,6 +262,7 @@ class InputFilesModel:
         self.image_list_full_path_in_path = []
         self.sample_images_confirmed = False
 
+
 class CalibrationModel:
     """A model class for managing calibration data and pixel-to-millimeter conversion.
 
@@ -296,10 +303,10 @@ class CalibrationModel:
         self.px2mm_display: float
         self.calibration_confirmed: bool = False
 
-    def get_px2mm_ratio(  # type: ignore
+    def get_px2mm_ratio(
         self,
         pixel_img_path: Path,
-        gui=None,  # type: ignore
+        gui: object = None,
     ) -> tuple[float, MatLike]:
         """Calculate the pixel-to-millimeter ratio from a calibration image.
 
@@ -309,8 +316,6 @@ class CalibrationModel:
 
         Args:
             pixel_img_path (Path): Path to the calibration image file.
-            img_resample (float, optional): Resampling factor for the image.
-                Defaults to 0.5.
             gui (object, optional): GUI object for displaying interactive elements.
                 Defaults to None.
 
@@ -333,6 +338,7 @@ class CalibrationModel:
     def reset(self) -> None:
         """Reset the model to its initial state."""
         self.calibration_confirmed = False
+
 
 class ImageProcessingModel:
     """A model class for managing image processing operations and parameters.
@@ -391,7 +397,7 @@ class ImageProcessingModel:
         # Determine base directory for weights
         if getattr(sys, "frozen", False):
             # If the application is run as a bundle (PyInstaller)
-            base_dir = sys._MEIPASS
+            base_dir = getattr(sys, "_MEIPASS", "")
         else:
             # If running in development mode
             # component_handlers.py is in bubble_analyser/gui/
@@ -401,8 +407,8 @@ class ImageProcessingModel:
         self.weights_path: str = os.path.join(base_dir, "bubble_analyser/weights/mask_rcnn_bubble.h5")
         self.confidence_threshold: float = 0.9
         self.target_width: int = 1000
-        self.image_min_dim: int = 192*2
-        self.image_max_dim: int = 384*2
+        self.image_min_dim: int = 192 * 2
+        self.image_max_dim: int = 384 * 2
         self.detector: BubMaskDetector | None = None
 
         logging.info("------------------------------Intializing Parameters------------------------------")
@@ -440,32 +446,31 @@ class ImageProcessingModel:
         logging.info(f"Find circles filtering parameters: {self.filter_param_dict_2}")
 
     def initialize_cnn_model(self) -> None:
-            import os
+        import os
 
-            # Initialize BubMask detector if not already done
-            if self.detector is None and self.weights_path:
+        # Initialize BubMask detector if not already done
+        if self.detector is None and self.weights_path:
+            # 1. Safety Check: Does the file actually exist?
+            if not os.path.exists(self.weights_path):
+                logging.warning(f"Weights file not found at: {self.weights_path}")
+                logging.warning("CNN-based segmentation will be disabled.")
+                self.detector = None
+                return  # Exit gracefully, do not crash!
 
-                # 1. Safety Check: Does the file actually exist?
-                if not os.path.exists(self.weights_path):
-                    logging.warning(f"Weights file not found at: {self.weights_path}")
-                    logging.warning("CNN-based segmentation will be disabled.")
-                    self.detector = None
-                    return  # Exit gracefully, do not crash!
-
-                # 2. File exists, proceed to load
-                try:
-                    config = BubMaskConfig(
-                        confidence_threshold=self.confidence_threshold,
-                        image_min_dim=self.image_min_dim,
-                        image_max_dim=self.image_max_dim
-                    )
-                    self.detector = BubMaskDetector(self.weights_path, config)
-                    logging.info("BubMask detector initialized successfully")
-                except Exception as e:
-                    # 3. Catch other errors (e.g. corrupt file) without crashing app
-                    logging.error(f"Failed to initialize BubMask detector: {e}")
-                    self.detector = None
-                    # removed 'raise' so the app continues running
+            # 2. File exists, proceed to load
+            try:
+                config = BubMaskConfig(
+                    confidence_threshold=self.confidence_threshold,
+                    image_min_dim=self.image_min_dim,
+                    image_max_dim=self.image_max_dim,
+                )
+                self.detector = BubMaskDetector(self.weights_path, config)
+                logging.info("BubMask detector initialized successfully")
+            except Exception as e:
+                # 3. Catch other errors (e.g. corrupt file) without crashing app
+                logging.error(f"Failed to initialize BubMask detector: {e}")
+                self.detector = None
+                # removed 'raise' so the app continues running
 
     def confirm_folder_selection(self, folder_path_list: list[Path]) -> None:
         """Set the list of image paths to be processed.
@@ -680,20 +685,27 @@ class ImageProcessingModel:
 
                 if if_save:
                     if self.img_dict[name].ellipses_on_images is not None:
-                        self.save_processed_images(self.img_dict[name].ellipses_on_images, img_fit_ellipse_name, save_path)
+                        self.save_processed_images(
+                            self.img_dict[name].ellipses_on_images, img_fit_ellipse_name, save_path
+                        )
                     if self.img_dict[name].img_rgb is not None:
                         self.save_processed_images(self.img_dict[name].img_rgb, img_rgb_name, save_path)
                     if self.img_dict[name].img_grey_morph_eroded is not None:
-                        self.save_processed_images(self.img_dict[name].img_grey_morph_eroded, img_mt_name, save_path, if_mt = True)
+                        self.save_processed_images(
+                            self.img_dict[name].img_grey_morph_eroded, img_mt_name, save_path, if_mt=True
+                        )
                     if self.img_dict[name].labelled_ellipses_mask is not None:
-                        self.save_labelled_masks(self.img_dict[name].labelled_ellipses_mask, cast(Path, base_name), save_path)
-
+                        self.save_labelled_masks(
+                            self.img_dict[name].labelled_ellipses_mask, cast(Path, base_name), save_path
+                        )
 
             worker_thread.update_progress_bar(index + 1)
         worker_thread.on_processing_done()
-        self.if_batched = True # Make finalise analysis true
+        self.if_batched = True  # Make finalise analysis true
 
-    def save_processed_images(self, img: npt.NDArray[np.int_], img_name: Path, save_path: Path, if_mt = False) -> None:
+    def save_processed_images(
+        self, img: npt.NDArray[np.int_], img_name: Path, save_path: Path, if_mt: bool = False
+    ) -> None:
         """Save the processed image with detected ellipses to disk.
 
         Args:
@@ -706,7 +718,7 @@ class ImageProcessingModel:
         logging.info(f"Processed image with ellipses saving to: {new_name}")
         try:
             if if_mt:
-                cv2.imwrite(new_name, img*255)
+                cv2.imwrite(new_name, img * 255)
             else:
                 cv2.imwrite(new_name, img)
                 logging.info("saved")

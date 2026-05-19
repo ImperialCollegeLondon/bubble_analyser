@@ -167,10 +167,10 @@ class EllipseHandler:
         properties = measure.regionprops(labels)
         new_labels = np.copy(labels) if labels is not None else np.array([])
         mm2px = self.mm2px
-        
+
         # Get image dimensions for boundary detection
         if labels is not None:
-            img_height, img_width = labels.shape
+            _img_height, _img_width = labels.shape
         else:
             raise ValueError("labels_before_filtering is None")
 
@@ -198,7 +198,6 @@ class EllipseHandler:
             if prop.label == 1:  # Ignore the background
                 continue
 
-
             # Calculate circle properties in mm
             area = prop.area * (mm2px**2)
             # area = prop.area
@@ -209,29 +208,29 @@ class EllipseHandler:
             if not (eccentricity <= max_eccentricity and solidity >= min_solidity and min_size <= area <= max_size):
                 # Remove the region by setting it to 1 (background)
                 new_labels[new_labels == prop.label] = 1
-                logging.info("A circle is being filtered out because the following parameter(s) are not qualified:")
+                logging.debug("A circle is being filtered out because the following parameter(s) are not qualified:")
                 if eccentricity > max_eccentricity:
-                    logging.info(f"Eccentricity (too large): {eccentricity}")
+                    logging.debug(f"Eccentricity (too large): {eccentricity}")
                 if solidity < min_solidity:
-                    logging.info(f"Solidity (too small): {solidity}")
+                    logging.debug(f"Solidity (too small): {solidity}")
                 if area < min_size:
-                    logging.info(f"Area (too small): {area}")
+                    logging.debug(f"Area (too small): {area}")
                 if area > max_size:
-                    logging.info(f"Area (too large): {area}")
+                    logging.debug(f"Area (too large): {area}")
 
             else:
                 if if_find_circles:
-                    logging.info("Find Circles activated.")
+                    logging.debug("Find Circles activated.")
                     if not ((L_min <= area <= L_max) or (s_min <= area <= s_max)):
-                        logging.info(
+                        logging.debug(
                             "A circle is being filtered out because one or \
                             more of the following parameter(s) are not qualified:"
                         )
-                        logging.info(f"Value of the circle's area: {area}")
-                        logging.info(f"Value of the L_min: {L_min}")
-                        logging.info(f"Value of the L_max: {L_max}")
-                        logging.info(f"Value of the s_min: {s_min}")
-                        logging.info(f"Value of the s_max: {s_max}")
+                        logging.debug(f"Value of the circle's area: {area}")
+                        logging.debug(f"Value of the L_min: {L_min}")
+                        logging.debug(f"Value of the L_max: {L_max}")
+                        logging.debug(f"Value of the s_min: {s_min}")
+                        logging.debug(f"Value of the s_max: {s_max}")
                         new_labels[new_labels == prop.label] = 1
                         continue
 
@@ -265,15 +264,22 @@ class EllipseHandler:
                     # Validate ellipse parameters before adding to list
                     center, axes, angle = ellipse
                     ellipse_width, ellipse_height = axes
-                    
+
                     # Only add valid ellipses (width and height > 0, finite values)
-                    if (ellipse_width > 0 and ellipse_height > 0 and 
-                        np.isfinite(ellipse_width) and np.isfinite(ellipse_height) and
-                        np.isfinite(center[0]) and np.isfinite(center[1]) and
-                        np.isfinite(angle)):
+                    if (
+                        ellipse_width > 0
+                        and ellipse_height > 0
+                        and np.isfinite(ellipse_width)
+                        and np.isfinite(ellipse_height)
+                        and np.isfinite(center[0])
+                        and np.isfinite(center[1])
+                        and np.isfinite(angle)
+                    ):
                         ellipses.append(ellipse)
                     else:
-                        print(f"Warning: Skipping invalid ellipse with dimensions: width={ellipse_width}, height={ellipse_height}")
+                        print(
+                            f"Warning: Skipping invalid ellipse with dimensions: width={ellipse_width}, height={ellipse_height}"
+                        )
 
         self.ellipses = ellipses  # type: ignore
 
@@ -281,43 +287,51 @@ class EllipseHandler:
 
     def overlay_ellipses_on_image(self, thickness: int = 5) -> npt.NDArray[np.int_]:
         """Overlay detected ellipses on the RGB image.
-    
+
         Draws each detected ellipse on the RGB image with the specified thickness.
         Also creates a labeled image from the ellipses.
-    
+
         Args:
             thickness (int, optional): Thickness of the ellipse outlines. Defaults to 20.
-    
+
         Returns:
             npt.NDArray[np.int_]: The RGB image with ellipses overlaid.
         """
         if self.img_rgb is None:
             raise ValueError("img_rgb is not initialized")
         ellipse_image = self.img_rgb.copy()
-    
+
         for ellipse in self.ellipses:
             # Validate ellipse parameters before drawing
             center, axes, angle = ellipse
             ellipse_width, ellipse_height = axes
-            
+
             # Check if ellipse dimensions are valid (positive, finite values)
-            if (ellipse_width > 0 and ellipse_height > 0 and thickness > 0 and
-                np.isfinite(ellipse_width) and np.isfinite(ellipse_height) and
-                np.isfinite(center[0]) and np.isfinite(center[1]) and
-                np.isfinite(angle)):
+            if (
+                ellipse_width > 0
+                and ellipse_height > 0
+                and thickness > 0
+                and np.isfinite(ellipse_width)
+                and np.isfinite(ellipse_height)
+                and np.isfinite(center[0])
+                and np.isfinite(center[1])
+                and np.isfinite(angle)
+            ):
                 try:
                     cv2.ellipse(ellipse_image, ellipse, (0, 0, 255), thickness)  # type: ignore
                 except cv2.error as e:
                     logging.warning(f"Failed to draw ellipse {ellipse}: {e}")
                     continue
             else:
-                logging.warning(f"Invalid ellipse dimensions: width={ellipse_width}, height={ellipse_height}, thickness={thickness}")
+                logging.warning(
+                    f"Invalid ellipse dimensions: width={ellipse_width}, height={ellipse_height}, thickness={thickness}"
+                )
                 continue
-                
+
         self.ellipses_on_image = ellipse_image
 
         self.create_labelled_image_from_ellipses()
-    
+
         return ellipse_image
 
     def create_labelled_image_from_ellipses(self) -> npt.NDArray[np.int_]:
@@ -340,14 +354,18 @@ class EllipseHandler:
         current_label = 2  # Start labelling from 2
         for ellipse in self.ellipses:
             # Validate ellipse parameters before drawing
-            center, axes, angle = ellipse
+            _center, axes, _angle = ellipse
             ellipse_width, ellipse_height = axes
-            
+
             # Skip invalid ellipses (width or height <= 0, inf, or nan)
-            if (ellipse_width <= 0 or ellipse_height <= 0 or 
-                not np.isfinite(ellipse_width) or not np.isfinite(ellipse_height)):
+            if (
+                ellipse_width <= 0
+                or ellipse_height <= 0
+                or not np.isfinite(ellipse_width)
+                or not np.isfinite(ellipse_height)
+            ):
                 continue
-                
+
             # Create a mask for the current ellipse.
             mask = np.zeros((img_height, img_width), dtype=np.uint8)
             try:
@@ -377,7 +395,7 @@ class EllipseHandler:
         mm2px = self.mm2px
 
         for ellipse in self.ellipses:
-            center, axes, angle = ellipse
+            _center, axes, _angle = ellipse
             major_axis_length = max(axes) * mm2px
             minor_axis_length = min(axes) * mm2px
             # major_axis_length = max(axes)

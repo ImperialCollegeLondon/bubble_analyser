@@ -9,6 +9,7 @@ analysis.
 """
 
 import logging
+import sys
 import time
 from pathlib import Path
 from typing import cast
@@ -58,14 +59,14 @@ def morphological_process(
     #     target_img.astype(np.uint8), cv2.MORPH_CLOSE, element_size
     # )  # type: ignore
 
-    logging.info(f"Time consumed for closing: {time.perf_counter() - start_time}")
+    logging.debug(f"Time consumed for closing: {time.perf_counter() - start_time}")
     start_time = time.perf_counter()
     image_processed_filled = ndimage.binary_fill_holes(image_processed_closed)
     # image_processed_filled = image_processed_filled.astype(np.uint8)
-    logging.info(f"Time consumed for filling holes: {time.perf_counter() - start_time}")
+    logging.debug(f"Time consumed for filling holes: {time.perf_counter() - start_time}")
     start_time = time.perf_counter()
     image_processed_cleared = segmentation.clear_border(image_processed_filled)
-    logging.info(f"Time consumed for clearing borders: {time.perf_counter() - start_time}")
+    logging.debug(f"Time consumed for clearing borders: {time.perf_counter() - start_time}")
 
     image_processed_cleared = image_processed_cleared.astype(np.uint8)
     reverse_dilation = True
@@ -73,7 +74,7 @@ def morphological_process(
     if reverse_dilation:
         start_time = time.perf_counter()
         image_processed_cleard_eroded = cv2.erode(image_processed_cleared, kernel, iterations=1)
-        logging.info(f"Time consumed for erosion: {time.perf_counter() - start_time}")
+        logging.debug(f"Time consumed for erosion: {time.perf_counter() - start_time}")
 
     logging.info("Morphological processing completed.")
     return image_processed_cleared, image_processed_cleard_eroded
@@ -82,6 +83,7 @@ def morphological_process(
     # Convert filled image to int type and return with eroded image (which is None)
     # return np.array(image_processed_filled, dtype=np.int_), image_processed_cleard_eroded
 
+
 if __name__ == "__main__":
     # Define the image path
     img_path = Path("../../tests/test_image_thresholded_otsu.JPG")
@@ -89,6 +91,9 @@ if __name__ == "__main__":
 
     # Load the image
     img = cv2.imread(str(img_path))
+    if img is None:
+        print(f"Error: Could not read image {img_path}")
+        sys.exit(1)
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     _, img_binary = cv2.threshold(img_gray, 127, 255, cv2.THRESH_BINARY)
 

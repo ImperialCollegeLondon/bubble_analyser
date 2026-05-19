@@ -11,7 +11,7 @@ import logging
 # Add bubble_analyser to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from bubble_analyser.methods.bubmask_wrapper import BubMaskDetector, BubMaskConfig, detect_bubbles_simple
+from bubble_analyser.cnn_methods.bubmask_wrapper import BubMaskDetector, BubMaskConfig, detect_bubbles_simple
 from bubble_analyser.methods.bubmask_method import BubMaskWatershed
 
 

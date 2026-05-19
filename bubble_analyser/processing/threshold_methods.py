@@ -47,7 +47,9 @@ class ThresholdMethods:
     bubble detection and analysis.
     """
 
-    def normal_threshold(self, target_img: npt.NDArray[np.int_], threshold_value: float = 0.5) -> npt.NDArray[np.bool_]:
+    def normal_threshold(
+        self, target_img: npt.NDArray[np.uint8], threshold_value: float = 0.5
+    ) -> npt.NDArray[np.bool_]:
         """Apply a normal thresholding to the target image and return a binary mask.
 
         This function takes a target image and a threshold value. It applies a simple
@@ -65,7 +67,7 @@ class ThresholdMethods:
         binary_image = target_img > (threshold_value * 255)  # Binary image using thresholding
         return ~binary_image
 
-    def otsu_threshold(self, target_img: npt.NDArray[np.int_]) -> npt.NDArray[np.bool_]:
+    def otsu_threshold(self, target_img: npt.NDArray[np.uint8]) -> npt.NDArray[np.bool_]:
         """Apply Otsu's thresholding to the target image and return an inverted binary mask.
 
         This function takes a target image and a background image. It applies Otsu's
@@ -86,7 +88,7 @@ class ThresholdMethods:
 
         return binary_image
 
-    def convert_grayscale(self, image: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
+    def convert_grayscale(self, image: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
         """Converts an image to grayscale.
 
         Args:
@@ -96,12 +98,12 @@ class ThresholdMethods:
             npt.NDArray: The converted image in grayscale.
         """
         if len(image.shape) == 3:
-            image = cast(npt.NDArray[np.int_], cv2.cvtColor(image, cv2.COLOR_BGR2GRAY))
+            image = cast(npt.NDArray[np.uint8], cv2.cvtColor(image, cv2.COLOR_BGR2GRAY))
         return image
 
     def background_subtraction(
-        self, target_img: npt.NDArray[np.int_], background_img: npt.NDArray[np.int_]
-    ) -> npt.NDArray[np.int_]:
+        self, target_img: npt.NDArray[np.uint8], background_img: npt.NDArray[np.uint8]
+    ) -> npt.NDArray[np.uint8]:
         """Performs background subtraction on two images.
 
         Args:
@@ -113,10 +115,10 @@ class ThresholdMethods:
             npt.NDArray: The difference image after background subtraction.
         """
         difference_img = cv2.absdiff(target_img, background_img)
-        return cast(npt.NDArray[np.int_], difference_img)
+        return cast(npt.NDArray[np.uint8], difference_img)
 
     def threshold_with_background(
-        self, target_img: npt.NDArray[np.int_], bknd_img: npt.NDArray[np.int_]
+        self, target_img: npt.NDArray[np.uint8], bknd_img: npt.NDArray[np.uint8]
     ) -> npt.NDArray[np.bool_]:
         """Applies a threshold to the target image based on the selected method.
 
@@ -129,23 +131,26 @@ class ThresholdMethods:
             npt.NDArray: The thresholded image.
         """
         # Ensure both images are in grayscale
-        target_img = self.convert_grayscale(target_img)
-        background_img = self.convert_grayscale(bknd_img)
+        target_img_gray = self.convert_grayscale(target_img)
+        background_img_gray = self.convert_grayscale(bknd_img)
 
         # Ensure background image shape matches the target image shape
-        if background_img.shape != target_img.shape:
-            background_img = cv2.resize(
-                background_img,
-                (target_img.shape[1], target_img.shape[0]),
-                interpolation=cv2.INTER_AREA,
+        if background_img_gray.shape != target_img_gray.shape:
+            background_img_gray = cast(
+                npt.NDArray[np.uint8],
+                cv2.resize(
+                    background_img_gray,
+                    (target_img_gray.shape[1], target_img_gray.shape[0]),
+                    interpolation=cv2.INTER_AREA,
+                ),
             )
 
         # Subtract the background image from the target image
-        difference_img = self.background_subtraction(target_img, background_img)
+        difference_img = self.background_subtraction(target_img_gray, background_img_gray)
 
         return self.otsu_threshold(difference_img)
 
-    def threshold_without_background(self, target_img: npt.NDArray[np.int_]) -> npt.NDArray[np.bool_]:
+    def threshold_without_background(self, target_img: npt.NDArray[np.uint8]) -> npt.NDArray[np.bool_]:
         """Applies a threshold to the target image without background subtraction.
 
         Args:
@@ -169,12 +174,12 @@ if __name__ == "__main__":
     threshold_methods = ThresholdMethods()
 
     # Load the image
-    img: npt.NDArray[np.int_] = cast(npt.NDArray[np.int_], cv2.imread(str(img_path)))
-    bknd: npt.NDArray[np.int_] = cast(npt.NDArray[np.int_], cv2.imread(str(bknd_path)))
+    img: npt.NDArray[np.uint8] = cast(npt.NDArray[np.uint8], cv2.imread(str(img_path)))
+    bknd: npt.NDArray[np.uint8] = cast(npt.NDArray[np.uint8], cv2.imread(str(bknd_path)))
 
     # Convert the image to grayscale
-    img_grey: npt.NDArray[np.int_] = threshold_methods.convert_grayscale(img)
-    bknd_grey: npt.NDArray[np.int_] = threshold_methods.convert_grayscale(bknd)
+    img_grey: npt.NDArray[np.uint8] = threshold_methods.convert_grayscale(img)
+    bknd_grey: npt.NDArray[np.uint8] = threshold_methods.convert_grayscale(bknd)
 
     # Apply Otsu's thresholding to the grayscale image
     img_thresholded_otsu = threshold_methods.threshold_without_background(img_grey)

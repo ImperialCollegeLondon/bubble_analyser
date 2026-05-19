@@ -11,12 +11,14 @@ import logging
 import sys
 import types
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 from numpy import typing as npt
 
-# from bubble_analyser.methods.watershed_methods import IterativeWatershed, NormalWatershed
+if TYPE_CHECKING:
+    from bubble_analyser.methods.watershed_methods import IterativeWatershed, NormalWatershed
+
 from bubble_analyser.processing.circle_handler import EllipseHandler as CircleHandler
 from bubble_analyser.processing.config import Config
 from bubble_analyser.processing.image_preprocess import image_preprocess
@@ -79,7 +81,8 @@ class MethodsHandler:
         if getattr(sys, "frozen", False):
             logging.info("Running in frozen mode, loading modules explicitly")
             try:
-                from bubble_analyser.methods import watershed_methods, bubmask_method
+                from bubble_analyser.methods import bubmask_method, watershed_methods
+
                 modules["watershed_methods"] = watershed_methods
                 modules["bubmask_method"] = bubmask_method
             except ImportError as e:
@@ -172,10 +175,10 @@ class MethodsHandler:
             - Populates the `all_classes` and `full_dict` attributes with the instances and their parameters.
         """
         for module_name, module in self.modules.items():
-            logging.info(f"Module: {module_name}")
+            logging.debug(f"Module: {module_name}")
             new_classes = self.get_new_classes(module)
             for class_name, class_obj in new_classes.items():
-                logging.info(f"  Class: {class_name}")
+                logging.debug(f"  Class: {class_name}")
 
                 instance: IterativeWatershed | NormalWatershed = class_obj(self.params_dict)  # type: ignore
                 self.all_classes[instance.name] = instance
@@ -295,7 +298,7 @@ class Image:
         self.filter_param_dict_2 = dict_params_2
         return
 
-    def _img_preprocess(self, target_width: int) -> None:
+    def _img_preprocess(self, resample: float) -> None:
         """Preprocess the raw and background images by resampling and converting to grayscale and RGB formats.
 
         Uses an external function `image_preprocess` to generate both a grayscale and an RGB version of the raw image.
@@ -308,13 +311,13 @@ class Image:
             None
         """
         # Get resized grey and RGB version of the target image
-        self.img_grey, self.img_rgb = image_preprocess(self.raw_img_path, self.resample)
+        self.img_grey, self.img_rgb = image_preprocess(self.raw_img_path, resample)
         if self.bknd_img_path is not None:
-            self.bknd_img, _ = image_preprocess(self.bknd_img_path, self.resample)
+            self.bknd_img, _ = image_preprocess(self.bknd_img_path, resample)
 
         return
 
-    def processing_image_before_filtering(self, algorithm: str, cnn_model) -> None:
+    def processing_image_before_filtering(self, algorithm: str, cnn_model: object) -> None:
         """Process the image using a specified algorithm prior to filtering.
 
         Iterates through the available methods and their parameters, and if a match is found for the given
@@ -322,6 +325,7 @@ class Image:
 
         Args:
             algorithm (str): The name of the algorithm to use for processing the image.
+            cnn_model (object): Pre-initialized CNN model.
 
         Returns:
             None
@@ -345,7 +349,7 @@ class Image:
                                 img_rgb=self.img_rgb,
                                 if_bknd_img=self.if_bknd_img,
                                 bknd_img=self.bknd_img,
-                                cnn_model=cnn_model
+                                cnn_model=cnn_model,
                             )  # type: ignore
                         else:
                             processing_instance.initialize_processing(  # type: ignore
@@ -355,8 +359,7 @@ class Image:
                                 if_bknd_img=self.if_bknd_img,
                                 bknd_img=self.bknd_img,
                             )  # type: ignore
-                        self.labels_on_img_before_filter, self.labels_before_filter, \
-                            self.img_grey_morph_eroded = (
+                        self.labels_on_img_before_filter, self.labels_before_filter, self.img_grey_morph_eroded = (
                             processing_instance.get_results_img()  # type: ignore
                         )
                 break
@@ -417,8 +420,8 @@ class Image:
         self.ellipses = ellipses
         self.new_circle_handler.ellipses = ellipses
         self.set_fine_tuned()
-    
-    def set_fine_tuned(self):
+
+    def set_fine_tuned(self) -> None:
         self.if_fine_tuned = True
 
     def get_ellipse_properties(self) -> None:

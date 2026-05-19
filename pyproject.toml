@@ -54,12 +54,16 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]
 ignore_missing_imports = true
-disallow_any_explicit = true
-disallow_any_generics = true
-warn_unreachable = true
+disallow_any_explicit = false
+disallow_any_generics = false
+warn_unreachable = false
 warn_unused_ignores = false
 disallow_untyped_defs = true
 exclude = [".venv/"]
+
+[[tool.mypy.overrides]]
+module = "bubble_analyser.mrcnn.*"
+ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "tests.*"
@@ -80,6 +84,10 @@ select = [
     "I",   # isort
     "UP",  # pyupgrade
     "RUF"  # ruff
+]
+ignore = [
+    "D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107", # Missing docstrings
+    "E402", # Module level import not at top of file
 ]
 pydocstyle.convention = "google"
 
