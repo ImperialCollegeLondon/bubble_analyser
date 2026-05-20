@@ -50,10 +50,9 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from bubble_analyser.core.models import CalibrationModel, InputFilesModel
 from bubble_analyser.gui import (
-    CalibrationModel,
     ImageProcessingModel,
-    InputFilesModel,
     Step1Worker,
     Step2Worker,
     WorkerThread,
@@ -1364,8 +1363,26 @@ class ImageProcessingTabHandler(QThread):
         Opens a separate window with tools for manually adjusting the detected ellipses,
         and updates the preview with the adjusted ellipses when complete.
         """
-        img = self.model.ellipse_manual_adjustment(self.current_index)
-        self.update_process_image_preview(img)
+        from bubble_analyser.processing import EllipseAdjuster
+        from PySide6.QtCore import QEventLoop
+        
+        logging.info("Ellipse handler triggered.")
+        name = self.model.img_path_list[self.current_index]
+        image = self.model.img_dict[name]
+        self.model.adjuster = EllipseAdjuster(image.ellipses, image.img_rgb)
+
+        loop = QEventLoop()
+
+        def on_finished() -> None:
+            self.model.handle_ellipse_adjustment_finished(image)
+            self.update_process_image_preview(image.ellipses_on_images)
+            loop.quit()
+
+        self.model.adjuster.finished.connect(on_finished)
+        self.model.adjuster.show()
+
+        loop.exec()
+        logging.info("Ellipse handler finished.")
 
     def update_process_image_preview(self, img: npt.NDArray[np.int_]) -> None:
         """Update the preview of the processed image after filtering or adjustment.

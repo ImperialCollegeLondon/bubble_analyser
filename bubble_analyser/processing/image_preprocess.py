@@ -29,9 +29,16 @@ def load_image(image_path: Path) -> npt.NDArray[np.int_]:
     Returns:
     npt.NDArray: The image read in ndarray format.
     """
-    # Read the input image
-
-    img = io.imread(image_path)
+    # Read the input image using cv2 for better performance
+    img_path_str = str(image_path)
+    img_bgr = cv2.imread(img_path_str)
+    
+    if img_bgr is None:
+        raise ValueError(f"Failed to load image: {image_path}")
+        
+    # Convert BGR to RGB as cv2 reads in BGR by default, 
+    # but the rest of the pipeline expects standard RGB (like skimage.io.imread returns)
+    img = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
 
     return img
 
@@ -46,7 +53,17 @@ def get_greyscale(image: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
         npt.NDArray: The grayscale image.
     """
     if image.ndim > 2:
-        image = color.rgb2gray(image)  # Convert to grayscale if the image is in RGB
+        # Use cv2 for faster conversion
+        # Check if the image dtype is not uint8, OpenCV requires uint8 or float32 for cvtColor
+        if image.dtype != np.uint8:
+            if image.max() <= 1.0:
+                image_cvt = (image * 255).astype(np.uint8)
+            else:
+                image_cvt = image.astype(np.uint8)
+        else:
+            image_cvt = image
+            
+        image = cv2.cvtColor(image_cvt, cv2.COLOR_RGB2GRAY)
     return image
 
 

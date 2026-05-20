@@ -266,12 +266,12 @@ class BubMaskDetector:
         raise RuntimeError("All progressive quality configurations failed")
 
     def detect_bubbles(
-        self, image_path: str | Path, return_masks: bool = True, return_splash: bool = False
+        self, image_or_path: str | Path | npt.NDArray[np.uint8], return_masks: bool = True, return_splash: bool = False
     ) -> dict[str, object]:
         """Detect bubbles in a single image.
 
         Args:
-            image_path: Path to the input image
+            image_or_path: Path to the input image or image array (RGB)
             return_masks: Whether to return individual bubble masks
             return_splash: Whether to return color splash image
 
@@ -287,7 +287,13 @@ class BubMaskDetector:
         """
         try:
             # Load and preprocess image
-            image = skimage.io.imread(str(image_path))
+            if isinstance(image_or_path, (str, Path)):
+                image = skimage.io.imread(str(image_or_path))
+                image_source_name = str(image_or_path)
+            else:
+                image = image_or_path
+                image_source_name = "image array"
+                
             if image.ndim == 2:
                 image = cv2.merge((image, image, image))
 
@@ -314,11 +320,11 @@ class BubMaskDetector:
                 splash_img = color_splash(image, cast(npt.NDArray[np.bool_], results["masks"][:, :, keep_indices]))
                 filtered_results["splash"] = splash_img
 
-            logging.info(f"Detected {filtered_results['bubble_count']} bubbles in {image_path}")
+            logging.info(f"Detected {filtered_results['bubble_count']} bubbles in {image_source_name}")
             return filtered_results
 
         except Exception as e:
-            logging.error(f"Error detecting bubbles in {image_path}: {e}")
+            logging.error(f"Error detecting bubbles: {e}")
             raise
 
     def batch_detect_parallel(

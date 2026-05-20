@@ -138,6 +138,92 @@ class BubMaskWatershed:
                 logging.error(f"Failed to initialize BubMask detector: {e}")
                 raise
 
+    def batch_detect_bubbles(self, images: list[npt.NDArray[np.uint8]]) -> list[dict[str, object]]:
+        """Run BubMask detection on a batch of images.
+        
+        Args:
+            images: List of RGB image arrays.
+            
+        Returns:
+            List of detection results.
+        """
+        if self.detector is None:
+            raise RuntimeError("BubMask detector not initialized.")
+            
+        if not images:
+            return []
+            
+        try:
+            results = []
+            if self.detector.model is None:
+                raise RuntimeError("Model not loaded")
+                
+            batch_size = self.detector.model.config.BATCH_SIZE
+            
+            # Process in chunks of BATCH_SIZE
+            for i in range(0, len(images), batch_size):
+                chunk = images[i:i + batch_size]
+                
+                # Mask R-CNN strictly expects exactly BATCH_SIZE images
+                # If the chunk is smaller than BATCH_SIZE, we must pad it
+                pad_size = batch_size - len(chunk)
+                if pad_size > 0:
+                    # Pad with copies of the last image (simplest way to ensure shape match)
+                    chunk.extend([chunk[-1]] * pad_size)
+                    
+                batch_results = self.detector.model.detect(chunk, verbose=0)
+                
+                # Only iterate over the actual requested images, ignoring the padded ones
+                for j in range(batch_size - pad_size):
+                    result = batch_results[j]
+                    keep_indices = result["scores"] >= self.detector.config.confidence_threshold
+                    filtered_result: dict[str, object] = {
+                        "rois": result["rois"][keep_indices],
+                        "class_ids": result["class_ids"][keep_indices],
+                        "scores": result["scores"][keep_indices],
+                        "bubble_count": int(np.sum(keep_indices)),
+                        "masks": result["masks"][:, :, keep_indices],
+                        "image_shape": images[i+j].shape,
+                    }
+                    results.append(filtered_result)
+                
+            return results
+            
+        except Exception as e:
+            logging.error(f"Error running batch BubMask detection: {e}")
+            raise
+
+    def get_batch_results(self, images: list[npt.NDArray[np.uint8]], images_grey: list[npt.NDArray[np.uint8]]) -> list[tuple[npt.NDArray[np.uint8], npt.NDArray[np.int32], None]]:
+        """Get results for a batch of images.
+        
+        Args:
+            images: List of RGB image arrays.
+            images_grey: List of grayscale image arrays corresponding to the RGB images.
+            
+        Returns:
+            List of tuples: (labels_on_img, labels_watershed, None)
+        """
+        start_time = time.time()
+        logging.info(f"Running BubMask detection on batch of {len(images)} images...")
+        
+        batch_detection_results = self.batch_detect_bubbles(images)
+        
+        end_time = time.time()
+        logging.info(f"BubMask batch detection completed in {end_time - start_time:.2f} seconds")
+        
+        final_results = []
+        for i, detection_results in enumerate(batch_detection_results):
+            self.detection_results = detection_results
+            self.img_grey = images_grey[i]
+            self.img_rgb = images[i]
+            
+            self._convert_bubmask_to_watershed()
+            labels_on_img = overlay_labels_on_rgb(self.img_rgb, self.labels_watershed, alpha=self.alpha)
+            
+            final_results.append((labels_on_img.astype(np.uint8), self.labels_watershed.copy(), None))
+            
+        return final_results
+        
     def detect_bubbles(self) -> None:
         """Run the BubMask detection process.
 
@@ -147,20 +233,10 @@ class BubMaskWatershed:
             raise RuntimeError("BubMask detector not initialized. Call initialize_processing first.")
 
         try:
-            # Save the RGB image temporarily for BubMask processing
-            import tempfile
-
-            import skimage.io
-
-            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
-                temp_path = tmp_file.name
-                skimage.io.imsave(temp_path, self.img_rgb)
-
-            # Run BubMask detection
-            self.detection_results = self.detector.detect_bubbles(temp_path, return_masks=True, return_splash=False)
-
-            # Clean up temporary file
-            Path(temp_path).unlink()
+            # Run BubMask detection directly on the image array to avoid disk I/O overhead
+            self.detection_results = self.detector.detect_bubbles(
+                self.img_rgb, return_masks=True, return_splash=False
+            )
 
             # Convert BubMask results to watershed format
             self._convert_bubmask_to_watershed()

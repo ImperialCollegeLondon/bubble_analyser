@@ -6,10 +6,9 @@ interface for analyzing bubble images, calibrating measurements, and visualizing
 results.
 """
 
+from bubble_analyser.core.models import CalibrationModel, InputFilesModel
 from bubble_analyser.gui.component_handlers import (
-    CalibrationModel,
     ImageProcessingModel,
-    InputFilesModel,
     Step1Worker,
     Step2Worker,
     WorkerThread,
