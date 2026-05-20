@@ -1363,9 +1363,10 @@ class ImageProcessingTabHandler(QThread):
         Opens a separate window with tools for manually adjusting the detected ellipses,
         and updates the preview with the adjusted ellipses when complete.
         """
-        from bubble_analyser.processing import EllipseAdjuster
         from PySide6.QtCore import QEventLoop
-        
+
+        from bubble_analyser.processing import EllipseAdjuster
+
         logging.info("Ellipse handler triggered.")
         name = self.model.img_path_list[self.current_index]
         image = self.model.img_dict[name]
@@ -1426,7 +1427,8 @@ class ImageProcessingTabHandler(QThread):
         else:
             confirm_dialog = self.create_confirm_dialog(
                 "Finalise Analysis Confirmation",
-                "The analysis will be finalised. \n Make sure you are satisfied with the segmentation of all images. Confirm to finalise.",
+                "The analysis will be finalised. \n "
+                "Make sure you are satisfied with the segmentation of all images. Confirm to finalise.",
             )
             self.create_save_images_checkbox(confirm_dialog)
 
@@ -1745,7 +1747,7 @@ class ResultsTabHandler(QThread):
         if histogram_type == "Volume":
             # Calculate volumes (diameter^3) for each bubble
             volumes = equivalent_diameters_array**3
-            counts, bins, patches = self.gui.histogram_canvas.axes.hist(
+            counts, bins, _ = self.gui.histogram_canvas.axes.hist(
                 equivalent_diameters_array,
                 bins=num_bins,
                 range=(x_min, x_max),

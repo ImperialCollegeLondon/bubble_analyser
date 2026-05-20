@@ -37,7 +37,7 @@ if str(BUBBLE_DIR) not in sys.path:
 
 try:
     # Import BubMask modules
-    from bubble_analyser.bubble import BubbleConfig, _InfConfig, bubble, color_splash
+    from bubble_analyser.bubble import _InfConfig, color_splash
     from bubble_analyser.mrcnn import model as modellib
 except ImportError as e:
     logging.error(f"Failed to import BubMask modules: {e}")
@@ -253,7 +253,7 @@ class BubMaskDetector:
                 if "oom" in error_msg or "memory" in error_msg or "resource_exhausted" in error_msg:
                     if i < len(configs) - 1:
                         logging.warning(
-                            f"GPU memory error with {config.image_min_dim}x{config.image_max_dim}, trying lower quality..."
+                            f"GPU memory error with {config.image_min_dim}x{config.image_max_dim}, retrying..."
                         )
                         continue
                     else:
@@ -293,7 +293,7 @@ class BubMaskDetector:
             else:
                 image = image_or_path
                 image_source_name = "image array"
-                
+
             if image.ndim == 2:
                 image = cv2.merge((image, image, image))
 

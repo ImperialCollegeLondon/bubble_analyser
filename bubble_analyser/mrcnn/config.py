@@ -1,4 +1,5 @@
-"""Mask R-CNN
+"""Mask R-CNN.
+
 Base Configurations class.
 
 Copyright (c) 2017 Matterport, Inc.

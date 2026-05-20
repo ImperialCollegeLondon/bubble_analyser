@@ -146,7 +146,7 @@ def method_wiener_gaussian(rgb: npt.NDArray[np.uint8], sigma: float = 1.2, K: fl
 
 
 def method_rl_disk(rgb: npt.NDArray[np.uint8], radius_px: int = 3, iterations: int = 20) -> npt.NDArray[np.float32]:
-    """Richardson–Lucy with a disk PSF (defocus-like blur) on luminance."""
+    """Richardson-Lucy with a disk PSF (defocus-like blur) on luminance."""
     f = _to_float01(rgb)
     gray = rgb2gray(f)
     # simple disk PSF
@@ -168,6 +168,7 @@ def method_selective_defocus_rl(
     rgb: npt.NDArray[np.uint8], defocus_threshold: float = 0.0008, disk_radius_if_blur: int = 3, iterations: int = 15
 ) -> npt.NDArray[np.float32]:
     """Estimate defocus map via variance of Laplacian.
+
     Apply RL deconvolution only where defocus < threshold (blurred areas).
     Edge-aware (bilateral) blend back to avoid halos on already-sharp regions.
     """
@@ -216,7 +217,7 @@ def run_all_methods(img_rgb_path: str, output_dir: str) -> dict[str, npt.NDArray
     usm_ms = method_unsharp_multi_scale(rgb, radii=(1, 2, 4, 8), amounts=(0.8, 0.6, 0.4, 0.2))
     results["usm_multiscale"] = _from_float01_like(usm_ms, orig_dtype)
 
-    # 3) CLAHE → USM
+    # 3) CLAHE -> USM
     clahe_usm = method_clahe_then_usm(rgb, clip_limit=0.01, usm_radius=1.5, usm_amount=0.8)
     results["clahe_usm"] = _from_float01_like(clahe_usm, orig_dtype)
 
@@ -224,7 +225,7 @@ def run_all_methods(img_rgb_path: str, output_dir: str) -> dict[str, npt.NDArray
     wien = method_wiener_gaussian(rgb, sigma=1.2, K=0.004)
     results["wiener_gaussian"] = _from_float01_like(wien, orig_dtype)
 
-    # 5) Richardson–Lucy with disk PSF
+    # 5) Richardson-Lucy with disk PSF
     rl = method_rl_disk(rgb, radius_px=3, iterations=20)
     results["rl_disk"] = _from_float01_like(rl, orig_dtype)
 

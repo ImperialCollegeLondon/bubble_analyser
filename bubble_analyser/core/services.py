@@ -1,19 +1,26 @@
 """Core services for Bubble Analyser."""
 
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from numpy import typing as npt
-from bubble_analyser.processing import Config, Image
+
 from bubble_analyser.cnn_methods.bubmask_wrapper import BubMaskDetector
+from bubble_analyser.processing import Config, Image
+
+if TYPE_CHECKING:
+    from bubble_analyser.processing import FilterParamHandler, MethodsHandler
 
 
 @dataclass
 class AnalysisResult:
     """Result of an image analysis operation."""
+
     image_path: Path
     labels_on_img_before_filter: npt.NDArray[np.int_] | None = None
     ellipses_on_images: npt.NDArray[np.int_] | None = None
@@ -39,13 +46,13 @@ class AnalysisService:
         self.algorithm = ""
         self.px2mm_display = 1.0
         self.bknd_img_path: Path | None = None
-        
+
         self.detector: BubMaskDetector | None = None
         self.all_methods_n_params: dict[str, Any] = {}
         self.filter_param_dict_1: dict[str, Any] = {}
         self.filter_param_dict_2: dict[str, Any] = {}
-        
-    def setup_methods(self, methods_handler, filter_param_handler) -> None:
+
+    def setup_methods(self, methods_handler: MethodsHandler, filter_param_handler: FilterParamHandler) -> None:
         """Setup the methods and filter parameters."""
         self.all_methods_n_params = methods_handler.full_dict
         self.filter_param_dict_1, self.filter_param_dict_2 = filter_param_handler.get_needed_params()
@@ -65,31 +72,32 @@ class AnalysisService:
             AnalysisResult: Object containing the processed image outputs and properties.
         """
         result = AnalysisResult(image_path=image_path)
-        
+
         try:
             # We import here to avoid circular imports if any, but better to inject MethodsHandler
             # For now, we will create the Image object
             from bubble_analyser.processing import MethodsHandler
+
             methods_handler = MethodsHandler(self.config)
-            
+
             image = Image(
                 self.px2mm_display,
                 raw_img_path=image_path,
                 all_methods_n_params=self.all_methods_n_params,
                 methods_handler=methods_handler,
-                bknd_img_path=self.bknd_img_path,
+                bknd_img_path=self.bknd_img_path if self.bknd_img_path else image_path,
             )
-            
+
             # Step 1: Segmentation
             image.processing_image_before_filtering(self.algorithm, self.detector)
             result.labels_on_img_before_filter = image.labels_on_img_before_filter
-            
+
             # Step 2: Filtering (Optional)
             if not skip_filtering:
                 image.load_filter_params(self.filter_param_dict_1, self.filter_param_dict_2)
                 image.filtering_processing()
                 image.get_ellipse_properties()
-                
+
                 result.ellipses_on_images = image.ellipses_on_images
                 result.img_rgb = image.img_rgb
                 result.img_grey_morph_eroded = image.img_grey_morph_eroded
@@ -101,5 +109,5 @@ class AnalysisService:
             logging.error(f"Error processing {image_path}: {e}")
             result.success = False
             result.error_message = str(e)
-            
+
         return result

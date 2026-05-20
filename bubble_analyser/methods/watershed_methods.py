@@ -274,7 +274,10 @@ class IterativeWatershed(WatershedSegmentation):
 
     def __init__(self, params: dict[str, float | int]) -> None:
         self.name = "Iterative Watershed"
-        self.description = "An advanced watershed method that iteratively applies thresholds to detect objects at different intensity levels (by Yiyang)."
+        self.description = (
+            "An advanced watershed method that iteratively applies thresholds "
+            "to detect objects at different intensity levels (by Yiyang)."
+        )
         self.max_thresh: float
         self.min_thresh: float
         self.step_size: float
@@ -374,7 +377,11 @@ class NormalWatershed(WatershedSegmentation):
 
     def __init__(self, params: dict[str, float | int]) -> None:
         self.name = "Default"
-        self.description = "The default watershed method that applies thresholds by three times, improved based on the first version of Bubble Analyser (Mesa et al., 2022), https://doi.org/10.1016/j.mineng.2022.107497"
+        self.description = (
+            "The default watershed method that applies thresholds by three times, "
+            "improved based on the first version of Bubble Analyser (Mesa et al., 2022), "
+            "https://doi.org/10.1016/j.mineng.2022.107497"
+        )
         self.sure_fg: npt.NDArray[np.uint8]
         self.sure_bg: npt.NDArray[np.uint8]
         self.unknown: MatLike

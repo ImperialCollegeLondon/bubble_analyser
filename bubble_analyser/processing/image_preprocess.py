@@ -9,18 +9,14 @@ visualization.
 import logging
 import time
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import cv2
 import numpy as np
 from numpy import typing as npt
-from skimage import (
-    color,
-    io,
-)
 
 
-def load_image(image_path: Path) -> npt.NDArray[np.int_]:
+def load_image(image_path: Path) -> npt.NDArray[Any]:
     """Read and preprocess the input image.
 
     Args:
@@ -32,18 +28,18 @@ def load_image(image_path: Path) -> npt.NDArray[np.int_]:
     # Read the input image using cv2 for better performance
     img_path_str = str(image_path)
     img_bgr = cv2.imread(img_path_str)
-    
+
     if img_bgr is None:
         raise ValueError(f"Failed to load image: {image_path}")
-        
-    # Convert BGR to RGB as cv2 reads in BGR by default, 
+
+    # Convert BGR to RGB as cv2 reads in BGR by default,
     # but the rest of the pipeline expects standard RGB (like skimage.io.imread returns)
     img = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
 
     return img
 
 
-def get_greyscale(image: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
+def get_greyscale(image: npt.NDArray[Any]) -> npt.NDArray[Any]:
     """Converts an image to grayscale if it is in RGB format.
 
     Args:
@@ -62,12 +58,12 @@ def get_greyscale(image: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
                 image_cvt = image.astype(np.uint8)
         else:
             image_cvt = image
-            
+
         image = cv2.cvtColor(image_cvt, cv2.COLOR_RGB2GRAY)
     return image
 
 
-def get_RGB(image: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
+def get_RGB(image: npt.NDArray[Any]) -> npt.NDArray[Any]:
     """Converts an image from BGR color space to RGB color space.
 
     Args:
@@ -77,10 +73,10 @@ def get_RGB(image: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
     npt.NDArray: The converted image in RGB format.
     """
     imgRGB = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    return cast(npt.NDArray[np.int_], imgRGB)
+    return cast(npt.NDArray[Any], imgRGB)
 
 
-def resize_for_RGB(image: npt.NDArray[np.int_], resample: float) -> npt.NDArray[np.int_]:
+def resize_for_RGB(image: npt.NDArray[Any], resample: float) -> npt.NDArray[Any]:
     """Resizes an image in RGB format to a target width while maintaining aspect ratio.
 
     Args:
@@ -96,10 +92,10 @@ def resize_for_RGB(image: npt.NDArray[np.int_], resample: float) -> npt.NDArray[
     target_height = int(target_width * aspect_ratio)
 
     image_resized = cv2.resize(image, (target_width, target_height), interpolation=cv2.INTER_AREA)
-    return cast(npt.NDArray[np.int_], image_resized)
+    return cast(npt.NDArray[Any], image_resized)
 
 
-def resize_for_original_image(image: npt.NDArray[np.int_], resample: float) -> npt.NDArray[np.int_]:
+def resize_for_original_image(image: npt.NDArray[Any], resample: float) -> npt.NDArray[Any]:
     """Resizes an image to a target width while maintaining aspect ratio.
 
     Args:
@@ -114,15 +110,18 @@ def resize_for_original_image(image: npt.NDArray[np.int_], resample: float) -> n
     target_width = int(original_width * resample)
     target_height = int(target_width * aspect_ratio)
 
-    resize_image: npt.NDArray[np.int_] = cv2.resize(
-        image,
-        (target_width, target_height),
-        interpolation=cv2.INTER_AREA,
-    )  # type: ignore
+    resize_image = cast(
+        npt.NDArray[Any],
+        cv2.resize(
+            image,
+            (target_width, target_height),
+            interpolation=cv2.INTER_AREA,
+        ),
+    )
     return resize_image
 
 
-def image_preprocess(img_path: Path, resample: float) -> tuple[npt.NDArray[np.int_], npt.NDArray[np.int_]]:
+def image_preprocess(img_path: Path, resample: float) -> tuple[npt.NDArray[Any], npt.NDArray[Any]]:
     """Load an image, resizing it to a target width while maintaining aspect ratio.
 
     The resized grayscale image (img) is for use in the following "default" watershed

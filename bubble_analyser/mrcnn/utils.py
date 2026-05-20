@@ -1,4 +1,5 @@
-"""Mask R-CNN
+"""Mask R-CNN.
+
 Common utility functions and classes.
 
 Copyright (c) 2017 Matterport, Inc.

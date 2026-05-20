@@ -2,12 +2,13 @@
 
 import os
 from pathlib import Path
-from typing import cast
+
+# Need to import MatLike if possible, or use Any
+from typing import Any, cast
+
 import numpy as np
 from numpy import typing as npt
 
-# Need to import MatLike if possible, or use Any
-from typing import Any
 from bubble_analyser.processing import calculate_px2mm
 
 

@@ -278,7 +278,8 @@ class EllipseHandler:
                         ellipses.append(ellipse)
                     else:
                         print(
-                            f"Warning: Skipping invalid ellipse with dimensions: width={ellipse_width}, height={ellipse_height}"
+                            f"Warning: Skipping invalid ellipse with dimensions: "
+                            f"width={ellipse_width}, height={ellipse_height}"
                         )
 
         self.ellipses = ellipses  # type: ignore

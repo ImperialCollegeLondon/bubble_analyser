@@ -23,7 +23,6 @@ from typing import cast
 
 import cv2
 import numpy as np
-from cv2.typing import MatLike
 from numpy import typing as npt
 from PySide6.QtCore import QEventLoop, QThread, Signal
 
@@ -34,7 +33,6 @@ from bubble_analyser.processing import (
     FilterParamHandler,
     Image,
     MethodsHandler,
-    calculate_px2mm,
 )
 
 
@@ -408,13 +406,14 @@ class ImageProcessingModel:
         self.initialize_image(name)
 
         from bubble_analyser.core.services import AnalysisService
+
         service = AnalysisService(self.params_config)
         service.algorithm = self.algorithm
         service.px2mm_display = self.px2mm_display
         service.bknd_img_path = self.bknd_img_path
         service.set_detector(self.detector)
         service.setup_methods(self.methods_handler, self.filter_param_handler)
-        
+
         # Pass the pre-initialized image to the service to process
         self.img_dict[name].processing_image_before_filtering(service.algorithm, service.detector)
         return self.img_dict[name].labels_on_img_before_filter
@@ -430,15 +429,16 @@ class ImageProcessingModel:
         """
         name = self.img_path_list[index]
         self.img_dict[name].load_filter_params(self.filter_param_dict_1, self.filter_param_dict_2)
-        
+
         from bubble_analyser.core.services import AnalysisService
+
         service = AnalysisService(self.params_config)
         service.algorithm = self.algorithm
         service.px2mm_display = self.px2mm_display
         service.bknd_img_path = self.bknd_img_path
         service.set_detector(self.detector)
         service.setup_methods(self.methods_handler, self.filter_param_handler)
-        
+
         self.img_dict[name].filtering_processing()
         return self.img_dict[name].ellipses_on_images
 
@@ -510,8 +510,9 @@ class ImageProcessingModel:
         self.bubble_count = 0
         self.ellipses_properties = []
         logging.info("------------------------------Batch Process Started------------------------------")
-        
+
         from bubble_analyser.core.services import AnalysisService
+
         service = AnalysisService(self.params_config)
         service.algorithm = self.algorithm
         service.px2mm_display = self.px2mm_display
@@ -575,6 +576,7 @@ class ImageProcessingModel:
             img (npt.NDArray[np.int_]): The processed image array to save.
             img_name (Path): Original image path used to generate the output filename.
             save_path (Path): Directory where the image should be saved.
+            if_mt (bool): Whether multi-threading is being used.
         """
         file_name = os.path.basename(img_name)
         new_name = os.path.join(save_path, file_name)

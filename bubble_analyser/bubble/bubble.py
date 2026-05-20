@@ -1,4 +1,5 @@
-"""Mask R-CNN
+"""Mask R-CNN.
+
 Train on the toy Balloon dataset and implement color splash effect.
 
 Copyright (c) 2018 Matterport, Inc.
@@ -215,6 +216,7 @@ class _InfConfig(BubbleConfig):
 class BubbleDataset(utils.Dataset):
     def load_bubble(self, dataset_dir: str, subset: str) -> None:
         """Load a subset of the Bubble dataset.
+
         dataset_dir: Root directory of the dataset.
         subset: Subset to load: train or val.
         """
@@ -344,6 +346,7 @@ def train(model: modellib.MaskRCNN) -> None:
 
 def color_splash(image: npt.NDArray[np.uint8], mask: npt.NDArray[np.bool_]) -> npt.NDArray[np.uint8]:
     """Apply color splash effect.
+
     image: RGB image [height, width, 3]
     mask: instance segmentation mask [height, width, instance count]
     Returns result image.
@@ -367,6 +370,7 @@ def save_separate_outputs(
     image: npt.NDArray[np.uint8], masks: npt.NDArray[np.bool_], result_path: str, base_filename: str
 ) -> None:
     """Save original image and masks as separate files.
+
     image: RGB image [height, width, 3]
     masks: instance segmentation mask [height, width, instance count]
     result_path: directory to save files
@@ -403,7 +407,7 @@ def detect(model: modellib.MaskRCNN, image_path: str | None = None, result_path:
         os.makedirs(result_path)
 
     for FN in range(int(args.folder_num_start), int(args.folder_num_start) + int(args.folder_num)):
-        IMAGE_PATH = args.image + "_%03i" % (FN + 1)
+        IMAGE_PATH = f"{args.image}_{FN + 1:03d}"
         print(f"Running on {IMAGE_PATH}")
         # Create results directory
         IMAGE_PATH_results = os.path.join(result_path, os.path.basename(IMAGE_PATH))
@@ -443,7 +447,7 @@ def detect(model: modellib.MaskRCNN, image_path: str | None = None, result_path:
                 ]
 
                 for png_num in range(r["masks"].shape[2]):
-                    file_name = "mask_%03i.png" % (png_num + 1)
+                    file_name = f"mask_{png_num + 1:03d}.png"
                     skimage.io.imsave(os.path.join(img_path_results, file_name), img_as_uint(r["masks"][:, :, png_num]))
 
                     # Caculate bubble information & save as txt
@@ -474,6 +478,7 @@ def detect(model: modellib.MaskRCNN, image_path: str | None = None, result_path:
 
 def batch_splash(model: modellib.MaskRCNN, input_dir: str, result_path: str = RESULTS_DIR) -> None:
     """Apply color splash effect to all images in a directory.
+
     input_dir: Directory containing images to process
     result_path: Directory to save results.
     """

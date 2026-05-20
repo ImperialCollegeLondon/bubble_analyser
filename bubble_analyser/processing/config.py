@@ -5,14 +5,13 @@ filtering, and deep learning modules.
 """
 
 import logging
-from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Self
-
 import tomllib
+from pathlib import Path
+from typing import Self
+
 from pydantic import (
     BaseModel,
     Field,
-    ValidationError,
     field_validator,
     model_validator,
 )
@@ -20,21 +19,22 @@ from pydantic import (
 
 class SegmentationConfig(BaseModel):
     """Configuration for image segmentation algorithms."""
+
     element_size: int = Field(default=3, description="Morphological element size (0, 3, or 5)")
     connectivity: int = Field(default=4, description="Pixel connectivity (4 or 8)")
     target_width: int = Field(default=1000, ge=500, le=2000)
     resample: float = Field(default=0.4, ge=0.01, le=1.0)
-    
+
     # Thresholds for Default/Normal method
     high_thresh: float = Field(default=0.9, ge=0.0, le=1.0)
     mid_thresh: float = Field(default=0.5, ge=0.0, le=1.0)
     low_thresh: float = Field(default=0.2, ge=0.0, le=1.0)
-    
+
     # Thresholds for Iterative method
     max_thresh: float = Field(default=0.95, ge=0.0, le=1.0)
     min_thresh: float = Field(default=0.05, ge=0.0, le=1.0)
     step_size: float = Field(default=0.05, ge=0.0, le=1.0)
-    
+
     # High PPM / Other settings
     threshold_value: float = Field(default=0.5, ge=0.0, le=1.0)
     if_gaussianblur: bool = Field(default=False)
@@ -72,11 +72,12 @@ class SegmentationConfig(BaseModel):
 
 class FilteringConfig(BaseModel):
     """Configuration for bubble filtering and quantification."""
+
     max_eccentricity: float = Field(default=0.85, ge=0.0, le=1.0)
     min_solidity: float = Field(default=0.9, ge=0.0, le=1.0)
     min_size: float = Field(default=0.1, ge=0.0)
     max_size: float = Field(default=20000.0, ge=0.0)
-    
+
     # Circle detection parameters
     if_find_circles: bool = Field(default=False)
     L_maxA: float = Field(default=20.0)
@@ -97,6 +98,7 @@ class FilteringConfig(BaseModel):
 
 class CNNConfig(BaseModel):
     """Configuration for BubMask/CNN methods."""
+
     confidence_threshold: float = Field(default=0.9, ge=0.0, le=1.0)
     image_min_dim: int = Field(default=192)
     image_max_dim: int = Field(default=384)
@@ -107,17 +109,18 @@ class CNNConfig(BaseModel):
 
 class AppConfig(BaseModel):
     """Global application configuration."""
+
     segmentation: SegmentationConfig = Field(default_factory=SegmentationConfig)
     filtering: FilteringConfig = Field(default_factory=FilteringConfig)
     cnn: CNNConfig = Field(default_factory=CNNConfig)
-    
+
     # General session parameters
     px2mm: float = Field(default=1.0, ge=0.0)
     do_batch: bool = Field(default=False)
-    
+
     # Paths
     raw_img_path: Path = Field(default=Path("."))
-    bknd_img_path: Optional[Path] = Field(default=None)
+    bknd_img_path: Path | None = Field(default=None)
     ruler_img_path: Path = Field(default=Path("."))
     save_path: Path = Field(default=Path("."))
     save_path_for_images: Path = Field(default=Path("."))
@@ -131,13 +134,13 @@ class AppConfig(BaseModel):
         try:
             with open(file_path, "rb") as f:
                 data = tomllib.load(f)
-            
+
             # Map flat TOML structure to nested Pydantic structure
             # This maintains compatibility with the existing config.toml
             seg_data = {k: v for k, v in data.items() if k in SegmentationConfig.model_fields}
             filt_data = {k: v for k, v in data.items() if k in FilteringConfig.model_fields}
             cnn_data = {k: v for k, v in data.items() if k in CNNConfig.model_fields}
-            
+
             # Special case for boolean strings in TOML
             if "if_gaussianblur" in seg_data and isinstance(seg_data["if_gaussianblur"], str):
                 seg_data["if_gaussianblur"] = seg_data["if_gaussianblur"].lower() == "true"
@@ -155,11 +158,11 @@ class AppConfig(BaseModel):
                 "save_path": Path(data.get("save_path", ".")),
                 "save_path_for_images": Path(data.get("save_path_for_images", ".")),
             }
-            
+
             bknd = data.get("bknd_img_path")
             if bknd and bknd != "None" and str(bknd).strip():
                 general_data["bknd_img_path"] = Path(bknd)
-            
+
             return cls(**general_data)
         except Exception as e:
             logging.error(f"Error loading configuration from {file_path}: {e}")
@@ -169,45 +172,45 @@ class AppConfig(BaseModel):
 # For backward compatibility, provide a flat Config class or proxy
 class Config(BaseModel):
     """Legacy flat config model for backward compatibility."""
-    
+
     element_size: int = 3
     connectivity: int = 4
     target_width: int = 1000
-    target_width_range: Tuple[int, int] = (500, 2000)
+    target_width_range: tuple[int, int] = (500, 2000)
     resample: float = 0.4
-    resample_range: Tuple[float, float] = (0.01, 1.0)
+    resample_range: tuple[float, float] = (0.01, 1.0)
     do_batch: bool = False
-    
+
     high_thresh: float = 0.9
     mid_thresh: float = 0.5
     low_thresh: float = 0.2
-    default_range: Tuple[float, float] = (0.0, 1.0)
-    
+    default_range: tuple[float, float] = (0.0, 1.0)
+
     max_thresh: float = 0.95
     min_thresh: float = 0.05
     step_size: float = 0.05
-    
+
     threshold_value: float = 0.5
     if_gaussianblur: str = "False"
     ksize: int = 3
-    
+
     px2mm: float = 1.0
-    
+
     raw_img_path: Path = Field(default=Path("."))
     bknd_img_path: Path = Field(default=Path("None"))
     ruler_img_path: Path = Field(default=Path("."))
     save_path: Path = Field(default=Path(" "))
     save_path_for_images: Path = Field(default=Path("."))
-    
+
     max_eccentricity: float = 0.85
-    max_eccentricity_range: Tuple[float, float] = (0.1, 1.0)
+    max_eccentricity_range: tuple[float, float] = (0.1, 1.0)
     min_solidity: float = 0.9
-    min_solidity_range: Tuple[float, float] = (0.1, 1.0)
-    
+    min_solidity_range: tuple[float, float] = (0.1, 1.0)
+
     min_size: float = 0.1
-    min_size_range: Tuple[float, float] = (0.0, 50.0)
+    min_size_range: tuple[float, float] = (0.0, 50.0)
     max_size: float = 20000.0
-    
+
     if_find_circles: str = "N"
     L_maxA: float = 20.0
     L_minA: float = 10.0
@@ -239,7 +242,7 @@ class Config(BaseModel):
             raise ValueError("min_size must be less than max_size")
         if not (self.resample_range[0] <= self.resample <= self.resample_range[1]):
             raise ValueError("Chosen resample is not within valid range (0.01, 1)")
-        if not (self.element_size in (3, 5, 0)):
+        if self.element_size not in (3, 5, 0):
             raise ValueError("Morphological_element_size must be 3, 5 or 0")
         if self.if_gaussianblur not in ("True", "False"):
             raise ValueError("if_gaussianblur must be 'True' or 'False'")

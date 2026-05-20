@@ -1,4 +1,5 @@
-"""Mask R-CNN
+"""Mask R-CNN.
+
 The main Mask R-CNN model implementation.
 
 Copyright (c) 2017 Matterport, Inc.

@@ -231,8 +231,8 @@ class Image:
         raw_img_path: Path,
         all_methods_n_params: dict[str, dict[str, float | int]],
         methods_handler: MethodsHandler,
-        bknd_img_path: Path = cast(Path, None),
-    ) -> None:  # type: ignore
+        bknd_img_path: Path | None = None,
+    ) -> None:
         """Initialize an Image instance with the specified parameters and processing handler.
 
         Sets up the image attributes including conversion factors, file paths, and initial
@@ -254,7 +254,7 @@ class Image:
         self.raw_img_path = raw_img_path
         logging.info(f"Initialzing image: {raw_img_path}")
         self.if_bknd_img: bool = False
-        self.bknd_img_path: Path = bknd_img_path
+        self.bknd_img_path: Path | None = bknd_img_path
         self.bknd_img: npt.NDArray[np.int_] = cast(npt.NDArray[np.int_], None)
 
         if bknd_img_path is not None:

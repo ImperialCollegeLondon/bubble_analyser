@@ -11,7 +11,7 @@ Bubble Analyser is a Python application for detecting, measuring, and analyzing 
 ## Features
 
 - **Image Processing**: Preprocess images with various transformations
-- **Bubble Detection**: Identify bubbles using advanced watershed segmentation algorithms or **[BubMask (Kim & Park, 2021)](https://github.com/ywflow/BubMask) (Deep Learning)** 
+- **Bubble Detection**: Identify bubbles using advanced watershed segmentation algorithms or **[BubMask (Kim & Park, 2021)](https://github.com/ywflow/BubMask) (Deep Learning)**
 - **Interactive Ellipse Adjuster**: Brand new manual adjustment interface for pixel-perfect refinement of detected bubbles
 - **Measurement**: Calculate size, shape, and distribution of bubbles
 - **Calibration**: Convert pixel measurements to real-world units (mm)
@@ -33,7 +33,7 @@ v0.2.0 <https://github.com/ImperialCollegeLondon/bubble_analyser/releases/tag/v0
 To install from source, follow the developer setup instructions below.
 
 > [!IMPORTANT]
-> **Using CNN Detection**: For user running from source code, you must download `mask_rcnn_bubble.h5` from the [v0.3.0 release page](https://github.com/ImperialCollegeLondon/bubble_analyser/releases/tag/v0.3.0) and place it in the `bubble_analyser/weights` directory. 
+> **Using CNN Detection**: For user running from source code, you must download `mask_rcnn_bubble.h5` from the [v0.3.0 release page](https://github.com/ImperialCollegeLondon/bubble_analyser/releases/tag/v0.3.0) and place it in the `bubble_analyser/weights` directory.
 
 ## Usage
 
@@ -81,7 +81,7 @@ To get started:
    ```bash
    python -m bubble_analyser
    ```
-   
+
 or, you can build up the virtual environment based on the requirements.txt file in the root directory.
 
 ## Dependencies
@@ -115,5 +115,3 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 - Dr Diego Alonso Álvarez - Imperial College London RSE Team, Imperial College London
 - Dr Paulina Quintanilla - Department of Chemical Engineering, Brunel University
 - Dr Francisco Reyes - IntelliSense.io, Queensland, Australia
-
-

@@ -1,6 +1,9 @@
-import pytest
 from pathlib import Path
+
+import pytest
+
 from bubble_analyser.processing.config import Config
+
 
 @pytest.fixture
 def valid_config_dict():
@@ -42,15 +45,18 @@ def valid_config_dict():
         "s_minA": 1.0,
     }
 
+
 def test_config_valid(valid_config_dict):
     config = Config(**valid_config_dict)
     assert config.element_size == 3
     assert config.connectivity == 8
 
+
 def test_config_invalid_element_size(valid_config_dict):
     valid_config_dict["element_size"] = 4
     with pytest.raises(ValueError, match="Morphological_element_size must be 3, 5 or 0"):
         Config(**valid_config_dict)
+
 
 def test_config_invalid_threshold_order(valid_config_dict):
     valid_config_dict["min_thresh"] = 0.9
@@ -58,15 +64,18 @@ def test_config_invalid_threshold_order(valid_config_dict):
     with pytest.raises(ValueError, match="Max threshold must be greater than min threshold"):
         Config(**valid_config_dict)
 
+
 def test_config_invalid_gaussianblur(valid_config_dict):
     valid_config_dict["if_gaussianblur"] = "Maybe"
     with pytest.raises(ValueError, match="if_gaussianblur must be 'True' or 'False'"):
         Config(**valid_config_dict)
 
+
 def test_config_invalid_ksize(valid_config_dict):
-    valid_config_dict["ksize"] = 4 # Even number
+    valid_config_dict["ksize"] = 4  # Even number
     with pytest.raises(ValueError, match="ksize must be a positive odd integer"):
         Config(**valid_config_dict)
+
 
 def test_config_invalid_normal_threshold_order(valid_config_dict):
     valid_config_dict["low_thresh"] = 0.5

@@ -36,6 +36,8 @@ __all__ = [
     "MainWindow",
     "MplCanvas",
     "ResultsTabHandler",
+    "Step1Worker",
+    "Step2Worker",
     "TomlFileHandler",
     "WorkerThread",
 ]

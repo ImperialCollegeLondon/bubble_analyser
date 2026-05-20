@@ -1,4 +1,4 @@
-    params = {
+params = {
         "target_width": 1000,
         "high_thresh": 0.9,
         "mid_thresh": 0.5,
