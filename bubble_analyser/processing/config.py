@@ -169,11 +169,6 @@ class AppConfig(BaseModel):
 # For backward compatibility, provide a flat Config class or proxy
 class Config(BaseModel):
     """Legacy flat config model for backward compatibility."""
-    # This class effectively mirrors the old flat structure but uses the new logic
-    # It will be populated by AppConfig.from_toml and then used by existing code.
-    
-    # We'll just keep the original flat definition for now to avoid breaking 100s of lines,
-    # but use the improved validation logic via composition later.
     
     element_size: int = 3
     connectivity: int = 4
@@ -199,7 +194,7 @@ class Config(BaseModel):
     px2mm: float = 1.0
     
     raw_img_path: Path = Field(default=Path("."))
-    bknd_img_path: Path = Field(default=Path("None")) # Matches existing None string
+    bknd_img_path: Path = Field(default=Path("None"))
     ruler_img_path: Path = Field(default=Path("."))
     save_path: Path = Field(default=Path(" "))
     save_path_for_images: Path = Field(default=Path("."))
@@ -222,11 +217,40 @@ class Config(BaseModel):
     class Config:
         validate_assignment = True
 
-    # Re-using logic from original file but making it more robust
     @model_validator(mode="after")
     def validate_everything(self) -> Self:
-        # Range checks
         if not (self.default_range[0] <= self.max_thresh <= self.default_range[1]):
-            raise ValueError("max_thresh out of range")
-        # ... (rest of original validation logic)
+            raise ValueError("Chosen max_thresh is not within valid range (0, 1)")
+        if not (self.default_range[0] <= self.min_thresh <= self.default_range[1]):
+            raise ValueError("Chosen min_threshold is not within valid range (0, 1)")
+        if not (self.default_range[0] <= self.step_size <= self.default_range[1]):
+            raise ValueError("Chosen step_size is not within valid range (0, 1)")
+        if not (self.default_range[0] <= self.high_thresh <= self.default_range[1]):
+            raise ValueError("Chosen high_thresh is not within valid range (0, 1)")
+        if not (self.default_range[0] <= self.mid_thresh <= self.default_range[1]):
+            raise ValueError("Chosen mid_thresh is not within valid range (0, 1)")
+        if not (self.default_range[0] <= self.low_thresh <= self.default_range[1]):
+            raise ValueError("Chosen low_thresh is not within valid range (0, 1)")
+        if not (self.default_range[0] <= self.max_eccentricity <= self.default_range[1]):
+            raise ValueError("Chosen max_eccentricity is not within valid range (0, 1)")
+        if not (self.default_range[0] <= self.min_solidity <= self.default_range[1]):
+            raise ValueError("Chosen min_solidity is not within valid range (0, 1)")
+        if not (self.min_size <= self.max_size):
+            raise ValueError("min_size must be less than max_size")
+        if not (self.resample_range[0] <= self.resample <= self.resample_range[1]):
+            raise ValueError("Chosen resample is not within valid range (0.01, 1)")
+        if not (self.element_size in (3, 5, 0)):
+            raise ValueError("Morphological_element_size must be 3, 5 or 0")
+        if self.if_gaussianblur not in ("True", "False"):
+            raise ValueError("if_gaussianblur must be 'True' or 'False'")
+        if not (self.ksize > 0 and self.ksize % 2 == 1):
+            raise ValueError("ksize must be a positive odd integer")
+        if not (self.max_thresh > self.min_thresh):
+            raise ValueError("Max threshold must be greater than min threshold")
+        if not (0 <= self.threshold_value <= 1):
+            raise ValueError("threshold_value must be in the range [0, 1]")
+        if not (self.high_thresh > self.mid_thresh > self.low_thresh):
+            raise ValueError("Values of theshold must be in the order [low < mid < high]")
+        if not (self.step_size < (self.max_thresh - self.min_thresh)):
+            raise ValueError("Step size must be smaller than the difference between max and min threshold")
         return self

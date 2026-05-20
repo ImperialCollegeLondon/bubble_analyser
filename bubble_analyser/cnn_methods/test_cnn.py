@@ -1,22 +1,25 @@
 #!/usr/bin/env python3
 """Test script for BubMask CNN bubble detection with progressive quality settings.
+
 Now includes conversion to Bubble Analyser compatible labeled masks.
 """
 
-import warnings
-
-# Suppress low contrast image warningwarnings from skimage
-warnings.filterwarnings("ignore", message=".*is a low contrast image.*")
-
+import datetime
+import logging
 import os
 import sys
+import warnings
 from pathlib import Path
-from typing import Any
+from typing import Any, List, cast
 
 import cv2
 import numpy as np
 import numpy.typing as npt
+import pytest
 from skimage import io
+
+# Suppress low contrast image warning warnings from skimage
+warnings.filterwarnings("ignore", message=".*is a low contrast image.*")
 
 # Add the parent directory to the path to import bubmask_wrapper
 current_dir = Path(__file__).parent
@@ -125,6 +128,9 @@ def test_single_image_progressive() -> None:
     print("=== Testing Progressive Quality Detection with Watershed Conversion ===")
 
     weights_path = r"bubble_analyser/weights/mask_rcnn_bubble.h5"
+    if not Path(weights_path).exists():
+        pytest.skip("Skipping CNN test as weights file is missing")
+
     input_path = r"tests/sample_images"
     output_path = r"tests/cnn_watershed_result"
 
@@ -176,6 +182,8 @@ def test_different_configurations() -> None:
     print("\n=== Testing Different Quality Configurations ===")
 
     weights_path = r"bubble_analyser/weights/mask_rcnn_bubble.h5"
+    if not Path(weights_path).exists():
+        pytest.skip("Skipping CNN test as weights file is missing")
 
     configs = {
         "Low Memory (128x256)": BubMaskConfig.for_low_memory_gpu(),
@@ -196,6 +204,9 @@ def test_batch_detection() -> None:
     print("\n=== Testing Batch Detection with Watershed Conversion ===")
 
     weights_path = r"bubble_analyser/weights/mask_rcnn_bubble.h5"
+    if not Path(weights_path).exists():
+        pytest.skip("Skipping CNN test as weights file is missing")
+
     input_path = r"tests/sample_images"
     output_path = r"tests/cnn_result"
     watershed_output_path = r"tests/cnn_watershed_result"
@@ -254,10 +265,9 @@ def test_watershed_conversion_only() -> None:
     """Test only the watershed conversion process on existing BubMask results."""
     print("\n=== Testing Watershed Conversion Only ===")
 
-    base_dir = "/Users/eeeyoung/Bubbles/bubble_analyser"
-    input_path = os.path.join(base_dir, "tests/sample_images")
-    output_path = os.path.join(base_dir, "tests/cnn_watershed_conversion_test")
-    weights_path = os.path.join(base_dir, "bubble_analyser/weights/mask_rcnn_bubble.h5")
+    input_path = r"tests/sample_images"
+    output_path = r"tests/cnn_watershed_conversion_test"
+    weights_path = r"bubble_analyser/weights/mask_rcnn_bubble.h5"
 
     # Find first image for testing
     input_dir = Path(input_path)
@@ -269,6 +279,9 @@ def test_watershed_conversion_only() -> None:
 
     test_image = image_files[0]
     print(f"Testing conversion with: {test_image.name}")
+
+    if not Path(weights_path).exists():
+        pytest.skip("Skipping CNN test as weights file is missing")
 
     try:
         # Quick detection to get masks

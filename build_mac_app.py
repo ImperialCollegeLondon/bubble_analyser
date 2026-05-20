@@ -4,7 +4,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-def build_app():
+def build_app() -> None:
     """
     Build the macOS application using PyInstaller.
     """

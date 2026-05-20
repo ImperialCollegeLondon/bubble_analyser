@@ -15,7 +15,7 @@ from bubble_analyser.cnn_methods.bubmask_wrapper import BubMaskDetector, BubMask
 from bubble_analyser.methods.bubmask_method import BubMaskWatershed
 
 
-def example_simple_detection():
+def example_simple_detection() -> None:
     """Example of simple bubble detection using BubMask wrapper."""
     print("=== Simple BubMask Detection Example ===")
     
@@ -39,7 +39,7 @@ def example_simple_detection():
         print(f"Error in simple detection: {e}")
 
 
-def example_advanced_detection():
+def example_advanced_detection() -> None:
     """Example of advanced bubble detection using BubMask detector class."""
     print("\n=== Advanced BubMask Detection Example ===")
     
@@ -80,7 +80,7 @@ def example_advanced_detection():
         print(f"Error in advanced detection: {e}")
 
 
-def example_batch_detection():
+def example_batch_detection() -> None:
     """Example of batch bubble detection."""
     print("\n=== Batch BubMask Detection Example ===")
     
@@ -110,7 +110,7 @@ def example_batch_detection():
         print(f"Error in batch detection: {e}")
 
 
-def example_watershed_method():
+def example_watershed_method() -> None:
     """Example of using BubMask as a watershed method."""
     print("\n=== BubMask Watershed Method Example ===")
     

@@ -46,6 +46,8 @@ pytest-mock = "^3.7.0"
 pre-commit = "^4.2.0"
 ruff = "^0.11.2"
 types-toml = "^0.10.8.20240310"
+types-requests = "^2.32.0.20241016"
+types-tqdm = "^4.66.0.20240417"
 pyinstaller = "^6.16.0"
 
 [build-system]
@@ -70,7 +72,7 @@ module = "tests.*"
 disallow_untyped_defs = false
 
 [tool.pytest.ini_options]
-addopts = "-v --mypy -p no:warnings --cov=bubble_analyser --cov-report=html --doctest-modules --ignore=bubble_analyser/__main__.py"
+addopts = "-v --mypy -p no:warnings --cov=bubble_analyser --cov-report=html --doctest-modules --ignore=bubble_analyser/__main__.py --ignore=bubble_analyser/mrcnn/"
 
 [tool.ruff]
 target-version = "py312"
