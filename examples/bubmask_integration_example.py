@@ -132,7 +132,7 @@ def example_watershed_method() -> None:
             image_grey = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         
         # Create watershed method
-        params = {
+        params: dict[str, float | int] = {
             "weights_path": weights_path,
             "confidence_threshold": 0.9,
             "target_width": 800,
@@ -152,11 +152,8 @@ def example_watershed_method() -> None:
             if_bknd_img=False
         )
         
-        # Run detection
-        watershed_method.run_watershed()
-        
         # Get results
-        labels_on_img, labels_watershed = watershed_method.get_results_img()
+        labels_on_img, labels_watershed, _ = watershed_method.get_results_img()
         
         print(f"Watershed method detected {len(watershed_method.get_detection_confidence())} bubbles")
         print(f"Labels shape: {labels_watershed.shape}")
@@ -183,6 +180,9 @@ if __name__ == "__main__":
     example_advanced_detection()
     example_batch_detection()
     example_watershed_method()
+    
+    print("\n" + "=" * 40)
+    print("Examples completed!") example_watershed_method()
     
     print("\n" + "=" * 40)
     print("Examples completed!")
