@@ -6,7 +6,7 @@
 
 ## Overview
 
-Bubble Analyser is a Python application for detecting, measuring, and analyzing bubbles in images。 It provides advanced image processing capabilities using watershed segmentation algorithms to accurately identify and measure bubbles of various sizes and distributions. Additionally, it offers manual adjustment tools for fine-tuning segmentation results when needed. This project is improved based on the first version of [Bubble Analyser (Mesa et al., 2022)](https://doi.org/10.1016/j.mineng.2022.107497).
+Bubble Analyser is a Python application for detecting, measuring, and analyzing bubbles in images. It provides advanced image processing capabilities using watershed segmentation algorithms to accurately identify and measure bubbles of various sizes and distributions. Additionally, it offers manual adjustment tools for fine-tuning segmentation results when needed. This project is improved based on the first version of [Bubble Analyser (Mesa et al., 2022)](https://doi.org/10.1016/j.mineng.2022.107497).
 
 ## Features
 
@@ -51,7 +51,6 @@ Bubble Analyser implements multiple segmentation approaches:
 - **Iterative Watershed**: Advanced algorithm that iteratively applies thresholds to detect objects at different intensity levels.
 - **BubMask (Deep Learning)**: Integrated BubMask (Kim & Park, 2021), a Mask R-CNN based deep learning model for superior accuracy in complex lighting or overlapping conditions.
 
-
 To get started:
 
 1. [Download and install Poetry](https://python-poetry.org/docs/#installation) following the instructions for your OS.
@@ -68,7 +67,7 @@ To get started:
    poetry shell
    ```
 
-   alternatively, ensure any Python-related command is preceded by `poetry run'.
+   alternatively, ensure any Python-related command is preceded by `poetry run`.
 
 5. Install the git hooks:
 
