@@ -51,8 +51,9 @@ assert LooseVersion(keras.__version__) >= LooseVersion("2.0.8")
 
 
 def log(text: str, array: npt.NDArray[np.float32] | None = None) -> None:
-    """Prints a text message. And, optionally, if a Numpy array is provided it
-    prints it's shape, min, and max values.
+    """Prints a text message.
+
+    And, optionally, if a Numpy array is provided it prints it's shape, min, and max values.
     """
     if array is not None:
         text = text.ljust(25)
@@ -66,8 +67,9 @@ def log(text: str, array: npt.NDArray[np.float32] | None = None) -> None:
 
 
 class BatchNorm(KL.BatchNormalization):
-    """Extends the Keras BatchNormalization class to allow a central place
-    to make changes if needed.
+    """Extends the Keras BatchNormalization class.
+
+    Allows a central place to make changes if needed.
 
     Batch normalization has a negative effect on training if batches are small
     so this layer is often frozen (via setting in Config class) and functions
@@ -75,7 +77,8 @@ class BatchNorm(KL.BatchNormalization):
     """
 
     def call(self, inputs: tf.Tensor, training: bool | None = None) -> tf.Tensor:
-        """Note about training values:
+        """Note about training values.
+
         None: Train BN layers. This is the normal mode
         False: Freeze BN layers. Good when batch size is small
         True: (don't use). Set layer in training mode even when making inferences.
@@ -118,7 +121,8 @@ def identity_block(
     use_bias: bool = True,
     train_bn: bool = True,
 ) -> tf.Tensor:
-    """The identity_block is the block that has no conv layer at shortcut
+    """The identity_block is the block that has no conv layer at shortcut.
+
     # Arguments
         input_tensor: input tensor
         kernel_size: default 3, the kernel size of middle conv layer at main path
@@ -160,7 +164,8 @@ def conv_block(
     use_bias: bool = True,
     train_bn: bool = True,
 ) -> tf.Tensor:
-    """conv_block is the block that has a conv layer at shortcut
+    """conv_block is the block that has a conv layer at shortcut.
+
     # Arguments
         input_tensor: input tensor
         kernel_size: default 3, the kernel size of middle conv layer at main path
@@ -199,10 +204,11 @@ def conv_block(
     return x
 
 
-def resnet_graph(
+def build_resnet_graph(
     input_image: tf.Tensor, architecture: str, stage5: bool = False, train_bn: bool = True
 ) -> list[tf.Tensor | None]:
     """Build a ResNet graph.
+
     architecture: Can be resnet50 or resnet101
     stage5: Boolean. If False, stage5 of the network is not created
     train_bn: Boolean. Train or freeze Batch Norm layers.
@@ -246,6 +252,7 @@ def resnet_graph(
 
 def apply_box_deltas_graph(boxes: tf.Tensor, deltas: tf.Tensor) -> tf.Tensor:
     """Applies the given deltas to the given boxes.
+
     boxes: [N, (y1, x1, y2, x2)] boxes to update
     deltas: [N, (dy, dx, log(dh), log(dw))] refinements to apply.
     """
@@ -269,7 +276,8 @@ def apply_box_deltas_graph(boxes: tf.Tensor, deltas: tf.Tensor) -> tf.Tensor:
 
 
 def clip_boxes_graph(boxes: tf.Tensor, window: tf.Tensor) -> tf.Tensor:
-    """boxes: [N, (y1, x1, y2, x2)]
+    """boxes: [N, (y1, x1, y2, x2)].
+
     window: [4] in the form y1, x1, y2, x2.
     """
     # Split
@@ -286,7 +294,8 @@ def clip_boxes_graph(boxes: tf.Tensor, window: tf.Tensor) -> tf.Tensor:
 
 
 class ProposalLayer(KL.Layer):
-    """Receives anchor scores and selects a subset to pass as proposals
+    """Receives anchor scores and selects a subset to pass as proposals.
+
     to the second stage. Filtering is done based on anchor scores and
     non-max suppression to remove overlaps. It also applies bounding
     box refinement deltas to anchors.
@@ -488,6 +497,7 @@ class PyramidROIAlign(KL.Layer):
 
 def overlaps_graph(boxes1: tf.Tensor, boxes2: tf.Tensor) -> tf.Tensor:
     """Computes IoU overlaps between two sets of boxes.
+
     boxes1, boxes2: [N, (y1, x1, y2, x2)].
     """
     # 1. Tile boxes2 and repeat boxes1. This allows us to compare
@@ -517,7 +527,9 @@ def overlaps_graph(boxes1: tf.Tensor, boxes2: tf.Tensor) -> tf.Tensor:
 def detection_targets_graph(
     proposals: tf.Tensor, gt_class_ids: tf.Tensor, gt_boxes: tf.Tensor, gt_masks: tf.Tensor, config: Config
 ) -> tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
-    """Generates detection targets for one image. Subsamples proposals and
+    """Generates detection targets for one image.
+
+    Subsamples proposals and
     generates target class IDs, bounding box deltas, and masks for each.
 
     Inputs:
@@ -647,7 +659,8 @@ def detection_targets_graph(
 
 
 class DetectionTargetLayer(KL.Layer):
-    """Subsamples proposals and generates target box refinement, class_ids,
+    """Subsamples proposals and generates target box refinement, class_ids,.
+
     and masks for each.
 
     Inputs:
@@ -712,7 +725,8 @@ class DetectionTargetLayer(KL.Layer):
 def refine_detections_graph(
     rois: tf.Tensor, probs: tf.Tensor, deltas: tf.Tensor, window: tf.Tensor, config: Config
 ) -> tf.Tensor:
-    """Refine classified proposals and filter overlaps and return final
+    """Refine classified proposals and filter overlaps and return final.
+
     detections.
 
     Inputs:
@@ -814,7 +828,8 @@ def refine_detections_graph(
 
 
 class DetectionLayer(KL.Layer):
-    """Takes classified proposal boxes and their bounding box deltas and
+    """Takes classified proposal boxes and their bounding box deltas and.
+
     returns the final detection boxes.
 
     Returns:
@@ -905,6 +920,7 @@ def rpn_graph(feature_map: tf.Tensor, anchors_per_location: int, anchor_stride: 
 
 def build_rpn_model(anchor_stride: int, anchors_per_location: int, depth: int) -> KM.Model:
     """Builds a Keras model of the Region Proposal Network.
+
     It wraps the RPN graph so it can be used multiple times with shared
     weights.
 
@@ -938,8 +954,9 @@ def fpn_classifier_graph(
     train_bn: bool = True,
     fc_layers_size: int = 1024,
 ) -> tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
-    """Builds the computation graph of the feature pyramid network classifier
-    and regressor heads.
+    """Builds the computation graph of the feature pyramid network classifier.
+
+    It includes regressor heads.
 
     rois: [batch, num_rois, (y1, x1, y2, x2)] Proposal boxes in normalized
           coordinates.
@@ -1055,6 +1072,7 @@ def build_fpn_mask_graph(
 
 def smooth_l1_loss(y_true: tf.Tensor, y_pred: tf.Tensor, config: Config) -> tf.Tensor:
     """Implements Smooth-L1 loss.
+
     y_true and y_pred are typically: [N, 4], but could be any shape.
     """
     diff = K.abs(y_true - y_pred)
@@ -1065,7 +1083,9 @@ def smooth_l1_loss(y_true: tf.Tensor, y_pred: tf.Tensor, config: Config) -> tf.T
 
 
 def weighted_smooth_l1_loss(y_true: tf.Tensor, y_pred: tf.Tensor, config: Config) -> tf.Tensor:
-    """Implements Smooth-L1 loss. Increase weight for small bubbles.
+    """Implements Smooth-L1 loss.
+
+    Increase weight for small bubbles.
     y_true and y_pred are typically: [N, 4], but could be any shape.
     """
     loss = tf.constant(0.0, dtype=tf.float32)
@@ -1386,6 +1406,7 @@ def build_detection_targets(
     config: Config,
 ) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.float32], npt.NDArray[np.float32], npt.NDArray[np.float32]]:
     """Generate targets for training Stage 2 classifier and mask heads.
+
     This is not used in normal training. It's useful for debugging or to train
     the Mask RCNN heads without using the RPN head.
 
@@ -1537,7 +1558,8 @@ def build_rpn_targets(
     gt_boxes: npt.NDArray[np.float32],
     config: Config,
 ) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
-    """Given the anchors and GT boxes, compute overlaps and identify positive
+    """Given the anchors and GT boxes, compute overlaps and identify positive.
+
     anchors and deltas to refine them to match their corresponding GT boxes.
 
     anchors: [num_anchors, (y1, x1, y2, x2)]
@@ -1652,7 +1674,8 @@ def generate_random_rois(
     gt_class_ids: npt.NDArray[np.float32],
     gt_boxes: npt.NDArray[np.float32],
 ) -> npt.NDArray[np.float32]:
-    """Generates ROI proposals similar to what a region proposal network
+    """Generates ROI proposals similar to what a region proposal network.
+
     would generate.
 
     image_shape: [Height, Width, Depth]
@@ -1732,8 +1755,9 @@ def data_generator(
     detection_targets: bool = False,
     no_augmentation_sources: list[str] | None = None,
 ) -> Any:
-    """A generator that returns images and corresponding target class ids,
-    bounding box deltas, and masks.
+    """A generator that returns images and corresponding target class ids.
+
+    It also returns bounding box deltas, and masks.
 
     dataset: The Dataset object to pick data from
     config: The model config object
@@ -1908,7 +1932,7 @@ def data_generator(
                 b = 0
         except (GeneratorExit, KeyboardInterrupt):
             raise
-        except:
+        except Exception:
             # Log it and skip the image
             logging.exception(f"Error processing image {dataset.image_info[image_id]}")
             error_count += 1
@@ -1928,7 +1952,8 @@ class MaskRCNN:
     """
 
     def __init__(self, mode: str, config: Config, model_dir: str) -> None:
-        """mode: Either "training" or "inference"
+        """mode: Either "training" or "inference".
+
         config: A Sub-class of the Config class
         model_dir: Directory to save training logs and trained weights.
         """
@@ -1941,6 +1966,7 @@ class MaskRCNN:
 
     def build(self, mode: str, config: Config) -> KM.Model:
         """Build Mask R-CNN architecture.
+
         input_shape: The shape of the input image.
         mode: Either "training" or "inference". The inputs and
             outputs of the model differ accordingly.
@@ -1995,7 +2021,7 @@ class MaskRCNN:
         if callable(config.BACKBONE):
             _, C2, C3, C4, C5 = config.BACKBONE(input_image, stage5=True, train_bn=config.TRAIN_BN)
         else:
-            _, C2, C3, C4, C5 = resnet_graph(input_image, config.BACKBONE, stage5=True, train_bn=config.TRAIN_BN)
+            _, C2, C3, C4, C5 = build_resnet_graph(input_image, config.BACKBONE, stage5=True, train_bn=config.TRAIN_BN)
         # Top-down Layers
         # TODO: add assert to varify feature map sizes match what's in config
         P5 = KL.Conv2D(config.TOP_DOWN_PYRAMID_SIZE, (1, 1), name="fpn_c5p5")(C5)
@@ -2204,7 +2230,9 @@ class MaskRCNN:
         return model
 
     def find_last(self) -> str:
-        """Finds the last checkpoint file of the last trained model in the
+        """Finds the last checkpoint file.
+
+        The file should be from the last trained model in the
         model directory.
 
         Returns:
@@ -2233,9 +2261,11 @@ class MaskRCNN:
         return checkpoint
 
     def load_weights(self, filepath: str, by_name: bool = False, exclude: list[str] | None = None) -> None:
-        """Modified version of the corresponding Keras function with
-        the addition of multi-GPU support and the ability to exclude
+        """Modified version of the corresponding Keras function.
+
+        It adds multi-GPU support and the ability to exclude
         some layers from loading.
+
         exclude: list of layer names to exclude.
         """
         # Conditional import to support versions of Keras before 2.2
@@ -2256,6 +2286,7 @@ class MaskRCNN:
 
     def get_imagenet_weights(self) -> str:
         """Downloads ImageNet trained weights from Keras.
+
         Returns path to weights file.
         """
         from tensorflow.keras.utils import get_file
@@ -2274,7 +2305,9 @@ class MaskRCNN:
         return weights_path
 
     def compile(self, learning_rate: float, beta_1: float, beta_2: float) -> None:
-        """Gets the model ready for training. Adds losses, regularization, and
+        """Gets the model ready for training.
+
+        Adds losses, regularization, and
         metrics. Then calls the Keras compile() function.
         """
         # Optimizer object
@@ -2319,8 +2352,9 @@ class MaskRCNN:
     def set_trainable(
         self, layer_regex: str, keras_model: KM.Model | None = None, indent: int = 0, verbose: int = 1
     ) -> None:
-        """Sets model layers as trainable if their names match
-        the given regular expression.
+        """Sets model layers as trainable.
+
+        The names of the layers should match the given regular expression.
         """
         # Print message on the first call (but not on recursive calls)
         if verbose > 0 and keras_model is None:
@@ -2379,7 +2413,7 @@ class MaskRCNN:
                 # Epoch number in file is 1-based, and in Keras code it's 0-based.
                 # So, adjust for that then increment by one to start from the next epoch
                 self.epoch = int(m.group(6)) - 1 + 1
-                print("Re-starting from epoch %d" % self.epoch)
+                print(f"Re-starting from epoch {self.epoch}")
 
         # Directory for training logs
         self.log_dir = os.path.join(self.model_dir, f"{self.config.NAME.lower()}{now:%Y%m%dT%H%M}")
@@ -2400,6 +2434,7 @@ class MaskRCNN:
         no_augmentation_sources: list[str] | None = None,
     ) -> None:
         """Train the model.
+
         train_dataset, val_dataset: Training and validation Dataset objects.
         learning_rate: The learning rate to train with
         epochs: Number of training epochs. Note that previous training epochs
@@ -2505,7 +2540,9 @@ class MaskRCNN:
     def mold_inputs(
         self, images: list[npt.NDArray[np.float32]]
     ) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.float32], npt.NDArray[np.float32]]:
-        """Takes a list of images and modifies them to the format expected
+        """Takes a list of images and modifies them.
+
+        They are modified to the format expected
         as an input to the neural network.
         images: List of image matrices [height,width,depth]. Images can have
             different sizes.
@@ -2552,7 +2589,9 @@ class MaskRCNN:
         image_shape: tuple[int, int, int],
         window: npt.NDArray[np.float32],
     ) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.float32], npt.NDArray[np.float32], npt.NDArray[np.float32]]:
-        """Reformats the detections of one image from the format of the neural
+        """Reformats the detections of one image.
+
+        Reformatted from the format of the neural
         network output to a format suitable for use in the rest of the
         application.
 
@@ -2678,9 +2717,10 @@ class MaskRCNN:
     def detect_molded(
         self, molded_images: npt.NDArray[np.float32], image_metas: npt.NDArray[np.float32], verbose: int = 0
     ) -> list[dict[str, npt.NDArray[np.float32]]]:
-        """Runs the detection pipeline, but expect inputs that are
-        molded already. Used mostly for debugging and inspecting
-        the model.
+        """Runs the detection pipeline.
+
+        Expects inputs that are molded already. Used mostly for debugging and
+        inspecting the model.
 
         molded_images: List of images loaded using load_image_gt()
         image_metas: image meta data, also returned by load_image_gt()

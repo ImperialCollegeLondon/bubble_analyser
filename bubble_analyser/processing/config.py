@@ -76,7 +76,7 @@ class FilteringConfig(BaseModel):
     max_eccentricity: float = Field(default=0.85, ge=0.0, le=1.0)
     min_solidity: float = Field(default=0.9, ge=0.0, le=1.0)
     min_size: float = Field(default=0.1, ge=0.0)
-    max_size: float = Field(default=20000.0, ge=0.0)
+    max_size: float = Field(default=10.0, ge=0.0)
 
     # Circle detection parameters
     if_find_circles: bool = Field(default=False)

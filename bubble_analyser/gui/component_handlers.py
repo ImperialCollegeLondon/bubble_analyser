@@ -19,19 +19,19 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import cv2
 import numpy as np
 from numpy import typing as npt
-from PySide6.QtCore import QEventLoop, QThread, Signal
+from PySide6.QtCore import QEventLoop, QObject, QThread, Signal
 
 from bubble_analyser.cnn_methods.bubmask_wrapper import BubMaskConfig, BubMaskDetector
+from bubble_analyser.core.models import ImageState
 from bubble_analyser.processing import (
     Config,
     EllipseAdjuster,
     FilterParamHandler,
-    Image,
     MethodsHandler,
 )
 
@@ -177,7 +177,7 @@ class Step2Worker(QThread):
             self.error.emit(f"Error in Step 2 processing: {e!s}\n\n{error_details}")
 
 
-class ImageProcessingModel:
+class ImageProcessingModel(QObject):
     """A model class for managing image processing operations and parameters.
 
     This class handles the processing of images using various algorithms, maintains
@@ -193,7 +193,7 @@ class ImageProcessingModel:
         if_bknd (bool): Flag indicating whether a background image is being used.
         bknd_img_path (Path): Path to the background image file.
         img_path_list (list[Path]): List of paths to images to be processed.
-        img_dict (dict[Path, Image]): Dictionary mapping image paths to their Image
+        img_dict (dict[Path, ImageState]): Dictionary mapping image paths to their Image
             objects.
         adjuster (EllipseAdjuster): Tool for manual adjustment of detected ellipses.
         ellipses_properties (list[list[dict[str, float]]]): Properties of detected
@@ -226,10 +226,10 @@ class ImageProcessingModel:
         self.bknd_img_path: Path = cast(Path, None)
 
         self.img_path_list: list[Path] = []
-        self.img_dict: dict[Path, Image] = {}
+        self.img_dict: dict[Path, ImageState] = {}
 
         self.adjuster: EllipseAdjuster
-        self.ellipses_properties: list[list[dict[str, float | str]]] = []
+        self.ellipses_properties: list[list[dict[str, Any]]] = []
 
         # Determine base directory for weights
         if getattr(sys, "frozen", False):
@@ -315,7 +315,12 @@ class ImageProcessingModel:
         Args:
             folder_path_list (list[Path]): List of paths to images to be processed.
         """
+        # Clear existing state to prevent race conditions during re-processing
         self.img_path_list = folder_path_list
+        self.img_dict.clear()
+        self.ellipses_properties.clear()
+        self.if_batched = False
+        self.if_finalise_analysis = False
 
     def get_bknd_img_path(self, bknd_img_path: Path) -> None:
         """Set the path to the background image.
@@ -378,19 +383,21 @@ class ImageProcessingModel:
         self.filter_param_dict_1 = dict_params_1
         self.filter_param_dict_2 = dict_params_2
 
+        # Sync with the actual handler used by services
+        self.filter_param_handler.update_params_1(dict_params_1)
+        self.filter_param_handler.update_params_2(dict_params_2)
+
     def initialize_image(self, name: Path) -> None:
-        """Initialize an Image object for processing if it doesn't already exist.
+        """Initialize an ImageState object for processing if it doesn't already exist.
 
         Args:
-            name (Path): Path to the image file.
+            name (Path): The path of the image to initialize.
         """
         if name not in self.img_dict:
-            self.img_dict[name] = Image(
-                self.px2mm_display,
-                raw_img_path=cast(Path, name),
-                all_methods_n_params=self.all_methods_n_params,
-                methods_handler=self.methods_handler,
-                bknd_img_path=self.bknd_img_path,
+            self.img_dict[name] = ImageState(
+                raw_img_path=name,
+                px2mm_display=self.px2mm_display,
+                bknd_img_path=self.bknd_img_path if self.if_bknd else None,
             )
 
     def step_1_main(self, index: int) -> npt.NDArray[np.int_]:
@@ -414,9 +421,16 @@ class ImageProcessingModel:
         service.set_detector(self.detector)
         service.setup_methods(self.methods_handler, self.filter_param_handler)
 
-        # Pass the pre-initialized image to the service to process
-        self.img_dict[name].processing_image_before_filtering(service.algorithm, service.detector)
-        return self.img_dict[name].labels_on_img_before_filter
+        # Use the service to process the image state
+        result = service.process_image(name, skip_filtering=True)
+
+        if result.success and result.labels_on_img_before_filter is not None:
+            # Sync back to our state cache for UI consistency
+            state = self.img_dict[name]
+            state.labels_on_img_before_filter = result.labels_on_img_before_filter
+            return result.labels_on_img_before_filter
+
+        return np.zeros((0, 0), dtype=np.int_)
 
     def step_2_main(self, index: int) -> npt.NDArray[np.int_]:
         """Execute the second step of image processing (filtering&ellipse detection).
@@ -428,8 +442,6 @@ class ImageProcessingModel:
             npt.NDArray[np.int_]: The processed image with detected ellipses overlaid.
         """
         name = self.img_path_list[index]
-        self.img_dict[name].load_filter_params(self.filter_param_dict_1, self.filter_param_dict_2)
-
         from bubble_analyser.core.services import AnalysisService
 
         service = AnalysisService(self.params_config)
@@ -439,8 +451,17 @@ class ImageProcessingModel:
         service.set_detector(self.detector)
         service.setup_methods(self.methods_handler, self.filter_param_handler)
 
-        self.img_dict[name].filtering_processing()
-        return self.img_dict[name].ellipses_on_images
+        result = service.process_image(name)
+
+        if result.success and result.ellipses_on_images is not None:
+            # Sync back to our state cache
+            state = self.img_dict[name]
+            state.ellipses_on_images = result.ellipses_on_images
+            state.ellipses_properties = result.ellipses_properties if result.ellipses_properties else []
+            # We don't have ellipses objects here yet in Result, but for UI preview it's enough
+            return result.ellipses_on_images
+
+        return np.zeros((0, 0), dtype=np.int_)
 
     def ellipse_manual_adjustment(self, index: int) -> npt.NDArray[np.int_]:
         """Launch the ellipse adjustment tool for manual fine-tuning of ellipses.
@@ -473,10 +494,10 @@ class ImageProcessingModel:
         logging.info("Ellipse handler finished.")
         return image.ellipses_on_images
 
-    def label_image_fine_tuned(self, image: Image) -> None:
+    def label_image_fine_tuned(self, image: ImageState) -> None:
         image.set_fine_tuned()
 
-    def handle_ellipse_adjustment_finished(self, image: Image) -> None:
+    def handle_ellipse_adjustment_finished(self, image: ImageState) -> None:
         """Process the results of manual ellipse adjustment.
 
         This method is called when the user completes the manual adjustment process.
@@ -484,10 +505,26 @@ class ImageProcessingModel:
         the overlay.
 
         Args:
-            image (Image): The image object containing the ellipses to update.
+            image (ImageState): The image state object containing the ellipses to update.
         """
-        image.update_ellipses(self.adjuster.ellipses)
-        image.overlay_ellipses_on_images()
+        image.ellipses = self.adjuster.ellipses
+        image.set_fine_tuned()
+
+        # Regenerate overlays since ellipses changed
+        from bubble_analyser.processing.circle_handler import EllipseHandler as CircleHandler
+
+        handler = CircleHandler(
+            image.labels_before_filter.copy(),
+            image.img_rgb.copy(),
+            self.px2mm_display,
+            resample=image.resample,
+        )
+        handler.ellipses = image.ellipses
+        image.ellipses_on_images = handler.overlay_ellipses_on_image()
+        image.labelled_ellipses_mask = handler.create_labelled_image_from_ellipses()
+        image.ellipses_properties = handler.calculate_circle_properties()
+        for ellipse in image.ellipses_properties:
+            ellipse["filename"] = image.raw_img_path.name
 
     def batch_process_images(
         self,
@@ -530,38 +567,59 @@ class ImageProcessingModel:
             img_rgb_name = cast(Path, f"{base_name}_rgb.png")
             img_mt_name = cast(Path, f"{base_name}_mt.png")
             self.initialize_image(name)
-            self.img_dict[name].load_filter_params(self.filter_param_dict_1, self.filter_param_dict_2)
+            state = self.img_dict[name]
 
             if self.if_finalise_analysis:
-                self.img_dict[name].get_ellipse_properties()
-                self.ellipses_properties.append(self.img_dict[name].ellipses_properties)
+                # If we are finalising, we only need to ensure properties are in our master list
+                if not state.ellipses_properties:
+                    # If properties are missing, calculate them
+                    result = service.process_image(name)
+                    state.ellipses_properties = (
+                        result.ellipses_properties if result.ellipses_properties is not None else []
+                    )
+
+                self.ellipses_properties.append(state.ellipses_properties)
 
             else:
-                if not self.img_dict[name].if_fine_tuned:
-                    self.img_dict[name].processing_image_before_filtering(service.algorithm, service.detector)
-                    self.img_dict[name].filtering_processing()
-                    self.ellipses_properties.append(self.img_dict[name].ellipses_properties)
+                if not state.if_fine_tuned:
+                    # Only process if results aren't already cached
+                    if state.ellipses_on_images is None or not state.ellipses_on_images.any():
+                        result = service.process_image(name)
+                        if result.success:
+                            # Sync state
+                            if result.labels_on_img_before_filter is not None:
+                                state.labels_on_img_before_filter = result.labels_on_img_before_filter
+                            if result.ellipses_on_images is not None:
+                                state.ellipses_on_images = result.ellipses_on_images
+                            if result.img_rgb is not None:
+                                state.img_rgb = result.img_rgb
+                            if result.img_grey_morph_eroded is not None:
+                                state.img_grey_morph_eroded = result.img_grey_morph_eroded
+                            if result.labelled_ellipses_mask is not None:
+                                state.labelled_ellipses_mask = result.labelled_ellipses_mask
+
+                            state.ellipses_properties = result.ellipses_properties if result.ellipses_properties else []
+                            self.ellipses_properties.append(state.ellipses_properties)
+                        else:
+                            self.ellipses_properties.append([])
+                    else:
+                        logging.info(f"Skipping already processed image: {name}")
+                        self.ellipses_properties.append(state.ellipses_properties)
 
                 else:
                     logging.info(f"This image has been fine tuned: {name}, no need to process again.")
-                    self.img_dict[name].get_ellipse_properties()
-                    self.ellipses_properties.append(self.img_dict[name].ellipses_properties)
+                    # Recalculate properties if needed or just use existing
+                    self.ellipses_properties.append(state.ellipses_properties)
 
                 if if_save:
-                    if self.img_dict[name].ellipses_on_images is not None:
-                        self.save_processed_images(
-                            self.img_dict[name].ellipses_on_images, img_fit_ellipse_name, save_path
-                        )
-                    if self.img_dict[name].img_rgb is not None:
-                        self.save_processed_images(self.img_dict[name].img_rgb, img_rgb_name, save_path)
-                    if self.img_dict[name].img_grey_morph_eroded is not None:
-                        self.save_processed_images(
-                            self.img_dict[name].img_grey_morph_eroded, img_mt_name, save_path, if_mt=True
-                        )
-                    if self.img_dict[name].labelled_ellipses_mask is not None:
-                        self.save_labelled_masks(
-                            self.img_dict[name].labelled_ellipses_mask, cast(Path, base_name), save_path
-                        )
+                    if state.ellipses_on_images is not None:
+                        self.save_processed_images(state.ellipses_on_images, img_fit_ellipse_name, save_path)
+                    if state.img_rgb is not None:
+                        self.save_processed_images(state.img_rgb, img_rgb_name, save_path)
+                    if state.img_grey_morph_eroded is not None:
+                        self.save_processed_images(state.img_grey_morph_eroded, img_mt_name, save_path, if_mt=True)
+                    if state.labelled_ellipses_mask is not None:
+                        self.save_labelled_masks(state.labelled_ellipses_mask, cast(Path, base_name), save_path)
 
             worker_thread.update_progress_bar(index + 1)
         worker_thread.on_processing_done()

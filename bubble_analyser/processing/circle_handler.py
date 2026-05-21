@@ -8,8 +8,7 @@ settings. It is primarily used for bubble/circle analysis in scientific images.
 """
 
 import logging
-from collections.abc import Sequence
-from typing import cast
+from typing import Any, cast
 
 import cv2
 import numpy as np
@@ -133,7 +132,7 @@ class EllipseHandler:
 
         self.ellipses: list[tuple[tuple[float, float], tuple[int, int], float]]
         self.ellipses_on_image: npt.NDArray[np.int_]
-        self.ellipses_properties: list[dict[str, float]]
+        self.ellipses_properties: list[dict[str, Any]]
 
     def load_filter_params(
         self, filter_param_dict_1: dict[str, float | str], filter_param_dict_2: dict[str, float | str]
@@ -194,45 +193,40 @@ class EllipseHandler:
         else:
             if_find_circles = False
 
+        # Back-calculate diameter thresholds (mm) to area thresholds (pixels)
+        # to avoid doing expensive sqrt/pi math for every component in the loop.
+        # Diameter (mm) -> Area (mm2) = pi * (D/2)^2
+        # Area (mm2) -> Area (pixels) = Area(mm2) / (mm2px^2)
+        min_area_px = (np.pi * (min_size / 2) ** 2) / (mm2px**2)
+        max_area_px = (np.pi * (max_size / 2) ** 2) / (mm2px**2)
+
         for prop in properties:
             if prop.label == 1:  # Ignore the background
                 continue
 
-            # Calculate circle properties in mm
-            area = prop.area * (mm2px**2)
-            # area = prop.area
-            eccentricity = prop.eccentricity
-            solidity = prop.solidity
+            # Check all conditions and mark for removal if any fail
+            should_remove = False
 
-            # Check if the circle properties meet the thresholds
-            if not (eccentricity <= max_eccentricity and solidity >= min_solidity and min_size <= area <= max_size):
-                # Remove the region by setting it to 1 (background)
-                new_labels[new_labels == prop.label] = 1
-                logging.debug("A circle is being filtered out because the following parameter(s) are not qualified:")
-                if eccentricity > max_eccentricity:
-                    logging.debug(f"Eccentricity (too large): {eccentricity}")
-                if solidity < min_solidity:
-                    logging.debug(f"Solidity (too small): {solidity}")
-                if area < min_size:
-                    logging.debug(f"Area (too small): {area}")
-                if area > max_size:
-                    logging.debug(f"Area (too large): {area}")
+            # Priority 1: Size Filtering (Now using ultra-fast pixel area comparison)
+            if not (min_area_px <= prop.area <= max_area_px):
+                should_remove = True
+                logging.debug(f"Filtered out by Size: {prop.area:.1f} px")
 
-            else:
-                if if_find_circles:
-                    logging.debug("Find Circles activated.")
-                    if not ((L_min <= area <= L_max) or (s_min <= area <= s_max)):
-                        logging.debug(
-                            "A circle is being filtered out because one or \
-                            more of the following parameter(s) are not qualified:"
-                        )
-                        logging.debug(f"Value of the circle's area: {area}")
-                        logging.debug(f"Value of the L_min: {L_min}")
-                        logging.debug(f"Value of the L_max: {L_max}")
-                        logging.debug(f"Value of the s_min: {s_min}")
-                        logging.debug(f"Value of the s_max: {s_max}")
-                        new_labels[new_labels == prop.label] = 1
-                        continue
+            # Priority 2: Shape Filtering
+            elif prop.eccentricity > max_eccentricity or prop.solidity < min_solidity:
+                should_remove = True
+                logging.debug(f"Filtered out by Shape: Ecc={prop.eccentricity:.2f}, Sol={prop.solidity:.2f}")
+
+            # Priority 3: Optional Find Circles logic (Uses area in mm2)
+            elif if_find_circles:
+                area_mm2 = prop.area * (mm2px**2)
+                if not ((L_min <= area_mm2 <= L_max) or (s_min <= area_mm2 <= s_max)):
+                    should_remove = True
+                    logging.debug(f"Filtered out by Find Circles logic: Area={area_mm2:.2f}")
+
+            if should_remove:
+                # Use Vectorized NumPy indexing: O(1) Python, O(pixels) C
+                new_labels[tuple(prop.coords.T)] = 1
 
         self.labels_after_filtering = new_labels
 
@@ -244,24 +238,34 @@ class EllipseHandler:
         """Fill each ellipse label in labels_before_filtering and return a new label object.
 
         Returns:
-            npt.NDArray[np.int_]: A new label object with filled ellipses.
+            list[tuple]: A list of fitted ellipses (center, axes, angle).
         """
         # Store ellipses
         ellipses = []
 
-        # Create an empty image to draw ellipses
-        for label in np.unique(self.labels_after_filtering):
-            if label == 0 or label == 1:
-                continue  # Skip the background label
+        # Use regionprops for optimized component access
+        properties = measure.regionprops(self.labels_after_filtering)
 
-            mask = np.zeros_like(self.labels_after_filtering, dtype=np.uint8)
-            mask[self.labels_after_filtering == label] = 255
-            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        for prop in properties:
+            if prop.label == 0 or prop.label == 1:
+                continue
+
+            # Create a small local mask for this bubble using its bounding box
+            # This is significantly faster than a full-image mask
+            min_r, min_c, max_r, max_c = prop.bbox
+
+            # Add padding to ensure contour is closed correctly
+            local_mask = np.zeros((max_r - min_r + 2, max_c - min_c + 2), dtype=np.uint8)
+
+            # Efficiently map global coords to local mask
+            local_coords = prop.coords - [min_r, min_c]
+            local_mask[local_coords[:, 0] + 1, local_coords[:, 1] + 1] = 255
+
+            contours, _ = cv2.findContours(local_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
             for contour in contours:
                 if len(contour) >= 5:
                     ellipse = cv2.fitEllipse(contour)
-                    # Validate ellipse parameters before adding to list
                     center, axes, angle = ellipse
                     ellipse_width, ellipse_height = axes
 
@@ -275,12 +279,11 @@ class EllipseHandler:
                         and np.isfinite(center[1])
                         and np.isfinite(angle)
                     ):
-                        ellipses.append(ellipse)
+                        # Offset the center back to global coordinates
+                        global_center = (center[0] + min_c - 1, center[1] + min_r - 1)
+                        ellipses.append((global_center, axes, angle))
                     else:
-                        print(
-                            f"Warning: Skipping invalid ellipse with dimensions: "
-                            f"width={ellipse_width}, height={ellipse_height}"
-                        )
+                        logging.debug(f"Skipping invalid ellipse with dimensions: {axes}")
 
         self.ellipses = ellipses  # type: ignore
 
@@ -381,7 +384,7 @@ class EllipseHandler:
 
         return labelled_img
 
-    def calculate_circle_properties(self) -> list[dict[str, float | Sequence[float]]]:
+    def calculate_circle_properties(self) -> list[dict[str, Any]]:
         """Calculate geometric properties for each detected ellipse.
 
         Computes various properties for each ellipse including major and minor axis lengths,
@@ -389,7 +392,7 @@ class EllipseHandler:
         to millimeters using the px2mm conversion factor.
 
         Returns:
-            list[dict[str, float | Sequence[float]]]: A list of dictionaries, each containing
+            list[dict[str, Any]]: A list of dictionaries, each containing
                 the properties of one ellipse.
         """
         ellipse_properties = []

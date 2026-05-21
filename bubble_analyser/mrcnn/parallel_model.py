@@ -46,23 +46,26 @@ class ParallelModel(KM.Model):
         super().__init__(inputs=self.inner_model.inputs, outputs=merged_outputs)
 
     def __getattribute__(self, attrname: str) -> object:
-        """Redirect loading and saving methods to the inner model. That's where
-        the weights are stored.
+        """Redirect loading and saving methods to the inner model.
+
+        That's where the weights are stored.
         """
         if "load" in attrname or "save" in attrname:
             return getattr(self.inner_model, attrname)
         return super().__getattribute__(attrname)
 
     def summary(self, *args: object, **kwargs: object) -> None:
-        """Override summary() to display summaries of both, the wrapper
-        and inner models.
+        """Override summary() to display summaries.
+
+        Displays summaries of both, the wrapper and inner models.
         """
         super().summary(*args, **kwargs)
         self.inner_model.summary(*args, **kwargs)
 
     def make_parallel(self) -> list[tf.Tensor]:
-        """Creates a new wrapper model that consists of multiple replicas of
-        the original model placed on different GPUs.
+        """Creates a new wrapper model with multiple replicas.
+
+        Consists of multiple replicas of the original model placed on different GPUs.
         """
         # Slice inputs. Slice inputs on the CPU to avoid sending a copy
         # of the full inputs to all GPUs. Saves on bandwidth and memory.
@@ -77,8 +80,8 @@ class ParallelModel(KM.Model):
 
         # Run the model call() on each GPU to place the ops there
         for i in range(self.gpu_count):
-            with tf.device("/gpu:%d" % i):
-                with tf.name_scope("tower_%d" % i):
+            with tf.device(f"/gpu:{i}"):
+                with tf.name_scope(f"tower_{i}"):
                     # Run a slice of inputs through this replica
                     zipped_inputs = zip(self.inner_model.input_names, self.inner_model.inputs)
                     inputs = [
@@ -90,8 +93,8 @@ class ParallelModel(KM.Model):
                     if not isinstance(outputs, list):
                         outputs = [outputs]
                     # Save the outputs for merging back together later
-                    for l, o in enumerate(outputs):
-                        outputs_all[l].append(o)
+                    for idx, o in enumerate(outputs):
+                        outputs_all[idx].append(o)
 
         # Merge outputs on CPU
         with tf.device("/cpu:0"):

@@ -1220,19 +1220,31 @@ class ImageProcessingTabHandler(QThread):
         """Initialize the filtering parameters table with default values.
 
         Populates the filtering parameters table with the current values from
-        the temporary filter parameter dictionary.
+        the temporary filter parameter dictionary. Size parameters are shown first
+        with units.
         """
         logging.info("Initializing parameter table 2...")
         self.filter_param_dict_1 = self.model.filter_param_dict_1
         self.filter_param_dict_2 = self.model.filter_param_dict_2
 
-        self.gui.param_sandbox2.setRowCount(len(self.filter_param_dict_1))
-        row = 0
-        for property, value in self.filter_param_dict_1.items():
+        # Define priority order for display
+        priority_params = ["min_size", "max_size"]
+        other_params = [k for k in self.filter_param_dict_1.keys() if k not in priority_params]
+        ordered_params = priority_params + other_params
+
+        self.gui.param_sandbox2.setRowCount(len(ordered_params))
+
+        for row, property in enumerate(ordered_params):
+            value = self.filter_param_dict_1[property]
+            display_name = property
+
+            # Add unit labels for size parameters
+            if property in ["min_size", "max_size"]:
+                display_name = f"{property} (mm)"
+
             logging.info(f"Filter param name: {property}, value: {value}")
-            self.gui.param_sandbox2.setItem(row, 0, QTableWidgetItem(property))
+            self.gui.param_sandbox2.setItem(row, 0, QTableWidgetItem(display_name))
             self.gui.param_sandbox2.setItem(row, 1, QTableWidgetItem(str(value)))
-            row += 1
 
         logging.info("Parameter table 2 initialized.")
 
@@ -1318,11 +1330,12 @@ class ImageProcessingTabHandler(QThread):
             name_item = self.gui.param_sandbox2.item(row, 0)
             value_item = self.gui.param_sandbox2.item(row, 1)
             if name_item and value_item:
-                param_name = name_item.text()
+                # Strip units from label for internal mapping (e.g., 'min_size (mm)' -> 'min_size')
+                param_name = name_item.text().split(" (")[0].strip()
                 param_value = value_item.text()
 
                 # Handle numeric parameter
-                float_value = cast(float, param_value)
+                float_value = float(param_value)
                 self.filter_param_dict_1[param_name] = float_value
 
                 logging.info(f"Updating {param_name} to {param_value}")
@@ -1417,29 +1430,36 @@ class ImageProcessingTabHandler(QThread):
             logging.info("Batch processing canceled.")
 
     def finalise_analysis(self) -> None:
-        """Finalise the analysis by setting the if_finish_analysis flag to True."""
+        """Finalise the analysis and transition to the results visualization."""
         if not self.model.if_batched:
             QMessageBox.information(
                 self.gui, "Information", "Please finish at least one time of batch processing first."
             )
             return
 
-        else:
-            confirm_dialog = self.create_confirm_dialog(
-                "Finalise Analysis Confirmation",
-                "The analysis will be finalised. \n "
-                "Make sure you are satisfied with the segmentation of all images. Confirm to finalise.",
-            )
-            self.create_save_images_checkbox(confirm_dialog)
+        confirm_dialog = self.create_confirm_dialog(
+            "Finalise Analysis Confirmation",
+            "The analysis will be finalised. \n "
+            "Make sure you are satisfied with the segmentation of all images. Confirm to finalise.",
+        )
+        self.create_save_images_checkbox(confirm_dialog)
 
-            response = confirm_dialog.exec()
+        response = confirm_dialog.exec()
 
-            if response == QMessageBox.StandardButton.Ok:
-                self.model.if_finalise_analysis = True
-                self.check_for_export_path.emit()  # Let Main handler check if export being properlly set
+        if response == QMessageBox.StandardButton.Ok:
+            self.model.if_finalise_analysis = True
 
+            if self.if_save_processed_images:
+                # If user wants to save during finalization, we still need to run a "save-only" batch
+                self.check_for_export_path.emit()
             else:
-                logging.info("Analysis finalisation canceled.")
+                # If no saving needed, just jump to the results
+                self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.results_tab))
+                self.batch_processing_done.emit()  # Trigger histogram generation
+                logging.info("Analysis finalised. Switched to results tab.")
+
+        else:
+            logging.info("Analysis finalisation canceled.")
 
     def create_confirm_dialog(self, title: str, text: str) -> QMessageBox:
         """Create a confirmation dialog for batch processing.
@@ -1560,7 +1580,14 @@ class ImageProcessingTabHandler(QThread):
         and switches to the results tab.
         """
         # Close the progress dialog
-        self.progress_dialog.close()
+        if hasattr(self, "progress_dialog") and self.progress_dialog:
+            self.progress_dialog.close()
+
+        # Thread cleanup to prevent QThread destruction errors
+        if hasattr(self, "worker_thread") and self.worker_thread:
+            self.worker_thread.wait()
+            self.worker_thread.deleteLater()
+
         self.preview_processed_images()
         self.batch_processing_done.emit()
         logging.info("Batch processing completed.")

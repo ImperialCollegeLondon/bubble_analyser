@@ -44,7 +44,8 @@ class TestParallelImplementation(unittest.TestCase):
 
         # Test 1: Sequential Processing (Baseline) - explicitly calling the loop logic if possible
         # Since batch_detect now calls batch_detect_parallel, we can't easily test the OLD sequential method
-        # unless we manually implement the loop here or force batch_size=1 (which is still "parallel" logic but sequential execution)
+        # unless we manually implement the loop here or force batch_size=1
+        # (which is still "parallel" logic but sequential execution)
 
         print("\n--- Test 1: Sequential Processing (Batch Size = 1) ---")
         start_time = time.time()

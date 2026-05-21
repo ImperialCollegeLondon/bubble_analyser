@@ -1,6 +1,7 @@
 """Core domain models for Bubble Analyser."""
 
 import os
+from dataclasses import dataclass, field
 from pathlib import Path
 
 # Need to import MatLike if possible, or use Any
@@ -10,6 +11,42 @@ import numpy as np
 from numpy import typing as npt
 
 from bubble_analyser.processing import calculate_px2mm
+
+
+@dataclass
+class ImageState:
+    """Domain model representing the state of an image analysis."""
+
+    raw_img_path: Path
+    px2mm_display: float
+    resample: float = 0.5
+    if_bknd_img: bool = False
+    bknd_img_path: Path | None = None
+
+    # Image arrays
+    img_rgb: npt.NDArray[Any] = field(default_factory=lambda: np.zeros((0, 0, 3), dtype=np.uint8))
+    img_grey: npt.NDArray[Any] = field(default_factory=lambda: np.zeros((0, 0), dtype=np.uint8))
+    img_grey_morph_eroded: npt.NDArray[Any] = field(default_factory=lambda: np.zeros((0, 0), dtype=np.uint8))
+    bknd_img: npt.NDArray[Any] | None = None
+
+    # Analysis results
+    labels_on_img_before_filter: npt.NDArray[Any] = field(default_factory=lambda: np.zeros((0, 0, 3), dtype=np.uint8))
+    labels_before_filter: npt.NDArray[Any] = field(default_factory=lambda: np.zeros((0, 0), dtype=np.int32))
+    labels_after_filter: npt.NDArray[Any] = field(default_factory=lambda: np.zeros((0, 0), dtype=np.int32))
+    labelled_ellipses_mask: npt.NDArray[Any] = field(default_factory=lambda: np.zeros((0, 0), dtype=np.int32))
+
+    ellipses: list[tuple[tuple[float, float], tuple[int, int], float]] = field(default_factory=list)
+    ellipses_properties: list[dict[str, Any]] = field(default_factory=list)
+    ellipses_on_images: npt.NDArray[Any] = field(default_factory=lambda: np.zeros((0, 0, 3), dtype=np.uint8))
+
+    if_fine_tuned: bool = False
+
+    @property
+    def bubble_count(self) -> int:
+        return len(self.ellipses)
+
+    def set_fine_tuned(self) -> None:
+        self.if_fine_tuned = True
 
 
 class InputFilesModel:

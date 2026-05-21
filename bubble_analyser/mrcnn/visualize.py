@@ -1,4 +1,4 @@
-"""Mask R-CNN
+"""Mask R-CNN.
 
 Display and Visualization Functions.
 
@@ -47,6 +47,7 @@ def display_images(
     interpolation: str | None = None,
 ) -> plt.Figure:
     """Display the given set of images, optionally with titles.
+
     images: list or array of image tensors in HWC format.
     titles: optional. A list of titles to display with each image.
     cols: number of images per row
@@ -75,6 +76,7 @@ def display_images(
 
 def random_colors(N: int, bright: bool = True) -> list[tuple[float, float, float]]:
     """Generate random colors.
+
     To get visually distinct colors, generate them in HSV space then
     convert to RGB.
     """
@@ -113,7 +115,9 @@ def display_instances(
     captions: list[str] | None = None,
     linewidth: float = 2.5,
 ) -> None:
-    """boxes: [num_instance, (y1, x1, y2, x2, class_id)] in image coordinates.
+    """Display instance masks and bounding boxes.
+
+    boxes: [num_instance, (y1, x1, y2, x2, class_id)] in image coordinates.
     masks: [height, width, num_instances]
     class_ids: [num_instances]
     class_names: list of class names of the dataset
@@ -382,7 +386,9 @@ def draw_rois(
     class_names: list[str],
     limit: int = 10,
 ) -> None:
-    """anchors: [n, (y1, x1, y2, x2)] list of anchors in image coordinates.
+    """Draw ROIs and refined ROIs on an image.
+
+    anchors: [n, (y1, x1, y2, x2)] list of anchors in image coordinates.
     proposals: [n, 4] the same anchors but refined to fit objects better.
     """
     masked_image = image.copy()
@@ -448,6 +454,7 @@ def draw_box(
     color: tuple[int, int, int] | list[int] | npt.NDArray[np.int32],
 ) -> npt.NDArray[np.uint8]:
     """Draw 3-pixel width bounding boxes on the given image array.
+
     color: list of 3 int values for RGB.
     """
     y1, x1, y2, x2 = box
@@ -520,6 +527,7 @@ def plot_overlaps(
     threshold: float = 0.5,
 ) -> None:
     """Draw a grid showing how ground truth objects are classified.
+
     gt_class_ids: [N] int. Ground truth class IDs
     pred_class_id: [N] int. Predicted class IDs
     pred_scores: [N] float. The probability scores of predicted classes
@@ -679,6 +687,7 @@ def draw_boxes(
 
 def display_table(table: Iterable[Iterable[object]]) -> None:
     """Display values in a table format.
+
     table: an iterable of rows, and each row is an iterable of values.
     """
     html = ""
@@ -692,19 +701,21 @@ def display_table(table: Iterable[Iterable[object]]) -> None:
 
 
 def display_weight_stats(model: object) -> None:
-    """Scans all the weights in the model and returns a list of tuples
+    """Scans all the weights in the model and returns stats.
+
+    Scans all the weights in the model and returns a list of tuples
     that contain stats about each weight.
     """
     layers = model.get_trainable_layers()  # type: ignore
     table = [["WEIGHT NAME", "SHAPE", "MIN", "MAX", "STD"]]
-    for l in layers:
-        weight_values = l.get_weights()  # list of Numpy arrays
-        weight_tensors = l.weights  # list of TF tensors
+    for layer in layers:
+        weight_values = layer.get_weights()  # list of Numpy arrays
+        weight_tensors = layer.weights  # list of TF tensors
         for i, w in enumerate(weight_values):
             weight_name = weight_tensors[i].name
             # Detect problematic layers. Exclude biases of conv layers.
             alert = ""
-            if w.min() == w.max() and not (l.__class__.__name__ == "Conv2D" and i == 1):
+            if w.min() == w.max() and not (layer.__class__.__name__ == "Conv2D" and i == 1):
                 alert += "<span style='color:red'>*** dead?</span>"
             if np.abs(w.min()) > 1000 or np.abs(w.max()) > 1000:
                 alert += "<span style='color:red'>*** Overflow?</span>"
