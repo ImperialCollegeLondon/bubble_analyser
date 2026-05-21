@@ -576,11 +576,11 @@ def draw_boxes(
     visibilities: Sequence[int] | None = None,
     title: str = "",
     ax: plt.Axes | None = None,
-) -> None:
-    """Draw bounding boxes and segmentation masks with different
-    customizations.
+    ) -> None:
+    """Draw bounding boxes and segmentation masks with different customizations.
 
     boxes: [N, (y1, x1, y2, x2, class_id)] in image coordinates.
+
     refined_boxes: Like boxes, but draw with solid lines to show
         that they're the result of refining 'boxes'.
     masks: [N, height, width]

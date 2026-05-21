@@ -55,7 +55,7 @@ class ParallelModel(KM.Model):
         return super().__getattribute__(attrname)
 
     def summary(self, *args: object, **kwargs: object) -> None:
-        """Override summary() to display summaries.
+        """Provide a summary of both the wrapper and inner models.
 
         Displays summaries of both, the wrapper and inner models.
         """

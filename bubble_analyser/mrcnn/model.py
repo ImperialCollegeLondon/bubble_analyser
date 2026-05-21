@@ -2803,7 +2803,9 @@ class MaskRCNN:
         self, tensor: tf.Tensor, name: str | re.Pattern, checked: list[tf.Tensor] | None = None
     ) -> tf.Tensor | None:
         """Finds the ancestor of a TF tensor in the computation graph.
+
         tensor: TensorFlow symbolic tensor.
+
         name: Name of ancestor tensor to find
         checked: For internal use. A list of tensors that were already
                  searched to avoid loops in traversing the graph.
@@ -2830,7 +2832,9 @@ class MaskRCNN:
         return None
 
     def find_trainable_layer(self, layer: KL.Layer) -> KL.Layer:
-        """If a layer is encapsulated by another layer, this function
+        """Finds the layer that holds the weights if it's encapsulated.
+
+        If a layer is encapsulated by another layer, this function
         digs through the encapsulation and returns the layer that holds
         the weights.
         """
@@ -2842,12 +2846,12 @@ class MaskRCNN:
         """Returns a list of layers that have weights."""
         layers = []
         # Loop through all layers
-        for l in self.keras_model.layers:
+        for layer in self.keras_model.layers:
             # If layer is a wrapper, find inner trainable layer
-            l = self.find_trainable_layer(l)
+            layer = self.find_trainable_layer(layer)
             # Include layer if it has weights
-            if l.get_weights():
-                layers.append(l)
+            if layer.get_weights():
+                layers.append(layer)
         return layers
 
     def run_graph(
@@ -2856,8 +2860,7 @@ class MaskRCNN:
         outputs: list[tuple[str, tf.Tensor]],
         image_metas: npt.NDArray[np.float32] | None = None,
     ) -> OrderedDict:
-        """Runs a sub-set of the computation graph that computes the given
-        outputs.
+        """Runs a sub-set of the computation graph that computes the given outputs.
 
         image_metas: If provided, the images are assumed to be already
             molded (i.e. resized, padded, and normalized)
@@ -2932,18 +2935,21 @@ def compose_image_meta(
         where not all classes are present in all datasets.
     """
     meta = np.array(
-        [image_id]  # size=1
-        + list(original_image_shape)  # size=3
-        + list(image_shape)  # size=3
-        + list(window)  # size=4 (y1, x1, y2, x2) in image cooredinates
-        + [scale]  # size=1
-        + list(active_class_ids)  # size=num_classes
+        [
+            image_id,  # size=1
+            *list(original_image_shape),  # size=3
+            *list(image_shape),  # size=3
+            *list(window),  # size=4 (y1, x1, y2, x2) in image cooredinates
+            scale,  # size=1
+            *list(active_class_ids),  # size=num_classes
+        ]
     )
     return meta
 
 
 def parse_image_meta(meta: npt.NDArray[np.float32]) -> dict[str, npt.NDArray[np.float32]]:
     """Parses an array that contains image attributes to its components.
+
     See compose_image_meta() for more details.
 
     meta: [batch, meta length] where meta length depends on NUM_CLASSES
@@ -2968,6 +2974,7 @@ def parse_image_meta(meta: npt.NDArray[np.float32]) -> dict[str, npt.NDArray[np.
 
 def parse_image_meta_graph(meta: tf.Tensor) -> dict[str, tf.Tensor]:
     """Parses a tensor that contains image attributes to its components.
+
     See compose_image_meta() for more details.
 
     meta: [batch, meta length] where meta length depends on NUM_CLASSES
@@ -2991,9 +2998,9 @@ def parse_image_meta_graph(meta: tf.Tensor) -> dict[str, tf.Tensor]:
 
 
 def mold_image(images: npt.NDArray[np.float32], config: Config) -> npt.NDArray[np.float32]:
-    """Expects an RGB image (or array of images) and subtracts
-    the mean pixel and converts it to float. Expects image
-    colors in RGB order.
+    """Expects an RGB image (or array of images) and subtracts the mean pixel.
+
+    Converts it to float. Expects image colors in RGB order.
     """
     return images.astype(np.float32) - config.MEAN_PIXEL
 
@@ -3009,7 +3016,9 @@ def unmold_image(normalized_images: npt.NDArray[np.float32], config: Config) -> 
 
 
 def trim_zeros_graph(boxes: tf.Tensor, name: str = "trim_zeros") -> tuple[tf.Tensor, tf.Tensor]:
-    """Often boxes are represented with matrices of shape [N, 4] and
+    """Removes zero boxes from a matrix.
+
+    Often boxes are represented with matrices of shape [N, 4] and
     are padded with zeros. This removes zero boxes.
 
     boxes: [N, 4] matrix of boxes.
@@ -3021,7 +3030,8 @@ def trim_zeros_graph(boxes: tf.Tensor, name: str = "trim_zeros") -> tuple[tf.Ten
 
 
 def batch_pack_graph(x: tf.Tensor, counts: tf.Tensor, num_rows: int) -> tf.Tensor:
-    """Picks different number of values from each row
+    """Picks different number of values from each row.
+
     in x depending on the values in counts.
     """
     outputs = []
@@ -3032,6 +3042,7 @@ def batch_pack_graph(x: tf.Tensor, counts: tf.Tensor, num_rows: int) -> tf.Tenso
 
 def norm_boxes_graph(boxes: tf.Tensor, shape: tf.Tensor | tuple[int, int]) -> tf.Tensor:
     """Converts boxes from pixel coordinates to normalized coordinates.
+
     boxes: [..., (y1, x1, y2, x2)] in pixel coordinates
     shape: [..., (height, width)] in pixels.
 
@@ -3049,6 +3060,7 @@ def norm_boxes_graph(boxes: tf.Tensor, shape: tf.Tensor | tuple[int, int]) -> tf
 
 def denorm_boxes_graph(boxes: tf.Tensor, shape: tf.Tensor | tuple[int, int]) -> tf.Tensor:
     """Converts boxes from normalized coordinates to pixel coordinates.
+
     boxes: [..., (y1, x1, y2, x2)] in normalized coordinates
     shape: [..., (height, width)] in pixels.
 

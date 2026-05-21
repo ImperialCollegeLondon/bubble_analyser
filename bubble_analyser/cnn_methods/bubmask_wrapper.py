@@ -287,7 +287,7 @@ class BubMaskDetector:
         """
         try:
             # Load and preprocess image
-            if isinstance(image_or_path, (str, Path)):
+            if isinstance(image_or_path, str | Path):
                 image = skimage.io.imread(str(image_or_path))
                 image_source_name = str(image_or_path)
             else:

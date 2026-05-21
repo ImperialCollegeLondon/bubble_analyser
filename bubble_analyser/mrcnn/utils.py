@@ -38,6 +38,7 @@ COCO_MODEL_URL = "https://github.com/matterport/Mask_RCNN/releases/download/v2.0
 
 def extract_bboxes(mask: npt.NDArray[np.int32]) -> npt.NDArray[np.int32]:
     """Compute bounding boxes from masks.
+
     mask: [height, width, num_instances]. Mask pixels are either 1 or 0.
 
     Returns: bbox array [num_instances, (y1, x1, y2, x2)].
@@ -69,6 +70,7 @@ def compute_iou(
     boxes_area: npt.NDArray[np.float32],
 ) -> npt.NDArray[np.float64]:
     """Calculates IoU of the given box with the array of the given boxes.
+
     box: 1D vector [y1, x1, y2, x2]
     boxes: [boxes_count, (y1, x1, y2, x2)]
     box_area: float. the area of 'box'
@@ -90,6 +92,7 @@ def compute_iou(
 
 def compute_overlaps(boxes1: npt.NDArray[np.float32], boxes2: npt.NDArray[np.float32]) -> npt.NDArray[np.float64]:
     """Computes IoU overlaps between two sets of boxes.
+
     boxes1, boxes2: [N, (y1, x1, y2, x2)].
 
     For better performance, pass the largest set first and the smaller second.
@@ -109,6 +112,7 @@ def compute_overlaps(boxes1: npt.NDArray[np.float32], boxes2: npt.NDArray[np.flo
 
 def compute_overlaps_masks(masks1: npt.NDArray[np.bool_], masks2: npt.NDArray[np.bool_]) -> npt.NDArray[np.float64]:
     """Computes IoU overlaps between two sets of masks.
+
     masks1, masks2: [Height, Width, instances].
     """
     # If either set of masks is empty return empty result
@@ -132,6 +136,7 @@ def non_max_suppression(
     boxes: npt.NDArray[np.float32], scores: npt.NDArray[np.float32], threshold: float
 ) -> npt.NDArray[np.int32]:
     """Performs non-maximum suppression and returns indices of kept boxes.
+
     boxes: [N, (y1, x1, y2, x2)]. Notice that (y2, x2) lays outside the box.
     scores: 1-D array of box scores.
     threshold: Float. IoU threshold to use for filtering.
@@ -169,6 +174,7 @@ def non_max_suppression(
 
 def apply_box_deltas(boxes: npt.NDArray[np.float32], deltas: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
     """Applies the given deltas to the given boxes.
+
     boxes: [N, (y1, x1, y2, x2)]. Note that (y2, x2) is outside the box.
     deltas: [N, (dy, dx, log(dh), log(dw))].
     """
@@ -193,6 +199,7 @@ def apply_box_deltas(boxes: npt.NDArray[np.float32], deltas: npt.NDArray[np.floa
 
 def box_refinement_graph(box: tf.Tensor, gt_box: tf.Tensor) -> tf.Tensor:
     """Compute refinement needed to transform box to gt_box.
+
     box and gt_box are [N, (y1, x1, y2, x2)].
     """
     box = tf.cast(box, tf.float32)
@@ -219,6 +226,7 @@ def box_refinement_graph(box: tf.Tensor, gt_box: tf.Tensor) -> tf.Tensor:
 
 def box_refinement(boxes: npt.NDArray[np.float32], gt_boxes: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
     """Compute refinement needed to transform box to gt_box.
+
     box and gt_box are [N, (y1, x1, y2, x2)]. (y2, x2) is
     assumed to be outside the box.
     """
@@ -250,6 +258,7 @@ def box_refinement(boxes: npt.NDArray[np.float32], gt_boxes: npt.NDArray[np.floa
 
 class Dataset:
     """The base class for dataset classes.
+
     To use it, create a new class that adds functions specific to the dataset
     you want to use. For example:
 
@@ -297,7 +306,9 @@ class Dataset:
         self.image_info.append(image_info)
 
     def image_reference(self, image_id: int) -> str:
-        """Return a link to the image in its source Website or details about
+        """Return details about the image for debugging.
+
+        Return a link to the image in its source Website or details about
         the image that help looking it up or debugging it.
 
         Override for your dataset, but pass to this function
@@ -363,6 +374,7 @@ class Dataset:
 
     def source_image_link(self, image_id: int) -> str:
         """Returns the path or URL to the image.
+
         Override this to return a URL to the image if it's available online for easy
         debugging.
         """
@@ -530,7 +542,9 @@ def resize_mask(
     crop: tuple[int, int, int, int] | None = None,
 ) -> npt.NDArray[np.bool_]:
     """Resizes a mask using the given scale and padding.
+
     Typically, you get the scale and padding from resize_image() to
+
     ensure both, the image and the mask, are resized consistently.
 
     scale: mask scaling factor
@@ -554,6 +568,7 @@ def minimize_mask(
     bbox: npt.NDArray[np.int32], mask: npt.NDArray[np.bool_], mini_shape: tuple[int, int]
 ) -> npt.NDArray[np.bool_]:
     """Resize masks to a smaller version to reduce memory load.
+
     Mini-masks can be resized back to image scale using expand_masks().
 
     See inspect_data.ipynb notebook for more details.
@@ -575,8 +590,9 @@ def minimize_mask(
 def expand_mask(
     bbox: npt.NDArray[np.int32], mini_mask: npt.NDArray[np.bool_], image_shape: tuple[int, int] | tuple[int, int, int]
 ) -> npt.NDArray[np.bool_]:
-    """Resizes mini masks back to image size. Reverses the change
-    of minimize_mask().
+    """Resizes mini masks back to image size.
+
+    Reverses the change of minimize_mask().
 
     See inspect_data.ipynb notebook for more details.
     """
@@ -600,8 +616,8 @@ def mold_mask(mask: npt.NDArray[np.bool_], config: object) -> None:
 def unmold_mask(
     mask: npt.NDArray[np.float32], bbox: npt.NDArray[np.int32], image_shape: tuple[int, int] | tuple[int, int, int]
 ) -> npt.NDArray[np.bool_]:
-    """Converts a mask generated by the neural network to a format similar
-    to its original shape.
+    """Converts a mask generated by the neural network to a format similar to its original shape.
+
     mask: [height, width] of type float. A small, typically 28x28 mask.
     bbox: [y1, x1, y2, x2]. The box to fit the mask in.
 
@@ -630,7 +646,8 @@ def generate_anchors(
     feature_stride: int,
     anchor_stride: int,
 ) -> npt.NDArray[np.float64]:
-    """scales: 1D array of anchor sizes in pixels. Example: [32, 64, 128]
+    """Generate anchor sizes in pixels.
+
     ratios: 1D array of anchor ratios of width/height. Example: [0.5, 1, 2]
     shape: [height, width] spatial shape of the feature map over which
             to generate anchors.
@@ -680,8 +697,9 @@ def generate_pyramid_anchors(
     feature_strides: list[int],
     anchor_stride: int,
 ) -> npt.NDArray[np.float64]:
-    """Generate anchors at different levels of a feature pyramid. Each scale
-    is associated with a level of the pyramid, but each ratio is used in
+    """Generate anchors at different levels of a feature pyramid.
+
+    Each scale is associated with a level of the pyramid, but each ratio is used in
     all levels of the pyramid.
 
     Returns:
@@ -703,8 +721,9 @@ def generate_pyramid_anchors(
 
 
 def trim_zeros(x: npt.NDArray[np.float32 | np.int32 | np.float64]) -> npt.NDArray[np.float32 | np.int32 | np.float64]:
-    """It's common to have tensors larger than the available data and
-    pad with zeros. This function removes rows that are all zeros.
+    """It's common to have tensors larger than the available data and pad with zeros.
+
+    This function removes rows that are all zeros.
 
     x: [rows, columns].
     """
@@ -939,7 +958,9 @@ def compute_recall(
     gt_boxes: npt.NDArray[np.int32 | np.float32],
     iou: float,
 ) -> tuple[float, npt.NDArray[np.int32]]:
-    """Compute the recall at the given IoU threshold. It's an indication
+    """Compute the recall at the given IoU threshold.
+
+    It's an indication
     of how many GT boxes were found by the given prediction boxes.
 
     pred_boxes: [N, (y1, x1, y2, x2)] in image coordinates
@@ -969,10 +990,10 @@ def batch_slice(
     batch_size: int,
     names: list[str | None] | None = None,
 ) -> tf.Tensor | list[tf.Tensor]:
-    """Splits inputs into slices and feeds each slice to a copy of the given
-    computation graph and then combines the results. It allows you to run a
-    graph on a batch of inputs even if the graph is written to support one
-    instance only.
+    """Splits inputs into slices and feeds each slice to a copy of the given computation graph.
+
+    It allows you to run a graph on a batch of inputs even if the graph is written
+    to support one instance only.
 
     inputs: list of tensors. All must have the same first dimension length
     graph_fn: A function that returns a TF tensor that's part of a graph.
@@ -1021,6 +1042,7 @@ def norm_boxes(
     boxes: npt.NDArray[np.int32 | np.float32], shape: tuple[int, int] | npt.NDArray[np.int32]
 ) -> npt.NDArray[np.float32]:
     """Converts boxes from pixel coordinates to normalized coordinates.
+
     boxes: [N, (y1, x1, y2, x2)] in pixel coordinates
     shape: [..., (height, width)] in pixels.
 
@@ -1040,6 +1062,7 @@ def denorm_boxes(
     boxes: npt.NDArray[np.float32], shape: tuple[int, int] | npt.NDArray[np.int32]
 ) -> npt.NDArray[np.int32]:
     """Converts boxes from normalized coordinates to pixel coordinates.
+
     boxes: [N, (y1, x1, y2, x2)] in normalized coordinates
     shape: [..., (height, width)] in pixels.
 
@@ -1066,7 +1089,7 @@ def resize(
     anti_aliasing: bool = False,
     anti_aliasing_sigma: float | None = None,
 ) -> npt.NDArray[np.uint8 | np.float32 | np.float64]:
-    """A wrapper for Scikit-Image resize().
+    """Provide a consistent wrapper for Scikit-Image resize.
 
     Scikit-Image generates warnings on every call to resize() if it doesn't
     receive the right parameters. The right parameters depend on the version
