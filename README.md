@@ -97,7 +97,7 @@ or, you can build up the virtual environment based on the requirements.txt file 
 
 ## Reference
 
-Kim, Y., Park, H. Deep learning-based automated and universal bubble detection and mask extraction in complex two-phase flows. Sci Rep 11, 8940 (2021). https://doi.org/10.1038/s41598-021-88334-0
+Kim, Y., Park, H. Deep learning-based automated and universal bubble detection and mask extraction in complex two-phase flows. Sci Rep 11, 8940 (2021). <https://doi.org/10.1038/s41598-021-88334-0>
 
 ## Contributing
 
