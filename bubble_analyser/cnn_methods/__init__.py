@@ -1,1 +1,1 @@
-
+"""BubMask methods package."""

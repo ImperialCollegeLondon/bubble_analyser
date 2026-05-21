@@ -1007,7 +1007,7 @@ def batch_slice(
     for i in range(batch_size):
         inputs_slice = [x[i] for x in inputs]
         output_slice = graph_fn(*inputs_slice)
-        if not isinstance(output_slice, (tuple, list)):
+        if not isinstance(output_slice, tuple | list):
             output_slice = [output_slice]
         outputs.append(output_slice)
     # Change outputs from a list of slices where each is
