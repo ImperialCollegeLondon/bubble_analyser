@@ -253,7 +253,10 @@ class ImageProcessingModel(QObject):
         self.filter_param_handler: FilterParamHandler
         self.initialize_methods_handlers()
         self.initialize_filter_param_handler()
-        self.initialize_cnn_model()
+        
+        # Defer the heavy CNN initialization so the GUI boots instantly
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(100, self.initialize_cnn_model)
 
     def initialize_methods_handlers(self) -> None:
         """Initialize the methods handler and retrieve available processing methods.
