@@ -2133,7 +2133,6 @@ class MainHandler:
 
         self.load_gui_for_handlers()
         self.connect_gui_and_handlers()
-        self.gui_exiting()
 
     def initialize_handlers(self) -> None:
         """Initialize all handler classes and models used by the application.
