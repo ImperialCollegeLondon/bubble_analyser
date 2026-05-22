@@ -48,7 +48,7 @@ def test_bubmask_watershed_detect(dummy_images, bubmask_params):
 
     with patch("skimage.io.imsave"):  # Don't actually save
         method = BubMaskWatershed(bubmask_params)
-        method.initialize_processing(bubmask_params, img_grey, img_rgb, False, cnn_model=mock_detector)
+        method.initialize_processing(bubmask_params, img_grey, img_rgb, False, px2mm=1.0, cnn_model=mock_detector)
 
         labels_on_img, labels_watershed, _ = method.get_results_img()
 

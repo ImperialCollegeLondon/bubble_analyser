@@ -8,8 +8,10 @@ from numpy import typing as npt
 
 class SegmentationMethod(Protocol):
     """Protocol defining the interface for all segmentation methods."""
+
     name: str
     description: str
+
     def initialize_processing(
         self,
         params: dict[str, Any],
@@ -32,8 +34,8 @@ class SegmentationMethod(Protocol):
             cnn_model: Optional pre-initialized CNN model for deep learning methods.
         """
         ...
-    def get_results_img(self) -> tuple[npt.NDArray[np.uint8], npt.NDArray[np.int32], npt.NDArray[np.uint8]
-    | None]:
+
+    def get_results_img(self) -> tuple[npt.NDArray[np.uint8], npt.NDArray[np.int32], npt.NDArray[np.uint8] | None]:
         """Execute the segmentation process and return results.
 
         Returns:

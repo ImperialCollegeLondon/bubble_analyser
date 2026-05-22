@@ -200,7 +200,7 @@ class AnalysisService:
 
         try:
             if existing_state is None:
-                #Create initial state
+                # Create initial state
                 state = ImageState(
                     raw_img_path=image_path,
                     px2mm_display=self.px2mm_display,
@@ -215,7 +215,7 @@ class AnalysisService:
                 # Step 2: Segmentation
                 segmentation_service = SegmentationService(self.methods_handler)
                 # Add all params to state temporarily for the service
-                state.all_methods_n_params = self.all_methods_n_params
+                setattr(state, "all_methods_n_params", self.all_methods_n_params)
                 state = segmentation_service.segment(state, self.algorithm, self.detector)
 
             else:

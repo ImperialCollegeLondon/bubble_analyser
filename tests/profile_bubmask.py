@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 # Ensure the root is in sys.path
-sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.abspath("."))
 
 from bubble_analyser.cnn_methods.bubmask_wrapper import BubMaskConfig, BubMaskDetector
 from bubble_analyser.core.services import AnalysisService
@@ -22,36 +22,42 @@ from bubble_analyser.processing.image import MethodsHandler
 
 logging.basicConfig(level=logging.WARNING)
 
-config = Config()
-# Reduce image size or select a specific one
-img_path = Path("example_imgs/sample_bubble_images/IMG_9423.JPG")
 
-# Preload detector
-weights_path = "bubble_analyser/weights/mask_rcnn_bubble.h5"
-if not os.path.exists(weights_path):
-    print("Weights not found, skipping profiling")
-    sys.exit(0)
+def main():
+    config = Config()
+    # Reduce image size or select a specific one
+    img_path = Path("example_imgs/sample_bubble_images/IMG_9423.JPG")
 
-bubmask_config = BubMaskConfig()
-detector = BubMaskDetector(weights_path, bubmask_config)
+    # Preload detector
+    weights_path = "bubble_analyser/weights/mask_rcnn_bubble.h5"
+    if not os.path.exists(weights_path):
+        print("Weights not found, skipping profiling")
+        sys.exit(0)
 
-service = AnalysisService(config)
-service.algorithm = "BubMask (Deep Learning)"
-service.set_detector(detector)
+    bubmask_config = BubMaskConfig()
+    detector = BubMaskDetector(weights_path, bubmask_config)
 
-# Setup methods handler
-methods_handler = MethodsHandler(config)
-filter_handler = FilterParamHandler(config.model_dump())
-service.setup_methods(methods_handler, filter_handler)
+    service = AnalysisService(config)
+    service.algorithm = "BubMask (Deep Learning)"
+    service.set_detector(detector)
 
-print("Starting profile...")
-profiler = cProfile.Profile()
-profiler.enable()
+    # Setup methods handler
+    methods_handler = MethodsHandler(config)
+    filter_handler = FilterParamHandler(config.model_dump())
+    service.setup_methods(methods_handler, filter_handler)
 
-result = service.process_image(img_path)
+    print("Starting profile...")
+    profiler = cProfile.Profile()
+    profiler.enable()
 
-profiler.disable()
-print("Profiling finished")
+    service.process_image(img_path)
 
-stats = pstats.Stats(profiler).sort_stats('cumtime')
-stats.print_stats(30)
+    profiler.disable()
+    print("Profiling finished")
+
+    stats = pstats.Stats(profiler).sort_stats("cumtime")
+    stats.print_stats(30)
+
+
+if __name__ == "__main__":
+    main()
