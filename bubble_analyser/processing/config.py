@@ -11,6 +11,7 @@ from typing import Self
 
 from pydantic import (
     BaseModel,
+    ConfigDict,
     Field,
     field_validator,
     model_validator,
@@ -125,8 +126,7 @@ class AppConfig(BaseModel):
     save_path: Path = Field(default=Path("."))
     save_path_for_images: Path = Field(default=Path("."))
 
-    class Config:
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment=True)
 
     @classmethod
     def from_toml(cls, file_path: Path) -> "AppConfig":
@@ -217,8 +217,7 @@ class Config(BaseModel):
     s_maxA: float = 5.0
     s_minA: float = 1.0
 
-    class Config:
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment=True)
 
     @model_validator(mode="after")
     def validate_everything(self) -> Self:

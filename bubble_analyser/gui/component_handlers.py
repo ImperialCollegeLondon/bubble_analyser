@@ -330,6 +330,21 @@ class ImageProcessingModel(QObject):
         """
         self.bknd_img_path = Path(bknd_img_path)
 
+    def reset_batch_state(self, force_all: bool = False) -> None:
+        """Clear cached processed results.
+
+        Args:
+            force_all (bool): If True, clear caches for all images including fine-tuned ones.
+        """
+        self.if_batched = False
+        self.if_finalise_analysis = False
+        for state in self.img_dict.values():
+            if force_all or not state.if_fine_tuned:
+                state.ellipses_on_images = np.zeros((0, 0, 3), dtype=np.uint8)
+                state.labels_on_img_before_filter = np.zeros((0, 0, 3), dtype=np.uint8)
+                if force_all:
+                    state.if_fine_tuned = False
+
     def update_px2mm_display(self, px2mm_display: float) -> None:
         """Update the pixel-to-millimeter conversion ratio.
 
@@ -607,6 +622,8 @@ class ImageProcessingModel(QObject):
                                 state.img_grey_morph_eroded = result.img_grey_morph_eroded
                             if result.labelled_ellipses_mask is not None:
                                 state.labelled_ellipses_mask = result.labelled_ellipses_mask
+                            if result.ellipses is not None:
+                                state.ellipses = result.ellipses
 
                             state.ellipses_properties = result.ellipses_properties if result.ellipses_properties else []
                             self.ellipses_properties.append(state.ellipses_properties)
@@ -622,17 +639,29 @@ class ImageProcessingModel(QObject):
                     self.ellipses_properties.append(state.ellipses_properties)
 
                 if if_save:
-                    if state.ellipses_on_images is not None:
+                    if state.ellipses_on_images is not None and state.ellipses_on_images.size > 0:
                         self.save_processed_images(state.ellipses_on_images, img_fit_ellipse_name, save_path)
-                    if state.img_rgb is not None:
+                    if state.img_rgb is not None and state.img_rgb.size > 0:
                         self.save_processed_images(state.img_rgb, img_rgb_name, save_path)
-                    if state.img_grey_morph_eroded is not None:
+                    if state.img_grey_morph_eroded is not None and state.img_grey_morph_eroded.size > 0:
                         self.save_processed_images(state.img_grey_morph_eroded, img_mt_name, save_path, if_mt=True)
-                    if state.labelled_ellipses_mask is not None:
+                    if state.labelled_ellipses_mask is not None and state.labelled_ellipses_mask.size > 0:
                         self.save_labelled_masks(state.labelled_ellipses_mask, cast(Path, base_name), save_path)
 
+            # MEMORY OPTIMIZATION: Clear large hidden numpy arrays from state to prevent Out-Of-Memory errors
+            # on large batches. We keep the display arrays (img_rgb, ellipses_on_images) so previews still work.
+            if getattr(self, "img_path", None) != name:
+                state.clear_memory()
+
             worker_thread.update_progress_bar(index + 1)
+
+            import gc
+
+            if index % 10 == 0:
+                gc.collect()
+
         worker_thread.on_processing_done()
+
         self.if_batched = True  # Make finalise analysis true
 
     def save_processed_images(

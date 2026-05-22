@@ -62,16 +62,12 @@ disallow_untyped_defs = true
 exclude = [".venv/"]
 
 [[tool.mypy.overrides]]
-module = "bubble_analyser.mrcnn.*"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "bubble_analyser.__init__"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "tests.*"
 disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "bubble_analyser.mrcnn.*"
+ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = [

@@ -30,6 +30,7 @@ class AnalysisResult:
     img_grey: npt.NDArray[Any] | None = None
     img_grey_morph_eroded: npt.NDArray[Any] | None = None
     labelled_ellipses_mask: npt.NDArray[Any] | None = None
+    ellipses: list[tuple[tuple[float, float], tuple[int, int], float]] | None = None
     ellipses_properties: list[dict[str, Any]] | None = None
     bubble_count: int = 0
     success: bool = True
@@ -240,6 +241,7 @@ class AnalysisService:
                 result.img_rgb = state.img_rgb
                 result.img_grey_morph_eroded = state.img_grey_morph_eroded
                 result.labelled_ellipses_mask = state.labelled_ellipses_mask
+                result.ellipses = state.ellipses
                 result.ellipses_properties = state.ellipses_properties
                 result.bubble_count = state.bubble_count
 

@@ -41,6 +41,16 @@ class ImageState:
 
     if_fine_tuned: bool = False
 
+    def clear_memory(self) -> None:
+        """Clear intermediate large numpy arrays to free memory, keeping display arrays."""
+        self.img_grey = np.zeros((0, 0), dtype=np.uint8)
+        self.img_grey_morph_eroded = np.zeros((0, 0), dtype=np.uint8)
+        self.labels_before_filter = np.zeros((0, 0), dtype=np.int32)
+        self.labels_after_filter = np.zeros((0, 0), dtype=np.int32)
+        self.labelled_ellipses_mask = np.zeros((0, 0), dtype=np.int32)
+        if self.bknd_img is not None:
+            self.bknd_img = None
+
     @property
     def bubble_count(self) -> int:
         return len(self.ellipses)

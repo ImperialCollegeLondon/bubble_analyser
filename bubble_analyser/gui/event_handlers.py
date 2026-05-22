@@ -1212,7 +1212,8 @@ class ImageProcessingTabHandler(QThread):
             img (npt.NDArray[np.int_]): The processed image to display.
         """
         self.gui.label_before_filtering.axes.clear()
-        self.gui.label_before_filtering.axes.imshow(img)
+        if img is not None and img.size > 0:
+            self.gui.label_before_filtering.axes.imshow(img)
         self.gui.label_before_filtering.draw()
 
     # -------Third Column Functions: Filtering-------------------------
@@ -1405,7 +1406,8 @@ class ImageProcessingTabHandler(QThread):
             img (npt.NDArray[np.int_]): The processed image to display.
         """
         self.gui.processed_image_preview.axes.clear()
-        self.gui.processed_image_preview.axes.imshow(img)
+        if img is not None and img.size > 0:
+            self.gui.processed_image_preview.axes.imshow(img)
         self.gui.processed_image_preview.draw()
 
     # -------Third Column Functions: Batch Processing----------------------------
@@ -1415,6 +1417,22 @@ class ImageProcessingTabHandler(QThread):
         Creates and displays a confirmation dialog with options for saving processed images.
         If confirmed, initiates the batch processing operation.
         """
+        if self.model.if_batched:
+            warn_dialog = QMessageBox(self.gui)
+            warn_dialog.setWindowTitle("Warning")
+            warn_dialog.setText(
+                "You have already run batch processing. Re-running will discard all past segmentations, "
+                "including manual adjustments. Are you sure you want to continue?"
+            )
+            warn_dialog.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            warn_dialog.setDefaultButton(QMessageBox.StandardButton.No)
+            if warn_dialog.exec() != QMessageBox.StandardButton.Yes:
+                logging.info("Batch re-processing canceled by user.")
+                return
+
+            # Wipe all caches (including fine-tuned ones) so everything re-runs
+            self.model.reset_batch_state(force_all=True)
+
         self.if_save_processed_images = False
         confirm_dialog = self.create_confirm_dialog(
             "Batch Processing Confirmation", "The parameters will be applied to all the images. Confirm to process."
@@ -1425,7 +1443,6 @@ class ImageProcessingTabHandler(QThread):
 
         if response == QMessageBox.StandardButton.Ok:
             self.check_for_export_path.emit()  # Let Main handler check if export being properlly set
-
         else:
             logging.info("Batch processing canceled.")
 
