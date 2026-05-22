@@ -348,6 +348,7 @@ class Image:
                                 img_grey=self.img_grey,
                                 img_rgb=self.img_rgb,
                                 if_bknd_img=self.if_bknd_img,
+                                px2mm=self.px2mm_display,
                                 bknd_img=self.bknd_img,
                                 cnn_model=cnn_model,
                             )  # type: ignore
@@ -357,6 +358,7 @@ class Image:
                                 img_grey=self.img_grey,
                                 img_rgb=self.img_rgb,
                                 if_bknd_img=self.if_bknd_img,
+                                px2mm=self.px2mm_display,
                                 bknd_img=self.bknd_img,
                             )  # type: ignore
                         self.labels_on_img_before_filter, self.labels_before_filter, self.img_grey_morph_eroded = (

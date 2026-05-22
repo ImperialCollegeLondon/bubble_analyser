@@ -13,7 +13,7 @@ Both classes inherit from the WatershedSegmentation parent class
 """
 
 import logging
-from typing import cast
+from typing import Any, cast
 
 import cv2
 import numpy as np
@@ -85,25 +85,31 @@ class TestWatershed(WatershedSegmentation):
 
     def initialize_processing(
         self,
-        params: dict[str, float | int],
+        params: dict[str, Any],
         img_grey: npt.NDArray[np.uint8],
         img_rgb: npt.NDArray[np.uint8],
         if_bknd_img: bool,
-        bknd_img: npt.NDArray[np.uint8] = cast(npt.NDArray[np.uint8], None),
+        px2mm: float,
+        bknd_img: npt.NDArray[np.uint8] | None = None,
+        cnn_model: Any | None = None,
     ) -> None:
         """Initialize the processing with input images and parameters.
 
         Args:
-            params (dict[str, float | int]): Dictionary containing parameters for the watershed method.
+            params (dict[str, Any]): Dictionary containing parameters for the watershed method.
             img_grey (npt.NDArray[np.uint8]): Grayscale input image.
             img_rgb (npt.NDArray[np.uint8]): RGB input image.
             if_bknd_img (bool): Flag indicating if background image is used.
+            px2mm (float): Conversion factor from pixels to millimeters.
             bknd_img (npt.NDArray[np.uint8], optional): Background image if available. Defaults to None.
+            cnn_model (object, optional): Pre-initialized CNN model for deep learning methods. Defaults to None.
         """
         self.img_grey = img_grey
         self.img_rgb = img_rgb
         self.bknd_img = bknd_img
         self.if_bknd_img = if_bknd_img
+        self.cnn_model = cnn_model
+        self.px2mm = px2mm
         self.update_params(params)
         super().__init__(
             img_grey,
@@ -299,11 +305,13 @@ class IterativeWatershed(WatershedSegmentation):
 
     def initialize_processing(
         self,
-        params: dict[str, float | int],
+        params: dict[str, Any],
         img_grey: npt.NDArray[np.uint8],
         img_rgb: npt.NDArray[np.uint8],
         if_bknd_img: bool,
-        bknd_img: npt.NDArray[np.uint8] = cast(npt.NDArray[np.uint8], None),
+        px2mm: float,
+        bknd_img: npt.NDArray[np.uint8] | None = None,
+        cnn_model: Any | None = None,
     ) -> None:
         self.img_grey = img_grey
         self.img_rgb = img_rgb
@@ -403,16 +411,19 @@ class NormalWatershed(WatershedSegmentation):
 
     def initialize_processing(
         self,
-        params: dict[str, float | int],
+        params: dict[str, Any],
         img_grey: npt.NDArray[np.uint8],
         img_rgb: npt.NDArray[np.uint8],
         if_bknd_img: bool,
-        bknd_img: npt.NDArray[np.uint8] = cast(npt.NDArray[np.uint8], None),
+        px2mm: float,
+        bknd_img: npt.NDArray[np.uint8] | None = None,
+        cnn_model: Any | None = None,
     ) -> None:
         self.img_grey = img_grey
         self.img_rgb = img_rgb
         self.bknd_img = bknd_img
         self.if_bknd_img = if_bknd_img
+        self.cnn_model = cnn_model
         self.update_params(params)
         super().__init__(
             img_grey,
@@ -443,13 +454,17 @@ class NormalWatershed(WatershedSegmentation):
     def _three_way_threshold(
         self, target_image: MatLike, high_thresh: float, mid_thresh: float, low_thresh: float
     ) -> tuple[MatLike, int]:
-        image_uint8 = target_image.astype(np.uint8) if isinstance(target_image, np.ndarray) else target_image
-        output_mask = np.zeros_like(image_uint8, dtype=np.uint8)
+        image_float = target_image.astype(np.float32) if isinstance(target_image, np.ndarray) else target_image
+        output_mask = np.zeros_like(image_float, dtype=np.uint8)
         thresh_list = [high_thresh, mid_thresh, low_thresh]
         no_overlap_count = 0
+        max_val = float(image_float.max())
+
         for current_thresh in thresh_list:
-            _, thresholded = cv2.threshold(image_uint8, int(current_thresh * image_uint8.max()), 255, cv2.THRESH_BINARY)
-            num_labels, labels = cv2.connectedComponents(thresholded, connectivity=self.connectivity)
+            _, thresholded = cv2.threshold(image_float, current_thresh * max_val, 255, cv2.THRESH_BINARY)
+            thresholded_uint8 = thresholded.astype(np.uint8)
+            num_labels, labels = cv2.connectedComponents(thresholded_uint8, connectivity=self.connectivity)
+
             for label in range(1, num_labels):
                 component_mask = (labels == label).astype(np.uint8) * 255
                 overlap = cv2.bitwise_and(output_mask, component_mask)

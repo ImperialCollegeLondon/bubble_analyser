@@ -12,7 +12,7 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import cv2
 import numpy as np
@@ -51,7 +51,7 @@ class BubMaskWatershed:
         self.img_grey: npt.NDArray[np.uint8]
         self.img_rgb: npt.NDArray[np.uint8]
         self.if_bknd_img: bool
-        self.bknd_img: npt.NDArray[np.uint8]
+        self.bknd_img: npt.NDArray[np.uint8] | None
 
         # Update with provided parameters
         self.update_params(cast(dict[str, object], params))
@@ -96,12 +96,13 @@ class BubMaskWatershed:
 
     def initialize_processing(
         self,
-        params: dict[str, float | int],
+        params: dict[str, Any],
         img_grey: npt.NDArray[np.uint8],
         img_rgb: npt.NDArray[np.uint8],
         if_bknd_img: bool,
-        bknd_img: npt.NDArray[np.uint8] = cast(npt.NDArray[np.uint8], None),
-        cnn_model: object = None,
+        px2mm: float,
+        bknd_img: npt.NDArray[np.uint8] | None = None,
+        cnn_model: Any | None = None,
     ) -> None:
         """Initialize the processing with input images and parameters.
 
@@ -110,6 +111,7 @@ class BubMaskWatershed:
             img_grey (npt.NDArray[np.uint8]): Grayscale input image.
             img_rgb (npt.NDArray[np.uint8]): RGB input image.
             if_bknd_img (bool): Flag indicating if background image is used.
+            px2mm (float): Conversion factor from pixels to millimeters.
             bknd_img (npt.NDArray[np.uint8], optional): Background image if available.
             cnn_model (object, optional): Pre-initialized CNN model.
         """
@@ -117,6 +119,7 @@ class BubMaskWatershed:
         self.img_rgb = img_rgb
         self.if_bknd_img = if_bknd_img
         self.bknd_img = bknd_img
+        self.px2mm = px2mm
 
         # Update parameters
         self.update_params(cast(dict[str, object], params))

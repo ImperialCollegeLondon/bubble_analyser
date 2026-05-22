@@ -428,6 +428,16 @@ class ImageProcessingModel(QObject):
             # Sync back to our state cache for UI consistency
             state = self.img_dict[name]
             state.labels_on_img_before_filter = result.labels_on_img_before_filter
+
+            if result.labels_before_filter is not None:
+                state.labels_before_filter = result.labels_before_filter
+            if result.img_grey is not None:
+                state.img_grey = result.img_grey
+            if result.img_rgb is not None:
+                state.img_rgb = result.img_rgb
+            if result.img_grey_morph_eroded is not None:
+                state.img_grey_morph_eroded = result.img_grey_morph_eroded
+
             return result.labels_on_img_before_filter
 
         return np.zeros((0, 0), dtype=np.int_)
@@ -451,7 +461,7 @@ class ImageProcessingModel(QObject):
         service.set_detector(self.detector)
         service.setup_methods(self.methods_handler, self.filter_param_handler)
 
-        result = service.process_image(name)
+        result = service.process_image(name, existing_state=self.img_dict[name])
 
         if result.success and result.ellipses_on_images is not None:
             # Sync back to our state cache

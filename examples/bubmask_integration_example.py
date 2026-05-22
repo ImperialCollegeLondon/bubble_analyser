@@ -133,7 +133,9 @@ def example_watershed_method() -> None:
         watershed_method = BubMaskWatershed(params)
 
         # Initialize processing
-        watershed_method.initialize_processing(params=params, img_grey=image_grey, img_rgb=image_rgb, if_bknd_img=False)
+        watershed_method.initialize_processing(
+            params=params, img_grey=image_grey, img_rgb=image_rgb, if_bknd_img=False, px2mm=1.0
+        )
 
         # Get results
         _labels_on_img, labels_watershed, _ = watershed_method.get_results_img()

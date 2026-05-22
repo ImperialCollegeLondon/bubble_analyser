@@ -12,6 +12,7 @@ authors = [
 
 [tool.poetry.dependencies]
 python = ">=3.11, <3.13"
+opencv-python = "^4.10.0"
 matplotlib = "^3.10.7"
 toml = "^0.10.2"
 numpy = "1.26.4"
@@ -20,13 +21,10 @@ scipy = "^1.15.3"
 pydantic = "^2.12.3"
 typing-extensions = "^4.15.0"
 pyside6 = "^6.10.0"
-datetime = "^5.5"
-numba = "^0.62.1"
 mkdocstrings-python = ">=0.18"
 pandas = "^2.3.3"
 openpyxl = "^3.1.5"
 h5py = "^3.15.1"
-xlsxwriter = "^3.2.9"
 tensorflow = "^2.20.0"
 ipython = "^8.37.0"
 
@@ -83,7 +81,7 @@ module = [
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-addopts = "-v --mypy -p no:warnings --cov=bubble_analyser --cov-report=html --doctest-modules --ignore=bubble_analyser/__main__.py --ignore=bubble_analyser/mrcnn/ --ignore=examples/ --ignore=bubble_analyser/test_on_methods.py"
+addopts = "-v --mypy -p no:warnings --cov=bubble_analyser --cov-report=html --doctest-modules --ignore=bubble_analyser/__main__.py --ignore=bubble_analyser/mrcnn/ --ignore=examples/ --ignore=tests/test_on_methods.py"
 
 [tool.ruff]
 target-version = "py312"

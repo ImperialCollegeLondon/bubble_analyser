@@ -57,7 +57,7 @@ class WatershedSegmentation:
         connectivity: int = 4,
         if_bknd_img: bool = False,
         h_value: float = 0.1,
-        bknd_img: npt.NDArray[np.uint8] = cast(npt.NDArray[np.uint8], None),
+        bknd_img: npt.NDArray[np.uint8] | None = None,
     ) -> None:
         """Initialize the watershed segmentation base class.
 
@@ -86,7 +86,7 @@ class WatershedSegmentation:
         self.ellipses: list[tuple[tuple[float, float], tuple[float, float], float]]
 
         self.if_bknd_img: bool = if_bknd_img
-        self.bknd_img: npt.NDArray[np.uint8] = bknd_img
+        self.bknd_img: npt.NDArray[np.uint8] | None = bknd_img
 
     def _threshold(self, image: npt.NDArray[np.uint8]) -> npt.NDArray[np.bool_]:
         """Apply thresholding to the input image.
@@ -96,7 +96,7 @@ class WatershedSegmentation:
         """
         logging.debug(f"If background image: {self.if_bknd_img}")
         threshold_methods = ThresholdMethods()
-        if self.if_bknd_img is True:
+        if self.if_bknd_img is True and self.bknd_img is not None:
             thresholded_img = threshold_methods.threshold_with_background(image, self.bknd_img)
         else:
             thresholded_img = threshold_methods.threshold_without_background(image)
@@ -141,44 +141,21 @@ class WatershedSegmentation:
         return labels_watershed
 
     def _fill_ellipses(self, labels: MatLike) -> MatLike:
+        """Label and fill regions in the watershed segmentation result with fitted ellipses."""
         height, width = labels.shape[:2]
 
         # Initialize the labelled image with background label (1)
         labelled_img = np.ones((height, width), dtype=np.int_)
 
         current_label = 2  # Start labelling from 2
-        ellipses = []
         for label in np.unique(labels):
-            if label == 0:
+            if label <= 1:
                 continue  # Skip the background label
 
             mask = np.zeros_like(labels, dtype=np.uint8)
             mask[labels == label] = 255
-            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-            for contour in contours:
-                if len(contour) >= 5:
-                    ellipse = cv2.fitEllipse(contour)
-                    # Validate ellipse parameters before drawing
-                    _center, axes, _angle = ellipse
-                    ellipse_width, ellipse_height = axes
-
-                    # Skip invalid ellipses (width or height <= 0)
-                    if ellipse_width <= 0 or ellipse_height <= 0:
-                        continue
-
-                    try:
-                        cv2.ellipse(mask, ellipse, color=255, thickness=-1)  # type: ignore
-                        ellipses.append(ellipse)
-                    except cv2.error as e:
-                        # Log the error and skip this ellipse
-                        print(f"Warning: Skipping invalid ellipse {ellipse}: {e}")
-                        continue
-
-            labelled_img[mask == 255] = current_label
+            labelled_img[labels == label] = current_label
             current_label += 1
-
-        self.ellipses = ellipses  # type: ignore
         return labelled_img
 
     def _overlay_labels_on_rgb(

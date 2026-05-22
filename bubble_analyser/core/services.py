@@ -5,8 +5,9 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
+import numpy as np
 from numpy import typing as npt
 
 from bubble_analyser.cnn_methods.bubmask_wrapper import BubMaskDetector
@@ -23,8 +24,10 @@ class AnalysisResult:
 
     image_path: Path
     labels_on_img_before_filter: npt.NDArray[Any] | None = None
+    labels_before_filter: npt.NDArray[Any] | None = None
     ellipses_on_images: npt.NDArray[Any] | None = None
     img_rgb: npt.NDArray[Any] | None = None
+    img_grey: npt.NDArray[Any] | None = None
     img_grey_morph_eroded: npt.NDArray[Any] | None = None
     labelled_ellipses_mask: npt.NDArray[Any] | None = None
     ellipses_properties: list[dict[str, Any]] | None = None
@@ -73,34 +76,30 @@ class SegmentationService:
         Returns:
             ImageState: Updated state with labels.
         """
+        from bubble_analyser.core.interfaces import SegmentationMethod
+
         all_params = state.all_methods_n_params if hasattr(state, "all_methods_n_params") else {}
 
         for name, instance in self.methods_handler.all_classes.items():
             if name == algorithm:
                 params = all_params.get(name, {})
+                method: SegmentationMethod = cast(SegmentationMethod, instance)
 
-                # BubMask requires specific initialization
-                if name == "BubMask (Deep Learning)":
-                    instance.initialize_processing(  # type: ignore
-                        params=params,
-                        img_grey=state.img_grey,
-                        img_rgb=state.img_rgb,
-                        if_bknd_img=state.if_bknd_img,
-                        bknd_img=state.bknd_img,
-                        cnn_model=detector,
-                    )
-                else:
-                    instance.initialize_processing(  # type: ignore
-                        params=params,
-                        img_grey=state.img_grey,
-                        img_rgb=state.img_rgb,
-                        if_bknd_img=state.if_bknd_img,
-                        bknd_img=state.bknd_img,
-                    )
-
-                state.labels_on_img_before_filter, state.labels_before_filter, state.img_grey_morph_eroded = (
-                    instance.get_results_img()  # type: ignore
+                method.initialize_processing(
+                    params=params,
+                    img_grey=state.img_grey,
+                    img_rgb=state.img_rgb,
+                    if_bknd_img=state.if_bknd_img,
+                    px2mm=state.px2mm_display,
+                    bknd_img=state.bknd_img,
+                    cnn_model=detector,
                 )
+
+                res = method.get_results_img()
+                state.labels_on_img_before_filter = res[0]
+                state.labels_before_filter = res[1]
+                state.img_grey_morph_eroded = res[2] if res[2] is not None else np.zeros((0, 0), dtype=np.uint8)
+
                 break
 
         return state
@@ -181,12 +180,18 @@ class AnalysisService:
         """Set the deep learning detector."""
         self.detector = detector
 
-    def process_image(self, image_path: Path, skip_filtering: bool = False) -> AnalysisResult:
+    def process_image(
+        self,
+        image_path: Path,
+        skip_filtering: bool = False,
+        existing_state: ImageState | None = None,
+    ) -> AnalysisResult:
         """Execute the full processing pipeline for a single image.
 
         Args:
             image_path: Path to the image to process.
             skip_filtering: If true, only run the segmentation step.
+            existing_state: If provided, skips preprocessing/segmentation and uses this state.
 
         Returns:
             AnalysisResult: Object containing the processed image outputs and properties.
@@ -194,28 +199,41 @@ class AnalysisService:
         result = AnalysisResult(image_path=image_path)
 
         try:
-            # Create state
-            state = ImageState(
-                raw_img_path=image_path, px2mm_display=self.px2mm_display, bknd_img_path=self.bknd_img_path
-            )
+            if existing_state is None:
+                #Create initial state
+                state = ImageState(
+                    raw_img_path=image_path,
+                    px2mm_display=self.px2mm_display,
+                    bknd_img_path=self.bknd_img_path,
+                )
 
-            # Step 1: Preprocessing
-            params = self.all_methods_n_params.get(self.algorithm, {})
-            state.resample = params.get("resample", 0.5)
-            state = PreprocessingService.load_and_resize(state)
+                # Step 1: Preprocessing
+                params = self.all_methods_n_params.get(self.algorithm, {})
+                state.resample = params.get("resample", 0.5)
+                state = PreprocessingService.load_and_resize(state)
 
-            # Step 2: Segmentation
-            segmentation_service = SegmentationService(self.methods_handler)
-            # Add all params to state temporarily for the service
-            state.all_methods_n_params = self.all_methods_n_params  # type: ignore
-            state = segmentation_service.segment(state, self.algorithm, self.detector)
+                # Step 2: Segmentation
+                segmentation_service = SegmentationService(self.methods_handler)
+                # Add all params to state temporarily for the service
+                state.all_methods_n_params = self.all_methods_n_params
+                state = segmentation_service.segment(state, self.algorithm, self.detector)
+
+            else:
+                state = existing_state
 
             result.labels_on_img_before_filter = state.labels_on_img_before_filter
+            result.labels_before_filter = state.labels_before_filter
+            result.img_rgb = state.img_rgb
+            result.img_grey = state.img_grey
+            result.img_grey_morph_eroded = state.img_grey_morph_eroded
 
             # Step 3: Quantification (Optional)
             if not skip_filtering:
                 state = QuantificationService.process(
-                    state, self.filter_param_dict_1, self.filter_param_dict_2, self.px2mm_display
+                    state,
+                    self.filter_param_dict_1,
+                    self.filter_param_dict_2,
+                    self.px2mm_display,
                 )
 
                 result.ellipses_on_images = state.ellipses_on_images

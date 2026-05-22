@@ -9,8 +9,8 @@ if __name__ == "__main__":
     from matplotlib import pyplot as plt
 
     # Define paths
-    img_grey_path = "../tests/test_image_grey.JPG"
-    img_rgb_path = "../tests/test_image_rgb.JPG"
+    img_grey_path = "./test_image_grey.JPG"
+    img_rgb_path = "./test_image_rgb.JPG"
 
     # Change to your desired output location
     background_path = None  # Change if you have a background image
@@ -54,15 +54,15 @@ if __name__ == "__main__":
     img_morph_eroded = normal_watershed.img_grey_morph_eroded
     img_grey_dt_thresh = normal_watershed.img_grey_dt_thresh
 
-    img_grey_thresh_path = "../tests/with_grng_DT/without_gaussianblur/grey_thresh.JPG"
-    img_dt_path = "../tests/with_grng_DT/without_gaussianblur/dt.JPG"
-    img_dt_thresh_save_path = "../tests/with_grng_DT/without_gaussianblur/dt_thresh.JPG"
-    img_morph_save_path = "../tests/with_grng_DT/without_gaussianblur/mt.JPG"
-    img_morph_eroded_save_path = "../tests/with_grng_DT/without_gaussianblur/mt_eroded.JPG"
-    img_segmented_save_path = "../tests/with_grng_DT/without_gaussianblur/segmented.JPG"
-    grad_img_save_path = "../tests/with_grng_DT/without_gaussianblur/grad.JPG"
-    output_path = "../tests/with_grng_DT/without_gaussianblur/plot_together.JPG"
-    np.save("../tests/with_grng_DT/without_gaussianblur/test_labels_watershed.npy", labels_watershed)
+    img_grey_thresh_path = "./with_grng_DT/without_gaussianblur/grey_thresh.JPG"
+    img_dt_path = "./with_grng_DT/without_gaussianblur/dt.JPG"
+    img_dt_thresh_save_path = "./with_grng_DT/without_gaussianblur/dt_thresh.JPG"
+    img_morph_save_path = "./with_grng_DT/without_gaussianblur/mt.JPG"
+    img_morph_eroded_save_path = "./with_grng_DT/without_gaussianblur/mt_eroded.JPG"
+    img_segmented_save_path = "./with_grng_DT/without_gaussianblur/segmented.JPG"
+    grad_img_save_path = "./with_grng_DT/without_gaussianblur/grad.JPG"
+    output_path = "./with_grng_DT/without_gaussianblur/plot_together.JPG"
+    np.save("./with_grng_DT/without_gaussianblur/test_labels_watershed.npy", labels_watershed)
     cv2.imwrite(str(img_grey_thresh_path), img_grey_thresh.astype(np.uint8))
     cv2.imwrite(str(img_dt_path), dist_transform)
     cv2.imwrite(str(img_morph_save_path), img_morph * 255)
