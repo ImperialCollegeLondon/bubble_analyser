@@ -25,7 +25,7 @@ logging.basicConfig(level=logging.WARNING)
 
 def main():
     config = Config()
-    
+
     project_root = Path(__file__).resolve().parent.parent
     # Reduce image size or select a specific one
     img_path = project_root / "example_imgs/sample_bubble_images/IMG_9423.JPG"

@@ -6,10 +6,10 @@ import numpy as np
 from bubble_analyser.methods.watershed_methods import TestWatershed
 
 if __name__ == "__main__":
+    from pathlib import Path
+
     from matplotlib import pyplot as plt
 
-    from pathlib import Path
-    
     # Define paths dynamically based on current file location
     current_dir = Path(__file__).parent
     img_grey_path = str(current_dir / "test_image_grey.JPG")

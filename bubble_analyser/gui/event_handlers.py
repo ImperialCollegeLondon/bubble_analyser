@@ -40,6 +40,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QFileDialog,
     QHBoxLayout,
+    QLabel,
     QLineEdit,
     QListView,
     QMessageBox,
@@ -1182,9 +1183,24 @@ class ImageProcessingTabHandler(QThread):
         """
         logging.info("------------------------------Processing Started------------------------------")
 
+        # Determine the correct message for the dialog
+        msg = "Processing Step 1..."
+        if "Deep Learning" in self.model.algorithm:
+            instance = self.model.methods_handler.all_classes.get(self.model.algorithm)
+            # Check if it has a detector attribute that is not yet loaded
+            if instance and hasattr(instance, "detector"):
+                detector = getattr(instance, "detector")
+                if detector is None or (hasattr(detector, "is_loaded") and not detector.is_loaded):
+                    msg = "Loading Machine Learning engine...\n(First run: ~20-60 seconds)"
+
         # Create and show processing dialog
-        self.processing_dialog = ProcessingDialog(self.gui, "Processing Step 1...")
+        self.processing_dialog = ProcessingDialog(self.gui, msg)
         self.processing_dialog.show()
+
+        # Force the UI to paint the dialog before starting the heavy work
+        from PySide6.QtWidgets import QApplication
+
+        QApplication.processEvents()
 
         # Create and start worker thread
         self.step_1_worker = Step1Worker(self.model, self.current_index)
@@ -1198,7 +1214,7 @@ class ImageProcessingTabHandler(QThread):
         Args:
             img (npt.NDArray[np.int_]): The processed image.
         """
-        # Close dialog
+        # Close dialogs
         if hasattr(self, "processing_dialog"):
             self.processing_dialog.close()
 
@@ -1567,14 +1583,31 @@ class ImageProcessingTabHandler(QThread):
             num_images (int): The total number of images to process, used to set the progress bar range.
         """
         self.progress_dialog = QDialog(self.gui)
-        self.progress_dialog.setWindowTitle("Batch Processing in Progress")
-        self.progress_dialog.setFixedSize(400, 100)
+        self.progress_dialog.setWindowTitle("Batch Processing")
+        self.progress_dialog.setFixedSize(400, 150)
+
+        # Professional flags: Title only, no close button for stability
+        self.progress_dialog.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.WindowTitleHint)
 
         layout = QVBoxLayout(self.progress_dialog)
 
+        # Add a status label
+        self.status_label = QLabel("Processing images...", self.progress_dialog)
+        if "Deep Learning" in self.model.algorithm:
+            from bubble_analyser.methods.bubmask_method import BubMaskWatershed
+
+            instance = self.model.methods_handler.all_classes.get(self.model.algorithm)
+            if isinstance(instance, BubMaskWatershed) and (
+                instance.detector is None or not instance.detector.is_loaded
+            ):
+                self.status_label.setText("Loading Machine Learning engine...\n(First run: ~20-60 seconds)")
+
+        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.status_label)
+
         self.progress_bar = QProgressBar(self.progress_dialog)
         self.progress_bar.setRange(0, num_images)
-        self.progress_bar.setValue(0)  # Start with 0 progress
+        self.progress_bar.setValue(0)
 
         layout.addWidget(self.progress_bar)
 
@@ -1587,6 +1620,8 @@ class ImageProcessingTabHandler(QThread):
         Args:
             value (int): The new progress value to display.
         """
+        if hasattr(self, "status_label"):
+            self.status_label.setText(f"Processing images... ({value}/{self.progress_bar.maximum()})")
         self.progress_bar.setValue(value)
         logging.info(f"Updating progress bar: {value}")
 
@@ -1810,16 +1845,48 @@ class ResultsTabHandler(QThread):
 
         dxy_x_power: int = int(self.gui.dxy_x_input.text())
         dxy_y_power: int = int(self.gui.dxy_y_input.text())
-        # Calculate descriptive sizes
-        d32, d_mean, dxy = self.calculate_descriptive_sizes(equivalent_diameters_array, dxy_x_power, dxy_y_power)
+
+        # Calculate descriptive sizes based on the selected basis
+        d32, d_mean, dxy = self.calculate_descriptive_sizes(
+            equivalent_diameters_array, dxy_x_power, dxy_y_power, basis=histogram_type
+        )
+
+        # Calculate total bubble count
+        total_bubbles = len(equivalent_diameters_array)
 
         if not self.if_dinf_displayed:
-            logging.info(f"d32: {d32}, d_mean: {d_mean}, d{dxy_x_power}{dxy_y_power}: {dxy}")
+            logging.info(
+                f"Basis: {histogram_type}, d32: {d32}, Mean: {d_mean}, "
+                f"d{dxy_x_power}{dxy_y_power}: {dxy}, Total bubbles: {total_bubbles}"
+            )
             self.if_dinf_displayed = True
 
-        # Update descriptive size label
+        # Update descriptive size label with scientific formatting and bubble count
+        subscripts = {
+            "0": "₀",
+            "1": "₁",
+            "2": "₂",
+            "3": "₃",
+            "4": "₄",
+            "5": "₅",
+            "6": "₆",
+            "7": "₇",
+            "8": "₈",
+            "9": "₉",
+        }
+        x_sub = "".join(subscripts.get(c, c) for c in str(dxy_x_power))
+        y_sub = "".join(subscripts.get(c, c) for c in str(dxy_y_power))
+        dxy_label = f"d{x_sub}{y_sub}"
+
+        basis_label = "Volume-Weighted" if histogram_type == "Volume" else "Number-Weighted"
+        mean_label = "d₄₃ (Volume Mean)" if histogram_type == "Volume" else "d₁₀ (Arithmetic)"
+
         desc_text = (
-            f"Results:\nd32 = {d32:.2f} mm\ndmean = {d_mean:.2f} mm\n d{dxy_x_power}{dxy_y_power} = {dxy:.2f} mm"
+            f"<b>Results ({basis_label}):</b><br>"
+            f"d₃₂ (Sauter) = {d32:.2f} mm<br>"
+            f"{mean_label} = {d_mean:.2f} mm<br>"
+            f"{dxy_label} = {dxy:.2f} mm<br><br>"
+            f"<b>Total Bubbles Found: {total_bubbles}</b>"
         )
         self.gui.descriptive_size_label.setText(desc_text)
 
@@ -1894,28 +1961,36 @@ class ResultsTabHandler(QThread):
         return
 
     def calculate_descriptive_sizes(
-        self, equivalent_diameters: npt.NDArray[np.float64], dxy_x_power: float, dxy_y_power: float
+        self,
+        equivalent_diameters: npt.NDArray[np.float64],
+        dxy_x_power: float,
+        dxy_y_power: float,
+        basis: str = "Count",
     ) -> tuple[float, float, float]:
-        """Calculate characteristic diameters from the equivalent diameters.
+        """Calculate characteristic diameters based on the selected basis.
 
         Args:
-            equivalent_diameters (npt.NDArray[np.float64]): Array of equivalent diameters.
-            dxy_x_power (float): Power for x component in general mean diameter calculation.
-            dxy_y_power (float): Power for y component in general mean diameter calculation.
+            equivalent_diameters: Array of equivalent diameters.
+            dxy_x_power: Power for x component in d_xy.
+            dxy_y_power: Power for y component in d_xy.
+            basis: "Count" for number-weighted or "Volume" for volume-weighted.
 
         Returns:
-            tuple[float, float, float]: A tuple containing (d32, d_mean, dxy) where:
-                - d32: Sauter mean diameter
-                - d_mean: Arithmetic mean diameter
-                - dxy: General mean diameter with user-specified powers
+            tuple: (d32, d_mean, dxy)
         """
-        d32: float = np.sum(equivalent_diameters**3) / np.sum(equivalent_diameters**2)  # type: ignore
+        # d32 (Sauter Mean) is physically the same regardless of basis (Sum(d^3)/Sum(d^2))
+        d32: float = np.sum(equivalent_diameters**3) / np.sum(equivalent_diameters**2)
 
-        # d32, Sauter diameter, should be calculated based on the area, and volume
-        # diameter of a circle, which is unkown right now
-
-        d_mean: float = float(np.mean(equivalent_diameters))
-        dxy: float = np.sum(equivalent_diameters**dxy_x_power) / np.sum(equivalent_diameters**dxy_y_power)  # type: ignore
+        if basis == "Volume":
+            # Volume-weighted Mean (d43)
+            d_mean = np.sum(equivalent_diameters**4) / np.sum(equivalent_diameters**3)
+            # Volume-weighted d_xy: Shift moments by 3 orders (volume weight is d^3)
+            dxy = np.sum(equivalent_diameters ** (dxy_x_power + 3)) / np.sum(equivalent_diameters ** (dxy_y_power + 3))
+        else:
+            # Number-weighted Mean (d10)
+            d_mean = float(np.mean(equivalent_diameters))
+            # Number-weighted d_xy
+            dxy = np.sum(equivalent_diameters**dxy_x_power) / np.sum(equivalent_diameters**dxy_y_power)
 
         return d32, d_mean, dxy
 

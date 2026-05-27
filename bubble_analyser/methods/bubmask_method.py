@@ -12,13 +12,16 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import cv2
 import numpy as np
 from numpy import typing as npt
 
-from bubble_analyser.cnn_methods.bubmask_wrapper import BubMaskConfig, BubMaskDetector
+if TYPE_CHECKING:
+    from bubble_analyser.cnn_methods.bubmask_wrapper import BubMaskDetector
+
+# from bubble_analyser.cnn_methods.bubmask_wrapper import BubMaskConfig, BubMaskDetector
 from bubble_analyser.processing.image_postprocess import overlay_labels_on_rgb
 
 
@@ -115,6 +118,8 @@ class BubMaskWatershed:
             bknd_img (npt.NDArray[np.uint8], optional): Background image if available.
             cnn_model (object, optional): Pre-initialized CNN model.
         """
+        from bubble_analyser.cnn_methods.bubmask_wrapper import BubMaskConfig, BubMaskDetector
+
         self.img_grey = img_grey
         self.img_rgb = img_rgb
         self.if_bknd_img = if_bknd_img
@@ -157,7 +162,7 @@ class BubMaskWatershed:
             return []
 
         try:
-            results = []
+            results: list[dict[str, Any]] = []
             if self.detector.model is None:
                 raise RuntimeError("Model not loaded")
 

@@ -16,32 +16,28 @@ Usage:
 """
 
 import logging
-import sys
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import cv2
 import numpy as np
 import skimage.io
 from numpy import typing as npt
 
-# Add BubMask to Python path
-CURRENT_DIR = Path(__file__).parent.absolute()
-BUBMASK_DIR = CURRENT_DIR.parent.parent.parent / "BubMask"
-BUBBLE_DIR = BUBMASK_DIR / "bubble"
 
-if str(BUBMASK_DIR) not in sys.path:
-    sys.path.insert(0, str(BUBMASK_DIR))
-if str(BUBBLE_DIR) not in sys.path:
-    sys.path.insert(0, str(BUBBLE_DIR))
+# Import BubMask modules
+def import_mrcnn() -> tuple[Any, Any, Any]:
+    """Lazy import of heavy ML modules."""
+    import logging
 
-try:
-    # Import BubMask modules
-    from bubble_analyser.bubble import _InfConfig, color_splash
-    from bubble_analyser.mrcnn import model as modellib
-except ImportError as e:
-    logging.error(f"Failed to import BubMask modules: {e}")
-    raise ImportError(f"BubMask modules not found. Please ensure BubMask is properly installed. Error: {e}")
+    try:
+        from bubble_analyser.bubble import _InfConfig, color_splash
+        from bubble_analyser.mrcnn import model as modellib
+
+        return _InfConfig, color_splash, modellib
+    except ImportError as e:
+        logging.error(f"Failed to import BubMask modules: {e}")
+        raise ImportError(f"BubMask modules not found. Please ensure BubMask is properly installed. Error: {e}")
 
 
 class BubMaskConfig:
@@ -173,14 +169,23 @@ class BubMaskDetector:
         """
         self.weights_path = Path(weights_path)
         self.config = config or BubMaskConfig()
-        self.model: modellib.MaskRCNN | None = None
-        self._load_model()
+        self.model = None
+        self.is_loading = False  # Track if we are currently in the middle of a load
+
+    @property
+    def is_loaded(self) -> bool:
+        """Check if the model is loaded."""
+        return self.model is not None
 
     def _load_model(self) -> None:
         """Load the BubMask model with specified configuration."""
+        self.is_loading = True
         try:
+            # Use lazy import
+            _InfConfig, _, modellib = import_mrcnn()
+
             # Create inference configuration
-            class RuntimeInfConfig(_InfConfig):
+            class RuntimeInfConfig(_InfConfig):  # type: ignore[misc, valid-type]
                 IMAGE_MIN_DIM = self.config.image_min_dim
                 IMAGE_MAX_DIM = self.config.image_max_dim
                 GPU_COUNT = self.config.gpu_count
@@ -202,6 +207,8 @@ class BubMaskDetector:
         except Exception as e:
             logging.error(f"Failed to load BubMask model: {e}")
             raise
+        finally:
+            self.is_loading = False
 
     def detect_bubbles_progressive(
         self,
@@ -286,6 +293,9 @@ class BubMaskDetector:
             - 'image_shape': Original image shape
         """
         try:
+            if self.model is None:
+                self._load_model()
+
             # Load and preprocess image
             if isinstance(image_or_path, str | Path):
                 image = skimage.io.imread(str(image_or_path))
@@ -317,6 +327,7 @@ class BubMaskDetector:
                 filtered_results["masks"] = results["masks"][:, :, keep_indices]
 
             if return_splash:
+                _, color_splash, _ = import_mrcnn()
                 splash_img = color_splash(image, cast(npt.NDArray[np.bool_], results["masks"][:, :, keep_indices]))
                 filtered_results["splash"] = splash_img
 
@@ -428,6 +439,7 @@ class BubMaskDetector:
                         filtered_result["masks"] = result["masks"][:, :, keep_indices]
 
                     if save_splash:
+                        _, color_splash, _ = import_mrcnn()
                         splash_img = color_splash(
                             batch_images[j], cast(npt.NDArray[np.bool_], result["masks"][:, :, keep_indices])
                         )

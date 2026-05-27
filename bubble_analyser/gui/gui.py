@@ -23,13 +23,8 @@ to connect UI interactions with the underlying processing functionality.
 
 from datetime import datetime
 
-import matplotlib
-
 # import bubble_analyser.gui.event_handlers as hd
-
 # Try to change orders
-
-matplotlib.use("Agg")  # Force backend to Agg for CI
 from typing import cast
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
@@ -136,7 +131,7 @@ class ProcessingDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(title)
         self.setModal(True)
-        self.setFixedSize(200, 230)  # Increased height for time label
+        self.setFixedSize(350, 230)  # Reverted height, kept width for visibility
 
         # Remove the close button
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowCloseButtonHint)

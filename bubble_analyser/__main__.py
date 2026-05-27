@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QThread, Signal
-from PySide6.QtWidgets import QApplication, QMessageBox, QProgressDialog
+from PySide6.QtWidgets import QApplication, QProgressDialog
 
 
 def setup_basic_logging() -> None:
@@ -111,37 +111,15 @@ if __name__ == "__main__":
 
         install_global_exception_handler()
 
-        # 2. Check for weights
-        w_path, w_url = get_weights_path(download_if_missing=False)
+        # 2. Check for weights (silent check)
+        w_path, _ = get_weights_path(download_if_missing=False)
 
         if not w_path:
-            # The weights are missing. Ask the user what to do.
-            reply = QMessageBox.question(
-                None,
-                "Missing ML Weights",
-                "The Machine Learning weights (mask_rcnn_bubble.h5, ~250 MB) are missing.\n\n"
-                "These are required for CNN-based segmentation methods.\n"
-                "Would you like to download them now?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            )
-
-            if reply == QMessageBox.StandardButton.Yes:
-                # User accepted: Start the download with progress bar
-                target_path = Path(__file__).parent / "weights" / "mask_rcnn_bubble.h5"
-                logging.info(f"User accepted download. Target: {target_path}")
-
-                success = False
-                if w_url is not None:
-                    success = handle_weights_download(w_url, target_path)
-
-                if not success:
-                    logging.warning("Download failed or cancelled during progress.")
-            else:
-                # User declined: Log it and proceed (CNN will be disabled in GUI)
-                logging.info("User declined weight download. CNN methods will be unavailable.")
+            logging.info("ML weights (mask_rcnn_bubble.h5) not found. CNN methods will be unavailable.")
+        else:
+            logging.info(f"ML weights found at: {w_path}")
 
         # 3. Start the GUI
-        # (The MainHandler will auto-detect the existing 'app' instance due to your previous fix)
         MainHandler()
         sys.exit(app.exec())
 
