@@ -3,11 +3,8 @@ name = "bubble_analyser"
 version = "0.2.2"
 description = "[Description for project.]"
 authors = [
-    "Mr Yiyang Guan <yg1521@ic.ac.uk>",
     "Dr Diego Mesa <d.mesa@ic.ac.uk>",
-    "Diego Alonso Álvarez <d.alonso-alvarez@imperial.ac.uk>",
-    "Dr Paulina Quintanilla",
-    "Dr Francisco Reyes"
+    "Mr Yiyang Guan"
 ]
 
 [tool.poetry.dependencies]

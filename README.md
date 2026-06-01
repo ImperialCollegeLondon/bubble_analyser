@@ -109,8 +109,12 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 
 ## Authors
 
-- Mr Yiyang Guan - Department of Earth Science and Engineering, Imperial College London
-- Dr Diego Mesa - Department of Earth Science and Engineering, Imperial College London
-- Dr Diego Alonso Álvarez - Imperial College London RSE Team, Imperial College London
-- Dr Paulina Quintanilla - Department of Chemical Engineering, Brunel University
+- Dr Diego Mesa (Main Author) - Department of Earth Science and Engineering, Imperial College London, United Kingdom
+- Mr Yiyang Guan - Department of Earth Science and Engineering, Imperial College London, United Kingdom
+
+### Past Collaborators
+
+- Dr Diego Alonso Álvarez - Imperial College London RSE Team, Imperial College London, United Kingdom
+- Dr Paulina Quintanilla - Department of Chemical Engineering, Brunel University, United Kingdom
 - Dr Francisco Reyes - IntelliSense.io, Queensland, Australia
+- Dr Luis Vinnett - Universidad Tecnica Federico Santa Maria, Chile
