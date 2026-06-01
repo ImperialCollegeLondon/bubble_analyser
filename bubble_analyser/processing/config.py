@@ -76,24 +76,14 @@ class FilteringConfig(BaseModel):
 
     max_eccentricity: float = Field(default=0.85, ge=0.0, le=1.0)
     min_solidity: float = Field(default=0.9, ge=0.0, le=1.0)
+    min_circularity: float = Field(default=0.5, ge=0.0, le=1.0)
     min_size: float = Field(default=0.1, ge=0.0)
     max_size: float = Field(default=10.0, ge=0.0)
-
-    # Circle detection parameters
-    if_find_circles: bool = Field(default=False)
-    L_maxA: float = Field(default=20.0)
-    L_minA: float = Field(default=10.0)
-    s_maxA: float = Field(default=5.0)
-    s_minA: float = Field(default=1.0)
 
     @model_validator(mode="after")
     def validate_ranges(self) -> Self:
         if self.min_size > self.max_size:
             raise ValueError("min_size must be <= max_size")
-        if self.L_minA >= self.L_maxA:
-            raise ValueError("L_minA must be < L_maxA")
-        if self.s_minA >= self.s_maxA:
-            raise ValueError("s_minA must be < s_maxA")
         return self
 
 
@@ -206,16 +196,12 @@ class Config(BaseModel):
     max_eccentricity_range: tuple[float, float] = (0.1, 1.0)
     min_solidity: float = 0.9
     min_solidity_range: tuple[float, float] = (0.1, 1.0)
+    min_circularity: float = 0.5
+    min_circularity_range: tuple[float, float] = (0.1, 1.0)
 
     min_size: float = 0.1
     min_size_range: tuple[float, float] = (0.0, 50.0)
     max_size: float = 20000.0
-
-    if_find_circles: str = "N"
-    L_maxA: float = 20.0
-    L_minA: float = 10.0
-    s_maxA: float = 5.0
-    s_minA: float = 1.0
 
     model_config = ConfigDict(validate_assignment=True)
 
@@ -237,6 +223,8 @@ class Config(BaseModel):
             raise ValueError("Chosen max_eccentricity is not within valid range (0, 1)")
         if not (self.default_range[0] <= self.min_solidity <= self.default_range[1]):
             raise ValueError("Chosen min_solidity is not within valid range (0, 1)")
+        if not (self.default_range[0] <= self.min_circularity <= self.default_range[1]):
+            raise ValueError("Chosen min_circularity is not within valid range (0, 1)")
         if not (self.min_size <= self.max_size):
             raise ValueError("min_size must be less than max_size")
         if not (self.resample_range[0] <= self.resample <= self.resample_range[1]):

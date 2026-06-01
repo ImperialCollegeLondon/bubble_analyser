@@ -46,10 +46,12 @@ class BubMaskConfig:
     def __init__(
         self,
         confidence_threshold: float = 0.9,
-        image_min_dim: int = 128,
-        image_max_dim: int = 256,
+        image_min_dim: int = 192,
+        image_max_dim: int = 384,
         gpu_count: int = 1,
         images_per_gpu: int = 1,
+        max_bubbles: int = 300,
+        nms_threshold: float = 0.3,
     ):
         """Initialize BubMask configuration.
 
@@ -59,12 +61,16 @@ class BubMaskConfig:
             image_max_dim: Maximum image dimension for processing
             gpu_count: Number of GPUs to use (1 for single GPU, 0 for CPU)
             images_per_gpu: Number of images per GPU batch
+            max_bubbles: Maximum number of bubbles to detect
+            nms_threshold: Non-maximum suppression threshold for detections
         """
         self.confidence_threshold = confidence_threshold
         self.image_min_dim = image_min_dim
         self.image_max_dim = image_max_dim
         self.gpu_count = gpu_count
         self.images_per_gpu = images_per_gpu
+        self.max_bubbles = max_bubbles
+        self.nms_threshold = nms_threshold
 
     @classmethod
     def for_high_quality(cls, confidence_threshold: float = 0.9) -> "BubMaskConfig":
@@ -82,6 +88,8 @@ class BubMaskConfig:
             image_max_dim=1024,
             gpu_count=1,
             images_per_gpu=1,
+            max_bubbles=500,
+            nms_threshold=0.3,
         )
 
     @classmethod
@@ -100,6 +108,8 @@ class BubMaskConfig:
             image_max_dim=512,
             gpu_count=1,
             images_per_gpu=1,
+            max_bubbles=300,
+            nms_threshold=0.3,
         )
 
     @classmethod
@@ -118,6 +128,8 @@ class BubMaskConfig:
             image_max_dim=256,
             gpu_count=1,
             images_per_gpu=1,
+            max_bubbles=100,
+            nms_threshold=0.3,
         )
 
     @classmethod
@@ -136,6 +148,8 @@ class BubMaskConfig:
             image_max_dim=512,
             gpu_count=0,  # Force CPU usage
             images_per_gpu=1,
+            max_bubbles=300,
+            nms_threshold=0.3,
         )
 
     @classmethod
@@ -190,6 +204,8 @@ class BubMaskDetector:
                 IMAGE_MAX_DIM = self.config.image_max_dim
                 GPU_COUNT = self.config.gpu_count
                 IMAGES_PER_GPU = self.config.images_per_gpu
+                DETECTION_MAX_INSTANCES = self.config.max_bubbles
+                DETECTION_NMS_THRESHOLD = self.config.nms_threshold
 
             inference_config = RuntimeInfConfig()
 

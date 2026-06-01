@@ -31,8 +31,8 @@ class BubMaskWatershed:
 
         Args:
             params (Dict[str, float | int]): Dictionary containing parameters for the method.
-                Must include 'weights_path', 'confidence_threshold', 'target_width',
-                'image_min_dim', 'image_max_dim', 'element_size', 'connectivity', and 'alpha'.
+                Must include 'weights_path', 'confidence_threshold', 'resample',
+                'max_bubbles', and 'nms_threshold'.
         """
         self.name = "BubMask (Deep Learning)"
         self.description = (
@@ -47,6 +47,8 @@ class BubMaskWatershed:
         self.image_min_dim: int = 192
         self.image_max_dim: int = 384
         self.alpha: float = 0.5
+        self.max_bubbles: int = 300
+        self.nms_threshold: float = 0.3
 
         self.detector: BubMaskDetector | None = None
         self.detection_results: dict[str, object] = {}
@@ -68,11 +70,23 @@ class BubMaskWatershed:
         return {
             "weights_path": self.weights_path,
             "confidence_threshold": self.confidence_threshold,
-            # "target_width": self.target_width,
             "resample": self.resample,
-            "image_min_dim": self.image_min_dim,
-            "image_max_dim": self.image_max_dim,
-            "alpha": self.alpha,
+            "max_bubbles": self.max_bubbles,
+            "nms_threshold": self.nms_threshold,
+        }
+
+    def get_param_descriptions(self) -> dict[str, str]:
+        """Get descriptions for each parameter for use in GUI tooltips.
+
+        Returns:
+            Dict[str, str]: Dictionary mapping parameter names to their descriptions.
+        """
+        return {
+            "weights_path": "Absolute path to the trained Mask R-CNN model weights (.h5 file).",
+            "confidence_threshold": "Minimum probability (0.0 to 1.0) required for a detection to be accepted as a bubble.",  # noqa: E501
+            "resample": "Resampling factor to scale the image before processing. Lower values increase speed but reduce detail.",  # noqa: E501
+            "max_bubbles": "Maximum number of bubbles the model is allowed to detect in a single image.",
+            "nms_threshold": "Non-Maximum Suppression threshold. Lower values allow less overlap between detected bubbles.",  # noqa: E501
         }
 
     def update_params(self, params: dict[str, object]) -> None:
@@ -86,16 +100,12 @@ class BubMaskWatershed:
             self.weights_path = str(params["weights_path"])
         if "confidence_threshold" in params:
             self.confidence_threshold = float(cast(float, params["confidence_threshold"]))
-        # if "target_width" in params:
-        #     self.target_width = int(params["target_width"])
         if "resample" in params:
             self.resample = float(cast(float, params["resample"]))
-        if "image_min_dim" in params:
-            self.image_min_dim = int(cast(int, params["image_min_dim"]))
-        if "image_max_dim" in params:
-            self.image_max_dim = int(cast(int, params["image_max_dim"]))
-        if "alpha" in params:
-            self.alpha = float(cast(float, params["alpha"]))
+        if "max_bubbles" in params:
+            self.max_bubbles = int(cast(float, params["max_bubbles"]))
+        if "nms_threshold" in params:
+            self.nms_threshold = float(cast(float, params["nms_threshold"]))
 
     def initialize_processing(
         self,
@@ -131,6 +141,12 @@ class BubMaskWatershed:
 
         if cnn_model is not None:
             self.detector = cast(BubMaskDetector, cnn_model)
+            # Ensure the pre-initialized model's config matches the current parameters
+            self.detector.update_config(
+                confidence_threshold=self.confidence_threshold,
+                max_bubbles=self.max_bubbles,
+                nms_threshold=self.nms_threshold,
+            )
 
         # Initialize BubMask detector if not already done
         if self.detector is None and self.weights_path:
@@ -139,6 +155,8 @@ class BubMaskWatershed:
                     confidence_threshold=self.confidence_threshold,
                     image_min_dim=self.image_min_dim,
                     image_max_dim=self.image_max_dim,
+                    max_bubbles=self.max_bubbles,
+                    nms_threshold=self.nms_threshold,
                 )
                 self.detector = BubMaskDetector(self.weights_path, config)
                 logging.info("BubMask detector initialized successfully")

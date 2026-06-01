@@ -30,7 +30,7 @@ import pandas as pd  # Add this import
 import toml as tomllib  # type: ignore
 from numpy import typing as npt
 from pydantic import ValidationError
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import QEventLoop, Qt, QThread, Signal
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -45,6 +45,7 @@ from PySide6.QtWidgets import (
     QListView,
     QMessageBox,
     QProgressBar,
+    QProgressDialog,
     QPushButton,
     QTableWidgetItem,
     QTreeView,
@@ -60,6 +61,51 @@ from bubble_analyser.gui import (
 )
 from bubble_analyser.gui.gui import MainWindow, ProcessingDialog
 from bubble_analyser.processing import Config, cv2_to_qpixmap
+
+
+class WeightsDownloadThread(QThread):
+    """Thread to download ML weights without blocking the GUI."""
+
+    progress_changed = Signal(int)
+    finished_download = Signal(bool, str)
+
+    def run(self) -> None:
+        """Execute the weight download process."""
+        try:
+            import requests
+
+            try:
+                import bubble_analyser.weights.loader as weights_loader
+
+                url = getattr(weights_loader, "WEIGHTS_URL")
+            except (ImportError, AttributeError):
+                url = "https://github.com/ImperialCollegeLondon/bubble_analyser/releases/download/v0.3.0/mask_rcnn_bubble.h5"
+
+            if getattr(sys, "frozen", False):
+                base_dir = getattr(sys, "_MEIPASS", "")
+            else:
+                base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+            weights_dir = os.path.join(base_dir, "bubble_analyser", "weights")
+            os.makedirs(weights_dir, exist_ok=True)
+            weights_path = os.path.join(weights_dir, "mask_rcnn_bubble.h5")
+
+            response = requests.get(url, stream=True, timeout=30)
+            response.raise_for_status()
+            total_size = int(response.headers.get("content-length", 0))
+            downloaded = 0
+
+            with open(weights_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=16384):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if total_size > 0:
+                            self.progress_changed.emit(int((downloaded / total_size) * 100))
+
+            self.finished_download.emit(True, "")
+        except Exception as e:
+            self.finished_download.emit(False, str(e))
 
 
 class ExportSettingsHandler(QDialog):
@@ -652,7 +698,7 @@ class ImageProcessingTabHandler(QThread):
         Args:
             filter_param_dict (dict[str, int | float]): Dictionary of filter parameters.
         """
-        self.model.load_filter_params(self.filter_param_dict_1, self.filter_param_dict_2)
+        self.model.load_filter_params(self.filter_param_dict_1)
 
     def preview_image(self) -> None:
         """Display a preview of the currently selected image.
@@ -781,6 +827,13 @@ class ImageProcessingTabHandler(QThread):
                 self._show_warning("Invalid Min Solidity", str(e))
                 return False
 
+        if name == "min_circularity":
+            try:
+                new_checker.min_circularity = cast(float, value)
+            except ValidationError as e:
+                self._show_warning("Invalid Min Circularity", str(e))
+                return False
+
         if name == "min_size":
             try:
                 new_checker.min_size = cast(float, value)
@@ -904,15 +957,9 @@ class ImageProcessingTabHandler(QThread):
 
     # -------Second Column Functions-------------------------
     def initialize_algorithm_combo(self) -> None:
-        """Initialize the algorithm combo box, filtering out CNN if weights are missing."""
+        """Initialize the algorithm combo box."""
         logging.info("Initializing algorithm combo box...")
         self.gui.algorithm_combo.clear()
-
-        # Check if weights exist locally
-        from bubble_analyser.weights.loader import get_weights_path
-
-        weights_path, _ = get_weights_path(download_if_missing=False)
-        weights_missing = weights_path is None
 
         for algorithm, params in self.model.all_methods_n_params.items():
             # Create a lower-case version of the name for checking
@@ -922,16 +969,6 @@ class ImageProcessingTabHandler(QThread):
             if algo_name == "new method":
                 continue
 
-            # Keywords that indicate a Machine Learning method
-            is_ml_method = (
-                "cnn" in algo_name or "rcnn" in algo_name or "bubmask" in algo_name or "deep learning" in algo_name
-            )
-
-            # If weights are missing, skip any ML/DL method
-            if weights_missing and is_ml_method:
-                logging.info(f"Skipping {algorithm} because ML weights are missing.")
-                continue
-
             logging.info(f"Initialize algorithm: {algorithm}")
             self.algorithm_list.append(algorithm)
 
@@ -939,6 +976,7 @@ class ImageProcessingTabHandler(QThread):
 
         # Handle case where list might be empty (unlikely given non-ML methods exist)
         if self.algorithm_list:
+            self.previous_algorithm = self.algorithm_list[0]
             self.update_model_algorithm(self.algorithm_list[0])
 
             # Update description safely
@@ -949,6 +987,8 @@ class ImageProcessingTabHandler(QThread):
                     "No description available.",
                 )
                 self.gui.algorithm_description_label.setText(description)
+                self.gui.algorithm_description_label.setToolTip(description)
+                self.gui.algorithm_combo.setToolTip("Select the segmentation algorithm to use for bubble detection.")
             except Exception as e:
                 logging.error(f"Error updating description: {e}")
                 self.gui.algorithm_description_label.setText("No description available.")
@@ -969,6 +1009,12 @@ class ImageProcessingTabHandler(QThread):
 
         self.gui.param_sandbox1.clear()
 
+        # Retrieve descriptions dynamically from the algorithm instance
+        instance = self.model.methods_handler.all_classes.get(self.current_algorithm)
+        algo_descriptions = {}
+        if instance and hasattr(instance, "get_param_descriptions"):
+            algo_descriptions = instance.get_param_descriptions()
+
         for algorithm_name, params in self.model.all_methods_n_params.items():
             if algorithm_name == self.current_algorithm:
                 self.gui.param_sandbox1.setRowCount(len(params))
@@ -977,13 +1023,20 @@ class ImageProcessingTabHandler(QThread):
                     row,
                     (name, value),
                 ) in enumerate(params.items()):
-                    self.gui.param_sandbox1.setItem(row, 0, QTableWidgetItem(name))
+                    # Create name item and set tooltip
+                    name_item = QTableWidgetItem(name)
+                    description = algo_descriptions.get(name, "")
+                    if description:
+                        name_item.setToolTip(description)
+                    self.gui.param_sandbox1.setItem(row, 0, name_item)
 
                     # Special handling for if_gaussianblur parameter
                     if name == "if_gaussianblur":
                         # Create a dropdown with True/False options
                         combo_box = QComboBox()
                         combo_box.addItems(["True", "False"])
+                        if description:
+                            combo_box.setToolTip(description)
 
                         # Set the current value
                         current_value = str(value)
@@ -999,6 +1052,8 @@ class ImageProcessingTabHandler(QThread):
                     elif name == "element_size":
                         combo_box = QComboBox()
                         combo_box.addItems(["0", "3", "5"])
+                        if description:
+                            combo_box.setToolTip(description)
 
                         # Set the current value
                         current_value = str(value)
@@ -1014,6 +1069,8 @@ class ImageProcessingTabHandler(QThread):
                     elif name == "connectivity":
                         combo_box = QComboBox()
                         combo_box.addItems(["4", "8"])
+                        if description:
+                            combo_box.setToolTip(description)
 
                         # Set the current value
                         current_value = str(value)
@@ -1029,6 +1086,8 @@ class ImageProcessingTabHandler(QThread):
                     elif name == "ksize":
                         combo_box = QComboBox()
                         combo_box.addItems(["1", "3", "5", "7"])
+                        if description:
+                            combo_box.setToolTip(description)
 
                         # Set the current value
                         current_value = str(value)
@@ -1043,7 +1102,10 @@ class ImageProcessingTabHandler(QThread):
 
                     else:
                         # Regular text item for other parameters
-                        self.gui.param_sandbox1.setItem(row, 1, QTableWidgetItem(str(value)))
+                        value_item = QTableWidgetItem(str(value))
+                        if description:
+                            value_item.setToolTip(description)
+                        self.gui.param_sandbox1.setItem(row, 1, value_item)
 
                 break
 
@@ -1056,6 +1118,92 @@ class ImageProcessingTabHandler(QThread):
         Args:
             new_algorithm (str): The name of the newly selected algorithm.
         """
+        algo_name = new_algorithm.lower()
+        is_ml_method = (
+            "cnn" in algo_name or "rcnn" in algo_name or "bubmask" in algo_name or "deep learning" in algo_name
+        )
+
+        auto_run_after = False
+
+        if is_ml_method:
+            from bubble_analyser.weights.loader import get_weights_path
+
+            weights_path, _ = get_weights_path(download_if_missing=False)
+
+            if weights_path is None:
+                reply = QMessageBox.question(
+                    self.gui,
+                    "Download Required",
+                    (
+                        f"The '{new_algorithm}' method requires a deep learning weights "
+                        f"file (mask_rcnn_bubble.h5) which was not found locally.\n\n"
+                        f"Do you want to download it now? (This may take a few minutes)."
+                    ),
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.Yes,
+                )
+
+                if reply == QMessageBox.StandardButton.Yes:
+                    progress = QProgressDialog(
+                        "Downloading weights file...\nThis may take a few minutes.",
+                        "Cancel",
+                        0,
+                        100,
+                        self.gui,
+                    )
+                    progress.setWindowTitle("Downloading...")
+                    progress.setWindowModality(Qt.WindowModality.ApplicationModal)
+                    progress.setMinimumDuration(0)
+                    progress.setAutoClose(False)
+                    progress.setAutoReset(False)
+                    progress.setValue(0)
+                    progress.show()
+
+                    loop = QEventLoop()
+                    self._download_worker = WeightsDownloadThread()
+                    download_success = [False]
+                    download_completed = [False]
+
+                    def on_finished(success: bool, msg: str) -> None:
+                        download_completed[0] = True
+                        download_success[0] = success
+                        if not success:
+                            self._show_warning("Download Failed", f"Failed to download weights: {msg}")
+                        loop.quit()
+
+                    def on_cancel() -> None:
+                        if download_completed[0]:
+                            return
+                        self._download_worker.terminate()
+                        self._download_worker.wait()
+                        download_success[0] = False
+                        loop.quit()
+
+                    self._download_worker.progress_changed.connect(progress.setValue)
+                    self._download_worker.finished_download.connect(on_finished)
+                    progress.canceled.connect(on_cancel)
+                    self._download_worker.start()
+                    loop.exec()
+                    progress.close()
+
+                    if not download_success[0]:
+                        self.gui.algorithm_combo.blockSignals(True)
+                        self.gui.algorithm_combo.setCurrentText(
+                            getattr(self, "previous_algorithm", self.algorithm_list[0])
+                        )
+                        self.gui.algorithm_combo.blockSignals(False)
+                        return
+
+                    auto_run_after = True
+                else:
+                    # User declined to download, revert to previous selection
+                    self.gui.algorithm_combo.blockSignals(True)
+                    self.gui.algorithm_combo.setCurrentText(getattr(self, "previous_algorithm", self.algorithm_list[0]))
+                    self.gui.algorithm_combo.blockSignals(False)
+                    return
+
+        self.previous_algorithm = new_algorithm
+
         # Update the algorithm in the model
         self.update_segment_parameters()
 
@@ -1074,6 +1222,9 @@ class ImageProcessingTabHandler(QThread):
         except Exception as e:
             logging.error(f"Error updating description: {e}")
             self.gui.algorithm_description_label.setText("No description available.")
+
+        if auto_run_after:
+            self.confirm_parameter_before_filtering()
 
     def update_model_algorithm(self, algorithm: str) -> None:
         """Update the algorithm in the processing model.
@@ -1242,7 +1393,11 @@ class ImageProcessingTabHandler(QThread):
         """
         logging.info("Initializing parameter table 2...")
         self.filter_param_dict_1 = self.model.filter_param_dict_1
-        self.filter_param_dict_2 = self.model.filter_param_dict_2
+
+        # Retrieve descriptions dynamically from the filter param handler
+        filter_descriptions = {}
+        if hasattr(self.model.filter_param_handler, "get_param_descriptions"):
+            filter_descriptions = self.model.filter_param_handler.get_param_descriptions()
 
         # Define priority order for display
         priority_params = ["min_size", "max_size"]
@@ -1260,42 +1415,21 @@ class ImageProcessingTabHandler(QThread):
                 display_name = f"{property} (mm)"
 
             logging.info(f"Filter param name: {property}, value: {value}")
-            self.gui.param_sandbox2.setItem(row, 0, QTableWidgetItem(display_name))
-            self.gui.param_sandbox2.setItem(row, 1, QTableWidgetItem(str(value)))
+
+            # Create table items and set tooltips
+            name_item = QTableWidgetItem(display_name)
+            value_item = QTableWidgetItem(str(value))
+
+            # Apply tooltip from decentralized descriptions
+            description = filter_descriptions.get(property, "")
+            if description:
+                name_item.setToolTip(description)
+                value_item.setToolTip(description)
+
+            self.gui.param_sandbox2.setItem(row, 0, name_item)
+            self.gui.param_sandbox2.setItem(row, 1, value_item)
 
         logging.info("Parameter table 2 initialized.")
-
-    def handle_find_circles(self) -> None:
-        """Toggle the visibility of the circle parameter box based on checkbox state.
-
-        This method responds to the state of the find circles checkbox (fc_checkbox):
-        - When checked: Shows the circle parameter box, sets find_circles(Y/N) to "Y",
-          and populates the parameter table with values from filter_param_dict_2
-        - When unchecked: Hides the circle parameter box and sets find_circles(Y/N) to "N"
-
-        The circle parameter box displays all parameters from filter_param_dict_2 except
-        for the find_circles(Y/N) parameter itself. Each parameter is displayed in a row
-        with its name in the first column and its value in the second column.
-        """
-        state = self.gui.fc_checkbox.isChecked()
-        if state:
-            logging.info("Find circles enabled.")
-            self.gui.circle_param_box.show()
-            self.filter_param_dict_2["find_circles(Y/N)"] = "Y"
-            self.gui.circle_param_box.setRowCount(len(self.filter_param_dict_2) - 1)
-            logging.info("Find circles parameter box set as Visible.")
-
-            row = 0
-            for property, value in self.filter_param_dict_2.items():
-                if property != "find_circles(Y/N)":
-                    logging.info(f"Filter parameter name: {property}, value: {value}")
-                    self.gui.circle_param_box.setItem(row, 0, QTableWidgetItem(property))
-                    self.gui.circle_param_box.setItem(row, 1, QTableWidgetItem(str(value)))
-                    row += 1
-        else:
-            logging.info("Find circles disabled.")
-            self.gui.circle_param_box.hide()
-            self.filter_param_dict_2["find_circles(Y/N)"] = "N"
 
     def confirm_parameter_for_filtering(self) -> None:
         """Confirm the filtering parameters and apply them to the current image.
@@ -1316,32 +1450,15 @@ class ImageProcessingTabHandler(QThread):
             if not if_valid:
                 return
 
-        for name, value in self.filter_param_dict_2.items():
-            if_valid = self.check_params(name, value)
-            if not if_valid:
-                return
-
         self.pass_filter_params()
         self._process_step_2()
 
     def store_filter_params(self) -> None:
         """Store the filtering parameters from the GUI table into the filter parameter dictionary.
 
-        Extracts the circle parameters from the circle parameter table widget and updates the
-        filter parameter dictionary with the new values.
+        Updates the filter parameter dictionary with the new values from the table widget.
         """
         logging.info("Storing filter parameters...")
-        if not hasattr(self.gui, "circle_param_box"):
-            pass
-        else:
-            for row in range(self.gui.circle_param_box.rowCount()):
-                name_item = self.gui.circle_param_box.item(row, 0)
-                value_item = self.gui.circle_param_box.item(row, 1)
-                if name_item and value_item:
-                    param_name = name_item.text()
-                    param_value = value_item.text()
-                    self.filter_param_dict_2[param_name] = float(param_value)
-                    logging.info(f"Updating {param_name} to {param_value}")
 
         for row in range(self.gui.param_sandbox2.rowCount()):
             name_item = self.gui.param_sandbox2.item(row, 0)
@@ -1739,7 +1856,6 @@ class ResultsTabHandler(QThread):
         algorithm: str,
         all_methods_n_params: dict[str, dict[str, float | int]],
         param_dict_1: dict[str, float | str],
-        param_dict_2: dict[str, float | str],
         px2mm_display: float,
         bknd_img_path: Path = cast(Path, None),
     ) -> None:
@@ -1751,9 +1867,7 @@ class ResultsTabHandler(QThread):
             all_methods_n_params (dict[str, dict[str, float | int]]): Dictionary containing
                 parameters for all algorithms.
             param_dict_1 (dict[str, float | str]): Dictionary containing parameters for the
-                first algorithm.
-            param_dict_2 (dict[str, float | str]): Dictionary containing parameters for the
-                second algorithm.
+                algorithm.
             px2mm_display (float): The pixel-to-millimeter conversion ratio for display purposes.
             bknd_img_path (Path): Path to the background image file. Defaults to None.
         """
@@ -1761,7 +1875,6 @@ class ResultsTabHandler(QThread):
         self.algorithm = algorithm
         self.all_methods_n_params = all_methods_n_params
         self.param_dict_1 = param_dict_1
-        self.param_dict_2 = param_dict_2
         self.px2mm_display = px2mm_display
         self.bknd_img_path = bknd_img_path
 
@@ -2101,15 +2214,6 @@ class ResultsTabHandler(QThread):
         for key, value in self.param_dict_1.items():  # type: ignore
             config_data.append(["Filtering", key, str(value)])
 
-        # Add circle detection parameters if enabled
-        if_find_circles: bool = self.param_dict_1.get("find_circles(Y/N)") == "Y"
-        if self.param_dict_2.get("find_circles(Y/N)") == "Y":
-            if_find_circles = True
-
-        if if_find_circles:
-            for key, value in self.param_dict_2.items():  # type: ignore
-                config_data.append(["Circle Detection", key, str(value)])
-
         # Add timestamp
         config_data.append(["Metadata", "Generated on", datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
 
@@ -2334,7 +2438,6 @@ class MainHandler:
         self.gui.preview_button1.clicked.connect(self.tab3_confirm_parameter_before_filtering)
         # column 3
         self.tab3_initialize_parameter_table_2()
-        self.gui.fc_checkbox.stateChanged.connect(self.tab3_handle_find_circles)
         self.gui.manual_adjustment_button.clicked.connect(self.tab3_ellipse_manual_adjustment)
         self.gui.preview_button2.clicked.connect(self.tab3_confirm_parameter_for_filtering)
         self.gui.batch_process_button.clicked.connect(self.tab3_ask_if_batch)
@@ -2377,7 +2480,6 @@ class MainHandler:
         self.gui.preview_button1.clicked.disconnect(self.tab3_confirm_parameter_before_filtering)
         # column 3
         self.tab3_initialize_parameter_table_2()
-        self.gui.fc_checkbox.stateChanged.disconnect(self.tab3_handle_find_circles)
         self.gui.manual_adjustment_button.clicked.disconnect(self.tab3_ellipse_manual_adjustment)
         self.gui.preview_button2.clicked.disconnect(self.tab3_confirm_parameter_for_filtering)
         self.gui.batch_process_button.clicked.disconnect(self.tab3_ask_if_batch)
@@ -2631,17 +2733,6 @@ class MainHandler:
         """
         self.image_processing_tab_handler.confirm_parameter_before_filtering()
 
-    def tab3_handle_find_circles(self) -> None:
-        """Handle the state change of the "Find Circles" checkbox in the image processing tab.
-
-        Delegates the checkbox state change handling to the image processing tab handler,
-        which updates the UI and processing state accordingly.
-
-        Args:
-            state: The new state of the checkbox.
-        """
-        self.image_processing_tab_handler.handle_find_circles()
-
     def tab3_confirm_parameter_for_filtering(self) -> None:
         """Confirm the filtering parameters and apply them to the current image.
 
@@ -2683,14 +2774,12 @@ class MainHandler:
         the distribution of bubble sizes and other properties.
         """
         self.results_tab_handler.load_ellipse_properties(
-            self.image_processing_model.ellipses_properties,
-            self.image_processing_model.algorithm,
-            self.image_processing_model.all_methods_n_params,
-            self.image_processing_model.filter_param_dict_1,
-            self.image_processing_model.filter_param_dict_2,
-            # self.calibration_model.px2mm,
-            self.calibration_model.px2mm_display,
-            self.calibration_model.bknd_img_path,
+            properties=self.image_processing_model.ellipses_properties,
+            algorithm=self.image_processing_model.algorithm,
+            all_methods_n_params=self.image_processing_model.all_methods_n_params,
+            param_dict_1=self.image_processing_model.filter_param_dict_1,
+            px2mm_display=self.calibration_model.px2mm_display,
+            bknd_img_path=self.calibration_model.bknd_img_path,
         )
         self.results_tab_handler.generate_histogram()
 

@@ -8,7 +8,7 @@ settings. It is primarily used for bubble/circle analysis in scientific images.
 """
 
 import logging
-from typing import Any, cast
+from typing import Any
 
 import cv2
 import numpy as np
@@ -21,20 +21,15 @@ class FilterParamHandler:
 
     This class manages a set of parameters used to filter and analyze circular regions in images.
     It provides functionality to store, retrieve, and update filtering parameters such as
-    eccentricity, solidity, size thresholds, and area bounds for large and small circles.
+    eccentricity, solidity, circularity, and size thresholds.
 
     Attributes:
         filter_param_dict_1 (dict[str, float | str]): Dictionary containing filtering parameters:
             - max_eccentricity: Maximum allowed eccentricity for valid circles
             - min_solidity: Minimum required solidity for valid circles
+            - min_circularity: Minimum required circularity for valid circles
             - min_size: Minimum required size for valid circles
-
-        filter_param_dict_2 (dict[str, float | str]): Dictionary containing parameters for Find Circles function:
-            - find_circles(Y/N): Flag to enable/disable circle finding ("Y" or "N")
-            - L_maxA_mm2: Maximum area threshold for large circles in mm²
-            - L_minA_mm2: Minimum area threshold for large circles in mm²
-            - s_maxA_mm2: Maximum area threshold for small circles in mm²
-            - s_minA_mm2: Minimum area threshold for small circles in mm²
+            - max_size: Maximum allowed size for valid circles
     """
 
     def __init__(self, params_dict: dict[str, float | str]):
@@ -47,24 +42,18 @@ class FilterParamHandler:
         self.filter_param_dict_1: dict[str, float | str] = {
             "max_eccentricity": params_dict["max_eccentricity"],
             "min_solidity": params_dict["min_solidity"],
+            "min_circularity": params_dict["min_circularity"],
             "min_size": params_dict["min_size"],
             "max_size": params_dict["max_size"],
         }
-        self.filter_param_dict_2: dict[str, float | str] = {
-            "find_circles(Y/N)": params_dict["if_find_circles"],
-            "L_maxA": params_dict["L_maxA"],
-            "L_minA": params_dict["L_minA"],
-            "s_maxA": params_dict["s_maxA"],
-            "s_minA": params_dict["s_minA"],
-        }
 
-    def get_needed_params(self) -> tuple[dict[str, float | str], dict[str, float | str]]:
+    def get_needed_params(self) -> dict[str, float | str]:
         """Retrieve the current filter parameters.
 
         Returns:
             Dictionary containing the current filter parameters.
         """
-        return self.filter_param_dict_1, self.filter_param_dict_2
+        return self.filter_param_dict_1
 
     def update_params_1(self, params: dict[str, float | str]) -> None:
         """Update the filter parameters with new values.
@@ -74,13 +63,19 @@ class FilterParamHandler:
         """
         self.filter_param_dict_1 = params
 
-    def update_params_2(self, params: dict[str, float | str]) -> None:
-        """Update the filter parameters with new values.
+    def get_param_descriptions(self) -> dict[str, str]:
+        """Get descriptions for each parameter for use in GUI tooltips.
 
-        Args:
-            params: Dictionary containing new filter parameter values to update.
+        Returns:
+            dict[str, str]: Dictionary mapping parameter names to their descriptions.
         """
-        self.filter_param_dict_2 = params
+        return {
+            "min_size": "Minimum allowable diameter for a bubble in millimeters.",
+            "max_size": "Maximum allowable diameter for a bubble in millimeters.",
+            "max_eccentricity": "Maximum allowed elongation. 0.0 is a perfect circle; higher values allow more oval shapes.",  # noqa: E501
+            "min_solidity": "Minimum ratio of area to convex hull. Filters out bubbles with deep 'dents' or irregular holes.",  # noqa: E501
+            "min_circularity": "Minimum roundness and edge smoothness. 1.0 is a perfect circle; lower values allow rougher edges.",  # noqa: E501
+        }
 
 
 class EllipseHandler:
@@ -118,7 +113,6 @@ class EllipseHandler:
             resample (float, optional): Image resampling factor. Defaults to 0.5.
         """
         self.filter_param_dict_1: dict[str, float | str]
-        self.filter_param_dict_2: dict[str, float | str]
         self.img_rgb: npt.NDArray[np.int_] | None = img_rgb
         self.labels_before_filtering: npt.NDArray[np.int_] | None = labels_before_filtering
         self.labels_after_filtering: npt.NDArray[np.int_]
@@ -134,28 +128,22 @@ class EllipseHandler:
         self.ellipses_on_image: npt.NDArray[np.int_]
         self.ellipses_properties: list[dict[str, Any]]
 
-    def load_filter_params(
-        self, filter_param_dict_1: dict[str, float | str], filter_param_dict_2: dict[str, float | str]
-    ) -> None:
+    def load_filter_params(self, filter_param_dict_1: dict[str, float | str]) -> None:
         """Load filtering parameters for circle detection.
 
         Args:
             filter_param_dict_1 (dict[str, float | str]): Dictionary containing filtering parameters
-                such as max_eccentricity, min_solidity, and min_size.
-            filter_param_dict_2 (dict[str, float | str]): Dictionary containing parameters for Find
-                Circles function
+                such as max_eccentricity, min_solidity, min_circularity, and min_size.
         """
         self.filter_param_dict_1 = filter_param_dict_1
-        self.filter_param_dict_2 = filter_param_dict_2
 
     def filter_labels_properties(self) -> npt.NDArray[np.int_]:
         """Filters out regions (circles) from the labeled image based on their properties.
 
         This function filters regions based on:
-        - Geometric properties (eccentricity, solidity, area)
+        - Geometric properties (eccentricity, solidity, circularity)
         - Size constraints (min/max area)
         - Boundary touching (regions touching image edges are removed)
-        - Optional area-based circle finding criteria
 
         Returns:
             Updated labels array where regions not meeting the thresholds are removed.
@@ -173,30 +161,13 @@ class EllipseHandler:
         else:
             raise ValueError("labels_before_filtering is None")
 
-        cast(float, self.filter_param_dict_1["max_eccentricity"])
         max_eccentricity = float(self.filter_param_dict_1["max_eccentricity"])
-        cast(float, self.filter_param_dict_1["min_solidity"])
         min_solidity = float(self.filter_param_dict_1["min_solidity"])
-        cast(float, self.filter_param_dict_1["min_size"])
+        min_circularity = float(self.filter_param_dict_1["min_circularity"])
         min_size = float(self.filter_param_dict_1["min_size"])
         max_size = float(self.filter_param_dict_1["max_size"])
 
-        if_find_circles_str = self.filter_param_dict_2.get("find_circles(Y/N)")
-
-        L_min = cast(float, self.filter_param_dict_2["L_minA"])
-        L_max = cast(float, self.filter_param_dict_2["L_maxA"])
-        s_max = cast(float, self.filter_param_dict_2["s_maxA"])
-        s_min = cast(float, self.filter_param_dict_2["s_minA"])
-
-        if if_find_circles_str == "Y":
-            if_find_circles = True
-        else:
-            if_find_circles = False
-
         # Back-calculate diameter thresholds (mm) to area thresholds (pixels)
-        # to avoid doing expensive sqrt/pi math for every component in the loop.
-        # Diameter (mm) -> Area (mm2) = pi * (D/2)^2
-        # Area (mm2) -> Area (pixels) = Area(mm2) / (mm2px^2)
         min_area_px = (np.pi * (min_size / 2) ** 2) / (mm2px**2)
         max_area_px = (np.pi * (max_size / 2) ** 2) / (mm2px**2)
 
@@ -207,25 +178,25 @@ class EllipseHandler:
             # Check all conditions and mark for removal if any fail
             should_remove = False
 
-            # Priority 1: Size Filtering (Now using ultra-fast pixel area comparison)
+            # Priority 1: Size Filtering
             if not (min_area_px <= prop.area <= max_area_px):
                 should_remove = True
                 logging.debug(f"Filtered out by Size: {prop.area:.1f} px")
 
-            # Priority 2: Shape Filtering
+            # Priority 2: Shape Filtering (Standard)
             elif prop.eccentricity > max_eccentricity or prop.solidity < min_solidity:
                 should_remove = True
                 logging.debug(f"Filtered out by Shape: Ecc={prop.eccentricity:.2f}, Sol={prop.solidity:.2f}")
 
-            # Priority 3: Optional Find Circles logic (Uses area in mm2)
-            elif if_find_circles:
-                area_mm2 = prop.area * (mm2px**2)
-                if not ((L_min <= area_mm2 <= L_max) or (s_min <= area_mm2 <= s_max)):
+            # Priority 3: Shape Filtering (Circularity)
+            else:
+                # Circularity = 4 * pi * Area / Perimeter^2
+                circularity = (4 * np.pi * prop.area) / (prop.perimeter**2) if prop.perimeter > 0 else 0
+                if circularity < min_circularity:
                     should_remove = True
-                    logging.debug(f"Filtered out by Find Circles logic: Area={area_mm2:.2f}")
+                    logging.debug(f"Filtered out by Circularity: {circularity:.2f}")
 
             if should_remove:
-                # Use Vectorized NumPy indexing: O(1) Python, O(pixels) C
                 new_labels[tuple(prop.coords.T)] = 1
 
         self.labels_after_filtering = new_labels

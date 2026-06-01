@@ -42,6 +42,19 @@ class PeakWatershed(WatershedSegmentation):
             "smoothing_sigma": self.smoothing_sigma,
         }
 
+    def get_param_descriptions(self) -> dict[str, str]:
+        """Get descriptions for each parameter for use in GUI tooltips.
+
+        Returns:
+            dict[str, str]: Dictionary mapping parameter names to their descriptions.
+        """
+        return {
+            "resample": "Resampling factor to scale the image before processing. Lower values increase speed but reduce detail.",  # noqa: E501
+            "min_distance_mm": "Minimum distance allowed between two separate bubble peaks.",
+            "sensitivity": "Threshold sensitivity for identifying intensity peaks as potential bubbles.",
+            "smoothing_sigma": "Standard deviation for Gaussian kernel used to smooth the distance transform map.",
+        }
+
     def update_params(self, params: dict[str, Any]) -> None:
         """Update internal parameters from a dictionary."""
         self.resample = float(params.get("resample", self.resample))

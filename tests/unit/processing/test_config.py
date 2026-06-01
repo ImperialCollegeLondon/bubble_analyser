@@ -35,14 +35,11 @@ def valid_config_dict():
         "max_eccentricity_range": (0.5, 1.0),
         "min_solidity": 0.9,
         "min_solidity_range": (0.5, 1.0),
+        "min_circularity": 0.5,
+        "min_circularity_range": (0.1, 1.0),
         "min_size": 0.1,
         "min_size_range": (0.01, 10.0),
         "max_size": 100.0,
-        "if_find_circles": "False",
-        "L_maxA": 100.0,
-        "L_minA": 10.0,
-        "s_maxA": 5.0,
-        "s_minA": 1.0,
     }
 
 

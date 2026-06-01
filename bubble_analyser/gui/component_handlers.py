@@ -218,7 +218,6 @@ class ImageProcessingModel(QObject):
         self.if_finalise_analysis: bool = False
 
         self.filter_param_dict_1: dict[str, float | str]
-        self.filter_param_dict_2: dict[str, float | str]
 
         self.px2mm_display: float
         self.if_bknd: bool
@@ -282,9 +281,8 @@ class ImageProcessingModel(QObject):
         The parameters are also printed to the console for debugging purposes.
         """
         self.filter_param_handler = FilterParamHandler(self.params_config.model_dump())
-        self.filter_param_dict_1, self.filter_param_dict_2 = self.filter_param_handler.get_needed_params()
+        self.filter_param_dict_1 = self.filter_param_handler.get_needed_params()
         logging.info(f"Basic filtering parameters: {self.filter_param_dict_1}")
-        logging.info(f"Find circles filtering parameters: {self.filter_param_dict_2}")
 
     def initialize_cnn_model(self) -> None:
         import os
@@ -392,19 +390,16 @@ class ImageProcessingModel(QObject):
 
         return if_img, img_before_filter, img_after_filter
 
-    def load_filter_params(self, dict_params_1: dict[str, float | str], dict_params_2: dict[str, float | str]) -> None:
+    def load_filter_params(self, dict_params_1: dict[str, float | str]) -> None:
         """Load filtering parameters into the model.
 
         Args:
             dict_params_1 (dict[str, float]): Dictionary containing filtering parameters.
-            dict_params_2 (dict[str, float]): Dictionary containing find circles parameters.
         """
         self.filter_param_dict_1 = dict_params_1
-        self.filter_param_dict_2 = dict_params_2
 
         # Sync with the actual handler used by services
         self.filter_param_handler.update_params_1(dict_params_1)
-        self.filter_param_handler.update_params_2(dict_params_2)
 
     def initialize_image(self, name: Path) -> None:
         """Initialize an ImageState object for processing if it doesn't already exist.

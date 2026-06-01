@@ -110,15 +110,12 @@ class QuantificationService:
     """Service for filtering bubbles and extracting physical properties."""
 
     @staticmethod
-    def process(
-        state: ImageState, dict_params_1: dict[str, Any], dict_params_2: dict[str, Any], px2mm_display: float
-    ) -> ImageState:
+    def process(state: ImageState, dict_params_1: dict[str, Any], px2mm_display: float) -> ImageState:
         """Run the quantification pipeline (filtering -> detection -> properties).
 
         Args:
             state: Current image state.
             dict_params_1: Filtering parameters.
-            dict_params_2: Circle detection parameters.
             px2mm_display: Pixel to mm conversion factor.
 
         Returns:
@@ -130,7 +127,7 @@ class QuantificationService:
         rgb_img = state.img_rgb.copy()
 
         handler = CircleHandler(labels_before_filter, rgb_img, px2mm_display, resample=state.resample)
-        handler.load_filter_params(dict_params_1, dict_params_2)
+        handler.load_filter_params(dict_params_1)
 
         # 1. Filter
         state.labels_after_filter = handler.filter_labels_properties()
@@ -169,13 +166,12 @@ class AnalysisService:
         self.detector: BubMaskDetector | None = None
         self.all_methods_n_params: dict[str, Any] = {}
         self.filter_param_dict_1: dict[str, Any] = {}
-        self.filter_param_dict_2: dict[str, Any] = {}
 
     def setup_methods(self, methods_handler: MethodsHandler, filter_param_handler: FilterParamHandler) -> None:
         """Setup the methods and filter parameters."""
         self.methods_handler = methods_handler
         self.all_methods_n_params = methods_handler.full_dict
-        self.filter_param_dict_1, self.filter_param_dict_2 = filter_param_handler.get_needed_params()
+        self.filter_param_dict_1 = filter_param_handler.get_needed_params()
 
     def set_detector(self, detector: BubMaskDetector | None) -> None:
         """Set the deep learning detector."""
@@ -233,7 +229,6 @@ class AnalysisService:
                 state = QuantificationService.process(
                     state,
                     self.filter_param_dict_1,
-                    self.filter_param_dict_2,
                     self.px2mm_display,
                 )
 

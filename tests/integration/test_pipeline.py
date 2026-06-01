@@ -46,14 +46,11 @@ def integration_config(sample_paths):
         max_eccentricity_range=(0.5, 1.0),
         min_solidity=0.8,
         min_solidity_range=(0.5, 1.0),
+        min_circularity=0.5,
+        min_circularity_range=(0.1, 1.0),
         min_size=0.01,
         min_size_range=(0.0, 10.0),
         max_size=1000.0,
-        if_find_circles="False",
-        L_maxA=100.0,
-        L_minA=10.0,
-        s_maxA=5.0,
-        s_minA=1.0,
     )
 
 
@@ -73,8 +70,13 @@ def test_full_pipeline(integration_config, sample_paths):
 
     # Load filter params
     image.load_filter_params(
-        {"max_eccentricity": 0.9, "min_solidity": 0.8, "min_size": 0.01, "max_size": 1000.0},
-        {"find_circles(Y/N)": "N", "L_maxA": 100.0, "L_minA": 10.0, "s_maxA": 5.0, "s_minA": 1.0},
+        {
+            "max_eccentricity": 0.9,
+            "min_solidity": 0.8,
+            "min_circularity": 0.5,
+            "min_size": 0.01,
+            "max_size": 1000.0,
+        }
     )
 
     # Process using Default (NormalWatershed)

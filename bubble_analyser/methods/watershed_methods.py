@@ -83,6 +83,24 @@ class TestWatershed(WatershedSegmentation):
             "connectivity": self.connectivity,
         }
 
+    def get_param_descriptions(self) -> dict[str, str]:
+        """Get descriptions for each parameter for use in GUI tooltips.
+
+        Returns:
+            dict[str, str]: Dictionary mapping parameter names to their descriptions.
+        """
+        return {
+            "resample": "Resampling factor to scale the image before processing. Lower values increase speed but reduce detail.",  # noqa: E501  # noqa: E501
+            "threshold_value": "Static threshold value used to binarize the image (0.0 to 1.0).",
+            "if_gaussianblur": "Whether to apply a Gaussian blur to the image to reduce high-frequency noise before segmentation.",  # noqa: E501
+            "ksize": "Kernel size for Gaussian blur. Larger values produce a smoother, blurrier image.",
+            "max_thresh": "Upper limit for iterative thresholding.",
+            "min_thresh": "Lower limit for iterative thresholding.",
+            "step_size": "Increment size for the iterative thresholding process.",
+            "element_size": "Size of the structuring element for morphological operations.",
+            "connectivity": "Pixel neighborhood for region growing (4 or 8).",
+        }
+
     def initialize_processing(
         self,
         params: dict[str, Any],
@@ -303,6 +321,21 @@ class IterativeWatershed(WatershedSegmentation):
             "step_size": self.step_size,
         }
 
+    def get_param_descriptions(self) -> dict[str, str]:
+        """Get descriptions for each parameter for use in GUI tooltips.
+
+        Returns:
+            dict[str, str]: Dictionary mapping parameter names to their descriptions.
+        """
+        return {
+            "resample": "Resampling factor to scale the image before processing. Lower values increase speed but reduce detail.",  # noqa: E501
+            "element_size": "Size of the structuring element for morphological operations.",
+            "connectivity": "Pixel neighborhood for region growing (4 or 8).",
+            "max_thresh": "Upper limit for iterative thresholding.",
+            "min_thresh": "Lower limit for iterative thresholding.",
+            "step_size": "Increment size for the iterative thresholding process.",
+        }
+
     def initialize_processing(
         self,
         params: dict[str, Any],
@@ -407,6 +440,21 @@ class NormalWatershed(WatershedSegmentation):
             "low_thresh": self.low_thresh,
             "element_size": self.element_size,
             "connectivity": self.connectivity,
+        }
+
+    def get_param_descriptions(self) -> dict[str, str]:
+        """Get descriptions for each parameter for use in GUI tooltips.
+
+        Returns:
+            dict[str, str]: Dictionary mapping parameter names to their descriptions.
+        """
+        return {
+            "resample": "Resampling factor to scale the image before processing. Lower values increase speed but reduce detail.",  # noqa: E501
+            "high_thresh": "Threshold for the 'High' intensity population in multi-level segmentation.",
+            "mid_thresh": "Threshold for the 'Medium' intensity population.",
+            "low_thresh": "Threshold for the 'Low' intensity population.",
+            "element_size": "Size of the structuring element for morphological operations.",
+            "connectivity": "Pixel neighborhood for region growing (4 or 8).",
         }
 
     def initialize_processing(

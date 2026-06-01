@@ -9,21 +9,17 @@ def params_dict():
     return {
         "max_eccentricity": 0.8,
         "min_solidity": 0.9,
+        "min_circularity": 0.5,
         "min_size": 1.0,
         "max_size": 100.0,
-        "if_find_circles": "N",
-        "L_maxA": 50.0,
-        "L_minA": 20.0,
-        "s_maxA": 10.0,
-        "s_minA": 5.0,
     }
 
 
 def test_filter_param_handler(params_dict):
     handler = FilterParamHandler(params_dict)
-    p1, p2 = handler.get_needed_params()
+    p1 = handler.get_needed_params()
     assert p1["max_eccentricity"] == 0.8
-    assert p2["find_circles(Y/N)"] == "N"
+    assert p1["min_circularity"] == 0.5
 
 
 def test_ellipse_handler_init():
@@ -42,18 +38,7 @@ def test_filter_labels_properties(params_dict):
 
     img = np.zeros((100, 100, 3), dtype=np.uint8)
     handler = EllipseHandler(labels, img, px2mm_display=1.0, resample=1.0)
-    handler.load_filter_params(params_dict, params_dict)  # Just need the keys
-
-    # Manually fix params_dict for load_filter_params as it expects internal names
-    p1 = {"max_eccentricity": 0.8, "min_solidity": 0.9, "min_size": 1.0, "max_size": 1000.0}
-    p2 = {
-        "find_circles(Y/N)": "N",
-        "L_maxA": 50.0,
-        "L_minA": 20.0,
-        "s_maxA": 10.0,
-        "s_minA": 5.0,
-    }
-    handler.load_filter_params(p1, p2)
+    handler.load_filter_params(params_dict)
 
     filtered_labels = handler.filter_labels_properties()
     # Region (label 2) area is 100. mm2px is 1.0. area in mm is 100.

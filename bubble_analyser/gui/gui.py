@@ -525,13 +525,6 @@ class MainWindow(QMainWindow):
         self.param_sandbox2 = QTableWidget(0, 2)
         self.param_sandbox2.setHorizontalHeaderLabels(["Parameter", "Value"])
 
-        self.fc_checkbox = QCheckBox("Find Circles")
-
-        # Additional parameter box for circle finding (initially hidden)
-        self.circle_param_box = QTableWidget(0, 2)
-        self.circle_param_box.setHorizontalHeaderLabels(["Parameter", "Value (mm²)"])
-        self.circle_param_box.setVisible(False)
-
         # Confirm and Batch Process buttons for this sandbox
         self.preview_button2 = QPushButton("Confirm parameter and preview")
         self.manual_adjustment_button = QPushButton("Manual adjustment")
@@ -544,8 +537,6 @@ class MainWindow(QMainWindow):
 
         third_column_layout.addWidget(sandbox2_label)
         third_column_layout.addWidget(self.param_sandbox2)
-        third_column_layout.addWidget(self.fc_checkbox)
-        third_column_layout.addWidget(self.circle_param_box)
         third_column_layout.addWidget(self.preview_button2)
         third_column_layout.addWidget(self.manual_adjustment_button)
         third_column_layout.addWidget(self.batch_process_button)
