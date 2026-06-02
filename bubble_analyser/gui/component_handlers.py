@@ -217,10 +217,10 @@ class ImageProcessingModel(QObject):
         self.if_batched: bool = False
         self.if_finalise_analysis: bool = False
 
-        self.filter_param_dict_1: dict[str, float | str]
+        self.filter_param_dict_1 = {}
 
-        self.px2mm_display: float
-        self.if_bknd: bool
+        self.px2mm_display = 1.0
+        self.if_bknd = False
         self.bubble_count: int = 0
         self.bknd_img_path: Path = cast(Path, None)
 
@@ -466,6 +466,7 @@ class ImageProcessingModel(QObject):
             npt.NDArray[np.int_]: The processed image with detected ellipses overlaid.
         """
         name = self.img_path_list[index]
+        self.initialize_image(name)
         from bubble_analyser.core.services import AnalysisService
 
         service = AnalysisService(self.params_config)
