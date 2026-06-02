@@ -57,7 +57,7 @@ disallow_any_generics = false
 warn_unreachable = false
 warn_unused_ignores = false
 disallow_untyped_defs = true
-exclude = [".venv/"]
+exclude = [".venv/", "dist/", "build/"]
 
 [[tool.mypy.overrides]]
 module = "tests.*"

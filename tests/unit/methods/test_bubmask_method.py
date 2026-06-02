@@ -26,10 +26,9 @@ def bubmask_params():
 
 
 def test_bubmask_watershed_init(bubmask_params):
-    with patch("bubble_analyser.methods.bubmask_method.BubMaskDetector"):
-        method = BubMaskWatershed(bubmask_params)
-        assert method.name == "BubMask (Deep Learning)"
-        assert method.confidence_threshold == 0.5
+    method = BubMaskWatershed(bubmask_params)
+    assert method.name == "BubMask (Deep Learning)"
+    assert method.confidence_threshold == 0.5
 
 
 def test_bubmask_watershed_detect(dummy_images, bubmask_params):

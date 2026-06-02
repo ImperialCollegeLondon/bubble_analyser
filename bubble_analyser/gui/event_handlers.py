@@ -841,33 +841,6 @@ class ImageProcessingTabHandler(QThread):
                 self._show_warning("Invalid Min Size", str(e))
                 return False
 
-        if name == "L_maxA":
-            try:
-                new_checker.L_maxA = cast(float, value)
-            except ValidationError as e:
-                self._show_warning("Invalid Max Area for Large bubbles", str(e))
-                return False
-
-        if name == "L_minA":
-            try:
-                new_checker.L_minA = cast(float, value)
-            except ValidationError as e:
-                self._show_warning("Invalid Min Area for Large bubbles", str(e))
-                return False
-
-        if name == "s_maxA":
-            try:
-                new_checker.s_maxA = cast(float, value)
-            except ValidationError as e:
-                self._show_warning("Invalid Max Area for Small bubbles", str(e))
-                return False
-
-        if name == "s_minA":
-            try:
-                new_checker.s_minA = cast(float, value)
-            except ValidationError as e:
-                self._show_warning("Invalid Min Area for Small bubbles", str(e))
-                return False
         return True
 
     def _show_warning(self, title: str, message: str) -> None:

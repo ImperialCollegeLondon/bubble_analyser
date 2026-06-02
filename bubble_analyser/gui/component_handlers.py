@@ -217,7 +217,7 @@ class ImageProcessingModel(QObject):
         self.if_batched: bool = False
         self.if_finalise_analysis: bool = False
 
-        self.filter_param_dict_1 = {}
+        self.filter_param_dict_1: dict[str, Any] = {}
 
         self.px2mm_display = 1.0
         self.if_bknd = False
