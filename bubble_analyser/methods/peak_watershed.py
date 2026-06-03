@@ -25,10 +25,10 @@ class PeakWatershed(WatershedSegmentation):
             "Advanced method that finds bubble centers based on local height peaks "
             "in the distance transform. Best for varying bubble sizes."
         )
-        self.min_distance_mm: float = 0.1
-        self.sensitivity: float = 0.5
-        self.smoothing_sigma: float = 1.0
-        self.resample: float = 0.5
+        self.min_distance_mm: float = 0.19
+        self.sensitivity: float = 0.9
+        self.smoothing_sigma: float = 1.77
+        self.resample: float = 0.4
         self.px2mm: float = 1.0
 
         self.update_params(params)

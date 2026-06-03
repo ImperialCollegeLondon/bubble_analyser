@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "bubble_analyser"
-version = "0.2.2"
+version = "2.0.0"
 description = "[Description for project.]"
 authors = [
     "Dr Diego Mesa <d.mesa@ic.ac.uk>",
@@ -57,7 +57,7 @@ disallow_any_generics = false
 warn_unreachable = false
 warn_unused_ignores = false
 disallow_untyped_defs = true
-exclude = [".venv/", "dist/", "build/"]
+exclude = [".venv/", "dist/", "build/", "internal_optimization/"]
 
 [[tool.mypy.overrides]]
 module = "tests.*"

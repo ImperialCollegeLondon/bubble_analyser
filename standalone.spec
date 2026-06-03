@@ -3,8 +3,12 @@ import platform
 block_cipher = None
 data_files = [
     ('bubble_analyser/config.toml', 'bubble_analyser/'),
-    ('bubble_analyser/methods/information.txt', 'bubble_analyser/methods/'),
-    ('bubble_analyser/methods/watershed_methods.py', 'bubble_analyser/methods/')
+    # Heavy weights excluded to keep the installer light. They will be downloaded on first run.
+    # ('bubble_analyser/weights/mask_rcnn_bubble.h5', 'bubble_analyser/weights/'),
+    ('bubble_analyser/mrcnn/*.py', 'bubble_analyser/mrcnn/'),
+    ('bubble_analyser/bubble/*.py', 'bubble_analyser/bubble/'),
+    ('bubble_analyser/methods/*.py', 'bubble_analyser/methods/'),
+    ('bubble_analyser/methods/information.txt', 'bubble_analyser/methods/')
 ]
 
 a = Analysis(
@@ -26,22 +30,28 @@ if platform.system() == 'Windows':
     exe = EXE(
         pyz,
         a.scripts,
-        a.binaries,
-        a.datas,
         [],
+        exclude_binaries=True,
         name='bubble_analyser',
         debug=False,
         bootloader_ignore_signals=False,
         strip=False,
         upx=True,
-        upx_exclude=[],
-        runtime_tmpdir=None,
         console=False,
         disable_windowed_traceback=False,
         argv_emulation=False,
         target_arch=None,
         codesign_identity=None,
         entitlements_file=None,
+    )
+    coll = COLLECT(
+        exe,
+        a.binaries,
+        a.datas,
+        strip=False,
+        upx=True,
+        upx_exclude=[],
+        name='Bubble Analyser',
     )
 
 # For macOS build
@@ -72,14 +82,14 @@ if platform.system() == 'Darwin':
         name='Bubble Analyser.app',
         icon=None,  # Add your .icns file path here if available
         bundle_identifier='com.imperial.bubble-analyser',
-        version='0.2.0',  # Match version from pyproject.toml
+        version='2.0.0',  # Match version from pyproject.toml
         info_plist={
             'NSHighResolutionCapable': 'True',
             'NSPrincipalClass': 'NSApplication',
             'CFBundleName': 'Bubble Analyser',
             'CFBundleDisplayName': 'Bubble Analyser',
             'CFBundleGetInfoString': 'Bubble image analysis tool',
-            'CFBundleShortVersionString': '0.2.0',
+            'CFBundleShortVersionString': '2.0.0',
         },
         debug=False,
         strip=False,

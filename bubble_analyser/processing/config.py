@@ -21,15 +21,15 @@ from pydantic import (
 class SegmentationConfig(BaseModel):
     """Configuration for image segmentation algorithms."""
 
-    element_size: int = Field(default=3, description="Morphological element size (0, 3, or 5)")
+    element_size: int = Field(default=5, description="Morphological element size (0, 3, or 5)")
     connectivity: int = Field(default=4, description="Pixel connectivity (4 or 8)")
     target_width: int = Field(default=1000, ge=500, le=2000)
     resample: float = Field(default=0.4, ge=0.01, le=1.0)
 
     # Thresholds for Default/Normal method
-    high_thresh: float = Field(default=0.9, ge=0.0, le=1.0)
-    mid_thresh: float = Field(default=0.5, ge=0.0, le=1.0)
-    low_thresh: float = Field(default=0.2, ge=0.0, le=1.0)
+    high_thresh: float = Field(default=0.95, ge=0.0, le=1.0)
+    mid_thresh: float = Field(default=0.7, ge=0.0, le=1.0)
+    low_thresh: float = Field(default=0.05, ge=0.0, le=1.0)
 
     # Thresholds for Iterative method
     max_thresh: float = Field(default=0.95, ge=0.0, le=1.0)
@@ -163,7 +163,7 @@ class AppConfig(BaseModel):
 class Config(BaseModel):
     """Legacy flat config model for backward compatibility."""
 
-    element_size: int = 3
+    element_size: int = 5
     connectivity: int = 4
     target_width: int = 1000
     target_width_range: tuple[int, int] = (500, 2000)
@@ -171,9 +171,9 @@ class Config(BaseModel):
     resample_range: tuple[float, float] = (0.01, 1.0)
     do_batch: bool = False
 
-    high_thresh: float = 0.9
-    mid_thresh: float = 0.5
-    low_thresh: float = 0.2
+    high_thresh: float = 0.95
+    mid_thresh: float = 0.7
+    low_thresh: float = 0.05
     default_range: tuple[float, float] = (0.0, 1.0)
 
     max_thresh: float = 0.95

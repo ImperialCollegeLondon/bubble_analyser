@@ -138,6 +138,20 @@ dmypy.json
 # Vim temp files
 **/*~
 **/*.swp
+
+# Internal Optimization Data (Benchmarking/DOE)
+internal_optimization/
+doe_results.json
+doe_results_v2.json
+doe_optimization.log
+doe_optimization_v2.log
+optimization.log
+run_doe.py
+run_doe_v2.py
+validate_metrics.py
+optimize_params.py
+run_watershed_opt.py
+
 tests/cnn_result/mask_IMG_9422_bubble_000.png
 tests/cnn_result/mask_IMG_9422_bubble_001.png
 tests/cnn_result/mask_IMG_9423_bubble_000.png

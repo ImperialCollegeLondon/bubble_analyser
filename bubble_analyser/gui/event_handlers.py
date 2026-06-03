@@ -20,11 +20,13 @@ from __future__ import annotations
 
 import logging
 import os
+import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
 from typing import cast
 
+import cv2
 import numpy as np
 import pandas as pd  # Add this import
 import toml as tomllib  # type: ignore
@@ -1539,16 +1541,16 @@ class ImageProcessingTabHandler(QThread):
             # Wipe all caches (including fine-tuned ones) so everything re-runs
             self.model.reset_batch_state(force_all=True)
 
-        self.if_save_processed_images = False
+        # Simplified: no more save-images checkbox here.
+        # All saving is now done via the Results tab at the end of the workflow.
         confirm_dialog = self.create_confirm_dialog(
             "Batch Processing Confirmation", "The parameters will be applied to all the images. Confirm to process."
         )
-        self.create_save_images_checkbox(confirm_dialog)
 
         response = confirm_dialog.exec()
 
         if response == QMessageBox.StandardButton.Ok:
-            self.check_for_export_path.emit()  # Let Main handler check if export being properlly set
+            self.batch_process_images()  # Direct call, no more redundant checks
         else:
             logging.info("Batch processing canceled.")
 
@@ -1565,22 +1567,15 @@ class ImageProcessingTabHandler(QThread):
             "The analysis will be finalised. \n "
             "Make sure you are satisfied with the segmentation of all images. Confirm to finalise.",
         )
-        self.create_save_images_checkbox(confirm_dialog)
 
         response = confirm_dialog.exec()
 
         if response == QMessageBox.StandardButton.Ok:
             self.model.if_finalise_analysis = True
-
-            if self.if_save_processed_images:
-                # If user wants to save during finalization, we still need to run a "save-only" batch
-                self.check_for_export_path.emit()
-            else:
-                # If no saving needed, just jump to the results
-                self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.results_tab))
-                self.batch_processing_done.emit()  # Trigger histogram generation
-                logging.info("Analysis finalised. Switched to results tab.")
-
+            # Transition directly to results
+            self.gui.tabs.setCurrentIndex(self.gui.tabs.indexOf(self.gui.results_tab))
+            self.batch_processing_done.emit()  # Trigger histogram generation
+            logging.info("Analysis finalised. Switched to results tab.")
         else:
             logging.info("Analysis finalisation canceled.")
 
@@ -1624,8 +1619,7 @@ class ImageProcessingTabHandler(QThread):
         """Execute batch processing on all images in the folder.
 
         Validates all parameters, initializes the progress window, and starts
-        the worker thread to process all images. If saving is enabled, verifies
-        that the save path exists before proceeding.
+        the worker thread to process all images.
         """
         logging.info("-----------------------------------------------------------------------------------------")
         logging.info("--------------------------------Running Batch Processing--------------------------------")
@@ -1649,18 +1643,7 @@ class ImageProcessingTabHandler(QThread):
         self.pass_filter_params()
         self.show_progress_window(len(self.model.img_path_list))
 
-        if self.if_save_processed_images:
-            # check if save path exists
-            if not os.path.exists(self.export_handler.save_path):
-                QMessageBox.warning(
-                    self.gui,
-                    "Warning",
-                    f"The save path {self.export_handler.save_path} does not exist. Please select a valid directory.",
-                    QMessageBox.StandardButton.Ok,
-                )
-                return
-
-        self.worker_thread = WorkerThread(self.model, self.if_save_processed_images, self.export_handler.save_path)
+        self.worker_thread = WorkerThread(self.model)
         self.worker_thread.update_progress.connect(self.update_progress_bar)
         self.worker_thread.processing_done.connect(self.on_processing_done)
         self.worker_thread.error_occurred.connect(self.on_worker_error)
@@ -1775,15 +1758,17 @@ class ResultsTabHandler(QThread):
 
     check_for_export_path = Signal()
 
-    def __init__(self, params: Config) -> None:
+    def __init__(self, model: ImageProcessingModel, params: Config) -> None:
         """Initialize the results tab handler.
 
         Args:
+            model (ImageProcessingModel): The model containing image processing results.
             params (Config): Configuration parameters containing default values.
         """
         super().__init__()
 
         # Properties to be exported
+        self.model = model
         self.ellipses_properties: list[list[dict[str, float | str]]]
         self.px2mm = 0.0
         self.px2mm_display = 0.0
@@ -1821,7 +1806,9 @@ class ResultsTabHandler(QThread):
         self.gui.dxy_checkbox.stateChanged.connect(self.generate_histogram)
         self.gui.dxy_x_input.textChanged.connect(self.generate_histogram)
         self.gui.dxy_y_input.textChanged.connect(self.generate_histogram)
-        self.gui.save_button.clicked.connect(self.check_for_export_path.emit)
+        self.gui.save_button.clicked.connect(self.save_results)
+        self.gui.export_images_button.clicked.connect(self.export_annotated_images)
+        self.gui.export_ml_button.clicked.connect(self.export_ml_data)
 
     def load_ellipse_properties(
         self,
@@ -2095,40 +2082,114 @@ class ResultsTabHandler(QThread):
         return equivalent_diameters_array
 
     def save_results(self) -> None:
-        """Saves histogram and data to the selected folder."""
-        if not self.export_handler.check_if_path_valid():
-            self.export_handler.exec()
-            # self.save_results()
-            # return
+        """Saves histogram and data using a standard Save As dialog."""
+        from PySide6.QtWidgets import QFileDialog
 
-        folder_path = self.export_handler.save_path
-        if folder_path == "" or not os.path.exists(folder_path):
-            self._show_warning("Folder Not Found", "Please select a valid folder in export settings.")
+        # 1. Ask user where to save
+        default_name = f"Bubble_Analyser_Results_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        file_path, _ = QFileDialog.getSaveFileName(
+            self.gui,
+            "Save Analysis Results",
+            str(Path.home() / default_name),
+            "Excel Files (*.xlsx)",
+        )
+
+        if not file_path:
             return
 
-        # Get the user-specified filenames
-        graph_filename = self.gui.graph_filename_edit.text()
-        csv_filename = self.gui.csv_filename_edit.text()
+        # Ensure .xlsx extension
+        base_path = Path(file_path)
+        if base_path.suffix.lower() != ".xlsx":
+            base_path = base_path.with_suffix(".xlsx")
 
-        if not graph_filename or not csv_filename:
-            QMessageBox.warning(
+        excel_path = str(base_path)
+        graph_path = str(base_path.with_suffix(".png"))
+
+        try:
+            # 2. Save graph and combined data
+            self.save_graph(graph_path)
+            self.save_combined_data(excel_path)
+
+            QMessageBox.information(
                 self.gui,
-                "Filename Missing",
-                "Please provide filenames for both graph and Excel files.",
+                "Results Saved",
+                "Results have been saved successfully:\n\n"
+                f"Excel: {os.path.basename(excel_path)}\n"
+                f"Graph: {os.path.basename(graph_path)}",
             )
+            logging.info(f"Results saved to {os.path.dirname(excel_path)}")
+        except Exception as e:
+            logging.error(f"Error during save: {e}")
+            self._show_warning("Save Error", f"An error occurred while saving: {e}")
+
+    def export_annotated_images(self) -> None:
+        """Export final annotated images (right preview) for all processed images."""
+        folder_path = QFileDialog.getExistingDirectory(self.gui, "Select Folder to Export Annotated Images")
+        if not folder_path:
             return
 
-        # Set file paths
-        graph_path = os.path.join(folder_path, f"{graph_filename}.png")
-        excel_path = os.path.join(folder_path, f"{csv_filename}.xlsx")
+        success_count = 0
+        error_count = 0
 
-        # Save graph and combined data
-        self.save_graph(graph_path)
-        self.save_combined_data(excel_path)
+        for name in self.model.img_path_list:
+            state = self.model.img_dict.get(name)
+            if state and state.ellipses_on_images is not None and state.ellipses_on_images.size > 0:
+                base_name = os.path.splitext(os.path.basename(name))[0]
+                export_path = os.path.join(folder_path, f"{base_name}_annotated.png")
+                try:
+                    cv2.imwrite(export_path, cv2.cvtColor(state.ellipses_on_images, cv2.COLOR_RGB2BGR))
+                    success_count += 1
+                except Exception as e:
+                    logging.error(f"Failed to export {name}: {e}")
+                    error_count += 1
 
-        self._show_warning("Results Saved", f"Results have been saved successfully to {folder_path}.")
-        logging.info(f"Results have been saved successfully to {folder_path}.")
-        return
+        QMessageBox.information(
+            self.gui,
+            "Export Complete",
+            f"Successfully exported {success_count} images to {folder_path}."
+            + (f"\nFailed: {error_count}" if error_count > 0 else ""),
+        )
+
+    def export_ml_data(self) -> None:
+        """Export ML training data (raw images + numpy masks) in an organized structure."""
+        root_path = QFileDialog.getExistingDirectory(self.gui, "Select Folder to Export ML Training Data")
+        if not root_path:
+            return
+
+        # Create subdirectories
+        images_dir = Path(root_path) / "images"
+        masks_dir = Path(root_path) / "masks"
+        images_dir.mkdir(exist_ok=True)
+        masks_dir.mkdir(exist_ok=True)
+
+        success_count = 0
+        error_count = 0
+
+        for name in self.model.img_path_list:
+            state = self.model.img_dict.get(name)
+            if state and state.labelled_ellipses_mask is not None:
+                base_name = os.path.splitext(os.path.basename(name))[0]
+                img_ext = os.path.splitext(name)[1]
+
+                img_dest = images_dir / f"{base_name}{img_ext}"
+                mask_dest = masks_dir / f"{base_name}_mask.npy"
+
+                try:
+                    # Copy original image
+                    shutil.copy2(name, img_dest)
+                    # Save mask as numpy array
+                    np.save(mask_dest, state.labelled_ellipses_mask)
+                    success_count += 1
+                except Exception as e:
+                    logging.error(f"Failed to export ML data for {name}: {e}")
+                    error_count += 1
+
+        QMessageBox.information(
+            self.gui,
+            "ML Export Complete",
+            f"Successfully exported {success_count} data pairs to {root_path}."
+            + (f"\nFailed: {error_count}" if error_count > 0 else ""),
+        )
 
     def save_graph(self, export_path: str) -> None:
         """Saves the current histogram to the selected folder."""
@@ -2306,7 +2367,7 @@ class MainHandler:
             self.image_processing_model, params=self.toml_handler.params
         )
 
-        self.results_tab_handler = ResultsTabHandler(params=self.toml_handler.params)
+        self.results_tab_handler = ResultsTabHandler(model=self.image_processing_model, params=self.toml_handler.params)
 
     def initialize_handlers_signals(self) -> None:
         """Connect signals between handlers to enable communication.
@@ -2315,8 +2376,6 @@ class MainHandler:
         proper event propagation and response to user actions.
         """
         self.image_processing_tab_handler.batch_processing_done.connect(self.start_generate_histogram)
-        self.image_processing_tab_handler.check_for_export_path.connect(self.check_before_batch)
-        self.results_tab_handler.check_for_export_path.connect(self.check_before_saving_results)
 
     def initialize_gui(self) -> None:
         """Initialize the main GUI application and window, and display it.
@@ -2471,10 +2530,10 @@ class MainHandler:
         self.gui.dxy_x_input.textChanged.disconnect(self.results_tab_handler.generate_histogram)
         self.gui.dxy_y_input.textChanged.disconnect(self.results_tab_handler.generate_histogram)
         self.gui.save_button.clicked.disconnect()
+        self.gui.export_images_button.clicked.disconnect()
+        self.gui.export_ml_button.clicked.disconnect()
 
         self.image_processing_tab_handler.batch_processing_done.disconnect(self.start_generate_histogram)
-        self.image_processing_tab_handler.check_for_export_path.disconnect(self.check_before_batch)
-        self.results_tab_handler.check_for_export_path.disconnect(self.check_before_saving_results)
 
     def disconnect_handlers_signals(self) -> None:
         """Disconnect signals between handlers to prevent further event handling.
@@ -2539,38 +2598,6 @@ class MainHandler:
         """Initialize and configure the export settings handler."""
         logging.info("Initializing Export Settings...")
         self.export_handler = ExportSettingsHandler(parent=self.gui)
-
-    def check_before_batch(self) -> None:
-        """Check if batch processing can proceed."""
-        if self.image_processing_tab_handler.if_save_processed_images:
-            if not self.export_handler.check_if_path_valid():
-                self.menubar_open_export_settings_dialog()
-
-                # return
-
-        try:
-            self.image_processing_tab_handler.batch_process_images()
-        except Exception as e:
-            logging.error(f"Error batch processing images: {e}")
-            self._show_warning(
-                "Error Batch Processing Images",
-                f"An error occurred while batch processing images: {e}",
-            )
-
-    def check_before_saving_results(self) -> None:
-        """Check if saving results can proceed."""
-        if not self.export_handler.check_if_path_valid():
-            self.menubar_open_export_settings_dialog()
-            return
-
-        try:
-            self.results_tab_handler.save_results()
-        except Exception as e:
-            logging.error(f"Error saving results: {e}")
-            self._show_warning(
-                "Error Saving Results",
-                f"An error occurred while saving results: {e}",
-            )
 
     def menubar_open_export_settings_dialog(self) -> None:
         """Open the export settings dialog from the menu bar.

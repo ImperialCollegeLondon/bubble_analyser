@@ -21,8 +21,6 @@ The module works closely with event handlers defined in the event_handlers modul
 to connect UI interactions with the underlying processing functionality.
 """
 
-from datetime import datetime
-
 # import bubble_analyser.gui.event_handlers as hd
 # Try to change orders
 from typing import cast
@@ -639,41 +637,27 @@ class MainWindow(QMainWindow):
         descriptive_layout.addWidget(QLabel("y"), 2, 3)
         descriptive_layout.addWidget(self.dxy_y_input, 2, 4)
 
-        # Add Save button
+        # Save button
         save_frame = QFrame()
         save_layout = QVBoxLayout(save_frame)
 
-        # Graph filename input row
-        graph_frame = QFrame()
-        graph_filename_layout = QHBoxLayout(graph_frame)
-        current_date = datetime.now().strftime("%Y%m%d")
-
-        self.graph_filename_edit = QLineEdit(current_date)  # Default name as current date
-        graph_filename_label = QLabel(".png")
-        graph_filename_layout.addWidget(QLabel("Graph Filename:"))
-        graph_filename_layout.addWidget(self.graph_filename_edit)
-        graph_filename_layout.addWidget(graph_filename_label)
-
-        # CSV filename input row
-        csv_filename_frame = QFrame()
-        csv_filename_layout = QHBoxLayout(csv_filename_frame)
-        self.csv_filename_edit = QLineEdit(current_date)  # Default name as current date
-        csv_filename_label = QLabel(".csv")
-        csv_filename_layout.addWidget(QLabel("CSV Filename:"))
-        csv_filename_layout.addWidget(self.csv_filename_edit)
-        csv_filename_layout.addWidget(csv_filename_label)
-
         # Save button
-        self.save_button = QPushButton("Save graph and data")
+        self.save_button = QPushButton("Save Results (Excel + Graph)")
+
+        # Export annotated images button
+        self.export_images_button = QPushButton("Export Annotated Images")
+
+        # Export ML training data button
+        self.export_ml_button = QPushButton("Export ML Training Data")
 
         # Restart button (new addition)
         self.restart_button = QPushButton("Restart New Mission")
         self.restart_button.setStyleSheet("background-color: #ff6b6b; color: white; font-weight: bold;")
 
         # Add folder selection and save button to the layout
-        save_layout.addWidget(graph_frame)
-        save_layout.addWidget(csv_filename_frame)
         save_layout.addWidget(self.save_button)
+        save_layout.addWidget(self.export_images_button)
+        save_layout.addWidget(self.export_ml_button)
         save_layout.addWidget(self.restart_button)  # Add restart button under save button
 
         # Assemble controls layout

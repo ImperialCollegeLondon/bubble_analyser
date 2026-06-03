@@ -81,10 +81,11 @@ class MethodsHandler:
         if getattr(sys, "frozen", False):
             logging.info("Running in frozen mode, loading modules explicitly")
             try:
-                from bubble_analyser.methods import bubmask_method, watershed_methods
+                from bubble_analyser.methods import bubmask_method, peak_watershed, watershed_methods
 
                 modules["watershed_methods"] = watershed_methods
                 modules["bubmask_method"] = bubmask_method
+                modules["peak_watershed"] = peak_watershed
             except ImportError as e:
                 logging.error(f"Error loading modules in frozen mode: {e}")
             return modules

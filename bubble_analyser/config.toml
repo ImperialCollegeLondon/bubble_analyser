@@ -5,7 +5,7 @@
 
 # ------------------------------Segment Parameters------------------------------
 # Morphological element used for binary operations, e.g. opening, closing, etc.
-element_size = 3
+element_size = 5
 element_size_range = [3, 10]
 
 # Connectivity used, use 4 or 8
@@ -28,9 +28,9 @@ resample_range = [0.01, 1.0]
 do_batch = false
 
 # Default threeway threshold for default method
-high_thresh = 0.9
-mid_thresh = 0.5
-low_thresh = 0.2
+high_thresh = 0.95
+mid_thresh = 0.7
+low_thresh = 0.05
 default_range = [0.0, 1.0]
 
 # Default setting values for iterative methods

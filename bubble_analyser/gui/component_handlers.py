@@ -47,8 +47,6 @@ class WorkerThread(QThread):
         update_progress (Signal[int]): Signal emitted to update the progress bar.
         processing_done (Signal): Signal emitted when processing is complete.
         error_occurred (Signal[str]): Signal emitted when an error occurs during processing.
-        if_save (bool): Flag indicating whether to save processed images.
-        save_path (Path): Directory path where processed images should be saved.
         model (ImageProcessingModel): The model containing image processing logic.
     """
 
@@ -59,21 +57,13 @@ class WorkerThread(QThread):
     def __init__(
         self,
         model: "ImageProcessingModel",
-        if_save_processed_image: bool = False,
-        save_path: Path = cast(Path, None),
     ) -> None:
         """Initialize the worker thread with processing parameters.
 
         Args:
             model (ImageProcessingModel): The model containing image processing logic.
-            if_save_processed_image (bool, optional): Whether to save processed images.
-                Defaults to False.
-            save_path (Path, optional): Directory to save processed images.
-                Defaults to None.
         """
         super().__init__()
-        self.if_save = if_save_processed_image
-        self.save_path = save_path
         self.model: ImageProcessingModel = model
 
     def run(self) -> None:
@@ -83,7 +73,7 @@ class WorkerThread(QThread):
         to the model's batch_process_images method.
         """
         try:
-            self.model.batch_process_images(self, self.if_save, self.save_path)
+            self.model.batch_process_images(self)
         except Exception as e:
             # Log the error instead of showing a dialog from worker thread
             import logging
@@ -554,20 +544,14 @@ class ImageProcessingModel(QObject):
     def batch_process_images(
         self,
         worker_thread: WorkerThread,
-        if_save: bool,
-        save_path: Path = cast(Path, None),
     ) -> None:
         """Process all images in the image list using the current parameters.
 
         This method iterates through all images in the image list, applies the current
-        processing parameters, and optionally saves the processed images. It updates
-        the progress through the provided worker thread.
+        processing parameters. It updates the progress through the provided worker thread.
 
         Args:
             worker_thread (WorkerThread): Thread object for progress reporting.
-            if_save (bool): Whether to save the processed images.
-            save_path (Path, optional): Directory to save processed images.
-                Defaults to None.
         """
         self.bubble_count = 0
         self.ellipses_properties = []
@@ -585,12 +569,7 @@ class ImageProcessingModel(QObject):
         # Process every image in the list
         for index, name in enumerate(self.img_path_list):
             logging.info(f"***Processing image {index + 1}/{len(self.img_path_list)}: {name}***")
-            logging.info(f"If saving processed images: {if_save}")
-            base_name = os.path.splitext(os.path.basename(name))[0]
 
-            img_fit_ellipse_name = cast(Path, f"{base_name}_circles.png")
-            img_rgb_name = cast(Path, f"{base_name}_rgb.png")
-            img_mt_name = cast(Path, f"{base_name}_mt.png")
             self.initialize_image(name)
             state = self.img_dict[name]
 
@@ -637,16 +616,6 @@ class ImageProcessingModel(QObject):
                     logging.info(f"This image has been fine tuned: {name}, no need to process again.")
                     # Recalculate properties if needed or just use existing
                     self.ellipses_properties.append(state.ellipses_properties)
-
-                if if_save:
-                    if state.ellipses_on_images is not None and state.ellipses_on_images.size > 0:
-                        self.save_processed_images(state.ellipses_on_images, img_fit_ellipse_name, save_path)
-                    if state.img_rgb is not None and state.img_rgb.size > 0:
-                        self.save_processed_images(state.img_rgb, img_rgb_name, save_path)
-                    if state.img_grey_morph_eroded is not None and state.img_grey_morph_eroded.size > 0:
-                        self.save_processed_images(state.img_grey_morph_eroded, img_mt_name, save_path, if_mt=True)
-                    if state.labelled_ellipses_mask is not None and state.labelled_ellipses_mask.size > 0:
-                        self.save_labelled_masks(state.labelled_ellipses_mask, cast(Path, base_name), save_path)
 
             # MEMORY OPTIMIZATION: Clear large hidden numpy arrays from state to prevent Out-Of-Memory errors
             # on large batches. We keep the display arrays (img_rgb, ellipses_on_images) so previews still work.

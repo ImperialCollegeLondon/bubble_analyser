@@ -483,10 +483,10 @@ class NormalWatershed(WatershedSegmentation):
         )
 
     def update_params(self, params: dict[str, float | int]) -> None:
-        self.resample = cast(float, params.get("resample", 1.0))
-        self.high_thresh = cast(float, params.get("high_thresh", 0.9))
-        self.mid_thresh = cast(float, params.get("mid_thresh", 0.5))
-        self.low_thresh = cast(float, params.get("low_thresh", 0.1))
+        self.resample = cast(float, params.get("resample", 0.4))
+        self.high_thresh = cast(float, params.get("high_thresh", 0.95))
+        self.mid_thresh = cast(float, params.get("mid_thresh", 0.7))
+        self.low_thresh = cast(float, params.get("low_thresh", 0.05))
         self.element_size = cast(int, params.get("element_size", 5))
         self.connectivity = cast(int, params.get("connectivity", 4))
 
