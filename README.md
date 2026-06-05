@@ -1,4 +1,4 @@
-# Bubble Analyser
+# Bubble Analyser 2.0
 
 [![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE)
@@ -6,94 +6,81 @@
 
 ## Overview
 
-Bubble Analyser is a Python application for detecting, measuring, and analyzing bubbles in images. It provides advanced image processing capabilities using watershed segmentation algorithms to accurately identify and measure bubbles of various sizes and distributions. Additionally, it offers manual adjustment tools for fine-tuning segmentation results when needed. This project is improved based on the first version of [Bubble Analyser (Mesa et al., 2022)](https://doi.org/10.1016/j.mineng.2022.107497).
+Bubble Analyser 2.0 is a robust Python application for detecting, measuring, and analyzing bubbles in images. It provides advanced image processing capabilities using watershed segmentation algorithms and Deep Learning to accurately identify and measure bubbles of various sizes and distributions. It also offers manual adjustment tools for fine-tuning segmentation results when needed, and high-fidelity ML data export to help researchers train their own custom models.
 
-## Features
+This project is significantly improved based on the first version of [Bubble Analyser (Mesa et al., 2022)](https://doi.org/10.1016/j.mineng.2022.107497).
 
-- **Image Processing**: Preprocess images with various transformations
-- **Bubble Detection**: Identify bubbles using advanced watershed segmentation algorithms or **[BubMask (Kim & Park, 2021)](https://github.com/ywflow/BubMask) (Deep Learning)**
-- **Interactive Ellipse Adjuster**: Brand new manual adjustment interface for pixel-perfect refinement of detected bubbles
-- **Measurement**: Calculate size, shape, and distribution of bubbles
-- **Calibration**: Convert pixel measurements to real-world units (mm)
-- **Results Visualization**: Generate histograms and statistics of bubble distributions
-- **User-Friendly GUI**: Intuitive interface for different functionalities
+## Key Features
+
+- **Image Processing**: Preprocess images with various transformations.
+- **Bubble Detection Methods**: 
+  - **Normal Watershed**: Standard watershed algorithm with triple threshold.
+  - **Iterative Watershed**: Advanced algorithm that iteratively applies thresholds to detect objects at different intensity levels.
+  - **Peak-Based Watershed**: Feature-based segmentation using local maxima.
+  - **BubMask (Deep Learning)**: Integrated Mask R-CNN model based on [BubMask (Kim & Park, 2021)](https://github.com/ywflow/BubMask) for superior accuracy in complex lighting or overlapping conditions.
+- **Interactive Ellipse Adjuster**: Manual adjustment interface for pixel-perfect refinement of detected bubbles.
+- **Measurement & Calibration**: Calculate sizes, shape distributions, and convert pixel measurements to real-world units (mm) using reference images.
+- **Streamlined Workflow**: Linear processing workflow (Batch -> Finalise -> Export) with no mid-process interruptions.
+- **Versatile Data Exports**: 
+  - **Excel + Graph**: Comprehensive descriptive size data alongside PDF/CDF distribution plots.
+  - **Annotated Images**: High-quality visual outputs with drawn ellipses for document reporting.
+  - **ML Training Data**: Export raw images alongside perfect integer ID masks (`.npy`) allowing users to easily build new machine learning datasets from their manual corrections.
 
 ## Installation
 
-### Using the Executable (Windows and MacOS)
+### 1. Windows Installation (Recommended)
 
-For users on either Windows or MacOS platform, a standalone executable is available for each one in the release:
+A fully featured Windows Installation Wizard is now available.
 
-v0.3.0 <https://github.com/ImperialCollegeLondon/bubble_analyser/releases/tag/v0.3.0>
+1. Download `BubbleAnalyser_Setup_v2.exe` from the [Latest Release](https://github.com/ImperialCollegeLondon/bubble_analyser/releases).
+2. Run the installer.
+3. **Important**: During installation, ensure the **"Download Deep Learning weights (~250MB)"** option is checked if you plan to use the BubMask (Deep Learning) method.
+4. Launch "Bubble Analyser 2.0" from your Start Menu or Desktop.
 
-v0.2.0 <https://github.com/ImperialCollegeLondon/bubble_analyser/releases/tag/v0.2.0>
+### 2. MacOS Executable
 
-### From Source
+A standalone executable for MacOS is also available in the releases section.
+*(Note: If using the Deep Learning method on MacOS, the application will prompt you to download the required weights upon your first analysis).*
 
-To install from source, follow the developer setup instructions below.
+### 3. From Source (Developers)
 
-> [!IMPORTANT]
-> **Using CNN Detection**: For user running from source code, you must download `mask_rcnn_bubble.h5` from the [v0.3.0 release page](https://github.com/ImperialCollegeLondon/bubble_analyser/releases/tag/v0.3.0) and place it in the `bubble_analyser/weights` directory.
-
-## Usage
-
-1. **Select Input Images**: Load images containing bubbles for analysis
-2. **Calibrate**: Set up pixel-to-mm conversion using a reference image
-3. **Process Images**: Apply detection algorithms to identify bubbles
-4. **Adjust Results**: Fine-tune the detected bubbles if needed
-5. **Export Data**: Save measurements and visualizations
-
-## Methods
-
-Bubble Analyser implements multiple segmentation approaches:
-
-- **Normal Watershed**: Standard watershed algorithm with triple threshold, based on the first version of [Bubble Analyser (Mesa et al., 2022)](https://doi.org/10.1016/j.mineng.2022.107497).
-- **Iterative Watershed**: Advanced algorithm that iteratively applies thresholds to detect objects at different intensity levels.
-- **BubMask (Deep Learning)**: Integrated BubMask (Kim & Park, 2021), a Mask R-CNN based deep learning model for superior accuracy in complex lighting or overlapping conditions.
-
-To get started:
+To run from source or contribute to the project:
 
 1. [Download and install Poetry](https://python-poetry.org/docs/#installation) following the instructions for your OS.
-2. Clone this repository and make it your working directory
-3. Set up the virtual environment:
-
+2. Clone this repository and navigate into the directory.
+3. Install dependencies and activate the virtual environment:
    ```bash
    poetry install
-   ```
-
-4. Activate the virtual environment:
-
-   ```bash
    poetry shell
    ```
-
-   alternatively, ensure any Python-related command is preceded by `poetry run`.
-
-5. Install the git hooks:
-
+4. Install the pre-commit hooks (for code quality):
    ```bash
    pre-commit install
    ```
-
-6. Run the main app:
-
+5. Run the application:
    ```bash
    python -m bubble_analyser
    ```
 
-or, you can build up the virtual environment based on the requirements.txt file in the root directory.
+> [!NOTE]
+> **Using CNN Detection from Source**: If you attempt to use the BubMask method from source without the weights, the app will display a prompt offering to download the `mask_rcnn_bubble.h5` file automatically into the `bubble_analyser/weights/` directory.
+
+## Exporting Results
+
+Once your batch analysis is finalised, navigate to the **Results** tab to extract your data:
+
+1. **Save Results (Excel + Graph)**: Creates an Excel file containing all bubble metrics (major/minor axis, equivalent diameter, area, eccentricity) and a `.png` of the generated histogram.
+2. **Export Annotated Images**: Select a folder to dump all the visual previews (images overlaid with the detected ellipses) for inclusion in reports.
+3. **Export ML Training Data**: Select a root folder. The app will generate an `images/` directory containing exact copies of your raw images, and a `masks/` directory containing high-fidelity `.npy` numpy arrays representing the exact integer matrix of the instance segmentation masks. This format preserves manual edits perfectly for retraining segmentation models.
 
 ## Dependencies
 
 - Python 3.12
 - PySide6 (Qt for Python)
-- Tensorflow
-- NumPy
-- SciPy
-- scikit-image
-- OpenCV
+- TensorFlow & Keras
+- NumPy, SciPy, Pandas
+- scikit-image, OpenCV
 - Matplotlib
-- H5py (for CNN weights)
 
 ## Reference
 
@@ -101,7 +88,7 @@ Kim, Y., Park, H. Deep learning-based automated and universal bubble detection a
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. If you would like to add more image processing algorithms, please see the guidance under the directory [Methods](bubble_analyser/methods)
+Contributions are welcome! Please feel free to submit a Pull Request. If you would like to add more image processing algorithms, please see the guidance under the directory [Methods](bubble_analyser/methods).
 
 ## License
 
