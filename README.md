@@ -13,7 +13,7 @@ This project is significantly improved based on the first version of [Bubble Ana
 ## Key Features
 
 - **Image Processing**: Preprocess images with various transformations.
-- **Bubble Detection Methods**: 
+- **Bubble Detection Methods**:
   - **Normal Watershed**: Standard watershed algorithm with triple threshold.
   - **Iterative Watershed**: Advanced algorithm that iteratively applies thresholds to detect objects at different intensity levels.
   - **Peak-Based Watershed**: Feature-based segmentation using local maxima.
@@ -21,7 +21,7 @@ This project is significantly improved based on the first version of [Bubble Ana
 - **Interactive Ellipse Adjuster**: Manual adjustment interface for pixel-perfect refinement of detected bubbles.
 - **Measurement & Calibration**: Calculate sizes, shape distributions, and convert pixel measurements to real-world units (mm) using reference images.
 - **Streamlined Workflow**: Linear processing workflow (Batch -> Finalise -> Export) with no mid-process interruptions.
-- **Versatile Data Exports**: 
+- **Versatile Data Exports**:
   - **Excel + Graph**: Comprehensive descriptive size data alongside PDF/CDF distribution plots.
   - **Annotated Images**: High-quality visual outputs with drawn ellipses for document reporting.
   - **ML Training Data**: Export raw images alongside perfect integer ID masks (`.npy`) allowing users to easily build new machine learning datasets from their manual corrections.
@@ -49,15 +49,20 @@ To run from source or contribute to the project:
 1. [Download and install Poetry](https://python-poetry.org/docs/#installation) following the instructions for your OS.
 2. Clone this repository and navigate into the directory.
 3. Install dependencies and activate the virtual environment:
+
    ```bash
    poetry install
    poetry shell
    ```
+
 4. Install the pre-commit hooks (for code quality):
+
    ```bash
    pre-commit install
    ```
+
 5. Run the application:
+
    ```bash
    python -m bubble_analyser
    ```
