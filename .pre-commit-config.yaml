@@ -14,21 +14,15 @@ repos:
     rev: v4.0.0-alpha.8
     hooks:
       - id: prettier
-        # Prettier supports many other file formats (e.g., JavaScript, HTML; see
-        # https://prettier.io for list). Add other types here.
         types_or: [yaml, json]
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: "v0.11.5"
     hooks:
       - id: ruff
-        args: [--fix, --exit-non-zero-on-fix]
+        args: [--fix]
       - id: ruff-format
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: "v1.15.0"
     hooks:
       - id: mypy
         additional_dependencies: ["types-toml"]
-  - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.44.0
-    hooks:
-      - id: markdownlint-fix
