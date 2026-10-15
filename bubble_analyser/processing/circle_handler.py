@@ -8,6 +8,7 @@ settings. It is primarily used for bubble/circle analysis in scientific images.
 """
 
 import logging
+from collections.abc import Sequence
 from typing import Any
 
 import cv2
@@ -231,7 +232,7 @@ class EllipseHandler:
 
     def _contour_to_global_polygon(
         self,
-        contour: npt.NDArray[np.int_],
+        contour: npt.NDArray[Any],
         min_r: int,
         min_c: int,
     ) -> list[tuple[float, float]]:
@@ -251,7 +252,7 @@ class EllipseHandler:
         """Compare the fitted ellipse area against the original local mask."""
         ellipse_mask = np.zeros_like(local_mask, dtype=np.uint8)
         try:
-            cv2.ellipse(ellipse_mask, ellipse, 255, -1)  # type: ignore[arg-type]
+            cv2.ellipse(ellipse_mask, ellipse, 255, -1)  # type: ignore
         except cv2.error:
             return 0.0
         source = local_mask > 0
@@ -264,13 +265,13 @@ class EllipseHandler:
     def _ellipse_fit_metrics(
         self,
         local_mask: npt.NDArray[np.uint8],
-        contour: npt.NDArray[np.int_],
-        ellipse: tuple[tuple[float, float], tuple[float, float], float],
+        contour: npt.NDArray[Any],
+        ellipse: tuple[Sequence[float], Sequence[float], float],
     ) -> tuple[float, float, float, float]:
         """Return mask/ellipse agreement metrics used to decide ellipse vs polygon."""
         ellipse_mask = np.zeros_like(local_mask, dtype=np.uint8)
         try:
-            cv2.ellipse(ellipse_mask, ellipse, 255, -1)  # type: ignore[arg-type]
+            cv2.ellipse(ellipse_mask, ellipse, 255, -1)  # type: ignore
         except cv2.error:
             return 0.0, 1.0, 1.0, 1.0
 
@@ -472,7 +473,7 @@ class EllipseHandler:
             polygon = self.ellipse_polygons[index] if index < len(self.ellipse_polygons) else None
             if polygon:
                 points = np.array([[round(x), round(y)] for x, y in polygon], dtype=np.int32)
-                cv2.fillPoly(labelled_img, [points], current_label)
+                cv2.fillPoly(labelled_img, [points], current_label)  # type: ignore
                 current_label += 1
                 continue
             # Validate ellipse parameters before drawing

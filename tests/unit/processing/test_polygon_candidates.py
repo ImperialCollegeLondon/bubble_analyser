@@ -3,7 +3,7 @@ import numpy as np
 
 from bubble_analyser.processing.circle_handler import EllipseHandler
 
-FILTERS = {
+FILTERS: dict[str, float | str] = {
     "max_eccentricity": 0.85,
     "min_solidity": 0.9,
     "min_circularity": 0.5,
@@ -14,7 +14,7 @@ FILTERS = {
 
 def _fit(labels: np.ndarray) -> EllipseHandler:
     image = np.zeros((*labels.shape, 3), dtype=np.uint8)
-    handler = EllipseHandler(labels, image, px2mm_display=10.0, resample=1.0)  # 10 px per mm
+    handler = EllipseHandler(labels, image, px2mm_display=10.0, resample=1.0)  # type: ignore[arg-type]  # 10 px per mm
     handler.load_filter_params(FILTERS)
     handler.filter_labels_properties()
     handler.fill_ellipse_labels()
@@ -22,7 +22,7 @@ def _fit(labels: np.ndarray) -> EllipseHandler:
 
 
 def _disk(labels: np.ndarray, value: int, center: tuple[int, int], radius: int) -> None:
-    cv2.circle(labels, center, radius, value, -1)
+    cv2.circle(labels, center, radius, value, -1)  # type: ignore
 
 
 def test_background_label_is_read_from_the_border():
