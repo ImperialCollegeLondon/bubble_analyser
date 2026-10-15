@@ -16,7 +16,7 @@ from bubble_analyser.processing.dataset_export import DATASET_FORMATS
 
 
 def test_dialog_offers_every_format_and_describes_the_selection():
-    app = QApplication.instance() or QApplication([])
+    _ = QApplication.instance() or QApplication([])
     dialog = ExportFormatDialog()
 
     assert [dialog.format_combo.itemData(i) for i in range(dialog.format_combo.count())] == [
@@ -33,7 +33,7 @@ def test_dialog_offers_every_format_and_describes_the_selection():
 
 
 def test_export_button_writes_the_chosen_format(monkeypatch, tmp_path: Path):
-    app = QApplication.instance() or QApplication([])
+    _ = QApplication.instance() or QApplication([])
     image_path = tmp_path / "frames" / "f0001.png"
     image_path.parent.mkdir()
     cv2.imwrite(str(image_path), np.full((200, 400, 3), 100, dtype=np.uint8))
@@ -81,7 +81,7 @@ def test_export_button_writes_the_chosen_format(monkeypatch, tmp_path: Path):
 
 
 def test_cancelling_the_dialog_writes_nothing(monkeypatch, tmp_path: Path):
-    app = QApplication.instance() or QApplication([])
+    _ = QApplication.instance() or QApplication([])
     handler = ResultsTabHandler(ImageProcessingModel(Config()), Config())
     gui = MainWindow()
     handler.load_gui(gui)

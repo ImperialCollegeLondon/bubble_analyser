@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from typing import Any
 from xml.etree import ElementTree as ET
 
 import cv2
@@ -33,7 +34,7 @@ def _write_image(path: Path) -> Path:
 
 
 def _frame(path: Path, **overrides) -> FrameAnnotation:
-    values = {
+    values: dict[str, Any] = {
         "image_path": path,
         "ellipses": [ELLIPSE, ((20.0, 20.0), (20.0, 20.0), 0.0)],
         "polygons": [None, SQUARE],
