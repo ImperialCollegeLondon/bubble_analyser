@@ -31,6 +31,7 @@ class AnalysisResult:
     img_grey_morph_eroded: npt.NDArray[Any] | None = None
     labelled_ellipses_mask: npt.NDArray[Any] | None = None
     ellipses: list[tuple[tuple[float, float], tuple[int, int], float]] | None = None
+    ellipse_polygons: list[list[tuple[float, float]] | None] | None = None
     ellipses_properties: list[dict[str, Any]] | None = None
     bubble_count: int = 0
     success: bool = True
@@ -134,6 +135,7 @@ class QuantificationService:
 
         # 2. Detect & Fill
         state.ellipses = handler.fill_ellipse_labels()
+        state.ellipse_polygons = handler.ellipse_polygons
 
         # 3. Visualize
         state.ellipses_on_images = handler.overlay_ellipses_on_image()
@@ -237,6 +239,7 @@ class AnalysisService:
                 result.img_grey_morph_eroded = state.img_grey_morph_eroded
                 result.labelled_ellipses_mask = state.labelled_ellipses_mask
                 result.ellipses = state.ellipses
+                result.ellipse_polygons = state.ellipse_polygons
                 result.ellipses_properties = state.ellipses_properties
                 result.bubble_count = state.bubble_count
 

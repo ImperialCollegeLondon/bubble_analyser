@@ -8,6 +8,7 @@ settings. It is primarily used for bubble/circle analysis in scientific images.
 """
 
 import logging
+from collections.abc import Sequence
 from typing import Any
 
 import cv2
@@ -125,6 +126,9 @@ class EllipseHandler:
         logging.info(f"Real px2mm: {self.real_px2mm} = ({self.px2mm_display}*{self.resample})")
 
         self.ellipses: list[tuple[tuple[float, float], tuple[int, int], float]]
+        self.ellipse_polygons: list[list[tuple[float, float]] | None] = []
+        self.polygon_candidate_labels: set[int] = set()
+        self.background_label: int = 1
         self.ellipses_on_image: npt.NDArray[np.int_]
         self.ellipses_properties: list[dict[str, Any]]
 
@@ -136,6 +140,21 @@ class EllipseHandler:
                 such as max_eccentricity, min_solidity, min_circularity, and min_size.
         """
         self.filter_param_dict_1 = filter_param_dict_1
+
+    def detect_background_label(self, labels: npt.NDArray[np.int_]) -> int:
+        """Infer the background label from border pixels instead of assuming 1."""
+        if labels.size == 0:
+            return 1
+        border = np.concatenate(
+            [
+                labels[0, :].ravel(),
+                labels[-1, :].ravel(),
+                labels[:, 0].ravel(),
+                labels[:, -1].ravel(),
+            ]
+        )
+        values, counts = np.unique(border, return_counts=True)
+        return int(values[int(np.argmax(counts))])
 
     def filter_labels_properties(self) -> npt.NDArray[np.int_]:
         """Filters out regions (circles) from the labeled image based on their properties.
@@ -158,6 +177,7 @@ class EllipseHandler:
         # Get image dimensions for boundary detection
         if labels is not None:
             _img_height, _img_width = labels.shape
+            self.background_label = self.detect_background_label(labels)
         else:
             raise ValueError("labels_before_filtering is None")
 
@@ -172,20 +192,25 @@ class EllipseHandler:
         max_area_px = (np.pi * (max_size / 2) ** 2) / (mm2px**2)
 
         for prop in properties:
-            if prop.label == 1:  # Ignore the background
+            if int(prop.label) == self.background_label:
                 continue
 
-            # Check all conditions and mark for removal if any fail
+            # Check conditions. Size failures are removed as noise; shape failures are kept
+            # as polygon candidates so detected masks do not disappear silently.
             should_remove = False
+            should_keep_as_polygon = False
 
             # Priority 1: Size Filtering
-            if not (min_area_px <= prop.area <= max_area_px):
+            if prop.area < min_area_px:
                 should_remove = True
-                logging.debug(f"Filtered out by Size: {prop.area:.1f} px")
+                logging.debug(f"Filtered out by minimum size: {prop.area:.1f} px")
+            elif prop.area > max_area_px:
+                should_keep_as_polygon = True
+                logging.debug(f"Kept as polygon by maximum size: {prop.area:.1f} px")
 
             # Priority 2: Shape Filtering (Standard)
             elif prop.eccentricity > max_eccentricity or prop.solidity < min_solidity:
-                should_remove = True
+                should_keep_as_polygon = True
                 logging.debug(f"Filtered out by Shape: Ecc={prop.eccentricity:.2f}, Sol={prop.solidity:.2f}")
 
             # Priority 3: Shape Filtering (Circularity)
@@ -193,15 +218,91 @@ class EllipseHandler:
                 # Circularity = 4 * pi * Area / Perimeter^2
                 circularity = (4 * np.pi * prop.area) / (prop.perimeter**2) if prop.perimeter > 0 else 0
                 if circularity < min_circularity:
-                    should_remove = True
+                    should_keep_as_polygon = True
                     logging.debug(f"Filtered out by Circularity: {circularity:.2f}")
 
             if should_remove:
-                new_labels[tuple(prop.coords.T)] = 1
+                new_labels[tuple(prop.coords.T)] = self.background_label
+            elif should_keep_as_polygon:
+                self.polygon_candidate_labels.add(int(prop.label))
 
         self.labels_after_filtering = new_labels
 
         return new_labels
+
+    def _contour_to_global_polygon(
+        self,
+        contour: npt.NDArray[Any],
+        min_r: int,
+        min_c: int,
+    ) -> list[tuple[float, float]]:
+        """Simplify a local contour and map it back to global image coordinates."""
+        epsilon = max(1.0, 0.015 * cv2.arcLength(contour, True))
+        simplified = cv2.approxPolyDP(contour, epsilon, True)
+        if len(simplified) < 3:
+            simplified = contour
+        points = simplified.reshape(-1, 2)
+        return [(float(x + min_c - 1), float(y + min_r - 1)) for x, y in points]
+
+    def _ellipse_mask_iou(
+        self,
+        local_mask: npt.NDArray[np.uint8],
+        ellipse: tuple[tuple[float, float], tuple[float, float], float],
+    ) -> float:
+        """Compare the fitted ellipse area against the original local mask."""
+        ellipse_mask = np.zeros_like(local_mask, dtype=np.uint8)
+        try:
+            cv2.ellipse(ellipse_mask, ellipse, 255, -1)  # type: ignore
+        except cv2.error:
+            return 0.0
+        source = local_mask > 0
+        fitted = ellipse_mask > 0
+        union = np.logical_or(source, fitted).sum()
+        if union == 0:
+            return 0.0
+        return float(np.logical_and(source, fitted).sum() / union)
+
+    def _ellipse_fit_metrics(
+        self,
+        local_mask: npt.NDArray[np.uint8],
+        contour: npt.NDArray[Any],
+        ellipse: tuple[Sequence[float], Sequence[float], float],
+    ) -> tuple[float, float, float, float]:
+        """Return mask/ellipse agreement metrics used to decide ellipse vs polygon."""
+        ellipse_mask = np.zeros_like(local_mask, dtype=np.uint8)
+        try:
+            cv2.ellipse(ellipse_mask, ellipse, 255, -1)  # type: ignore
+        except cv2.error:
+            return 0.0, 1.0, 1.0, 1.0
+
+        source = local_mask > 0
+        fitted = ellipse_mask > 0
+        union = np.logical_or(source, fitted).sum()
+        iou = float(np.logical_and(source, fitted).sum() / union) if union else 0.0
+
+        source_area = max(float(source.sum()), 1.0)
+        fitted_area = max(float(fitted.sum()), 1.0)
+        area_error = abs(fitted_area - source_area) / source_area
+
+        contour_x, contour_y, contour_w, contour_h = cv2.boundingRect(contour)
+        ellipse_x, ellipse_y, ellipse_w, ellipse_h = cv2.boundingRect(ellipse_mask)
+        bbox_area = max(float(contour_w * contour_h), 1.0)
+        bbox_error = (abs(ellipse_w - contour_w) * contour_h + abs(ellipse_h - contour_h) * contour_w) / bbox_area
+
+        contour_aspect = contour_w / max(contour_h, 1)
+        ellipse_aspect = ellipse_w / max(ellipse_h, 1)
+        aspect_error = abs(np.log(max(ellipse_aspect, 1e-6) / max(contour_aspect, 1e-6)))
+        return iou, area_error, bbox_error, float(aspect_error)
+
+    def _fallback_ellipse_from_bbox(
+        self,
+        prop: Any,
+    ) -> tuple[tuple[float, float], tuple[int, int], float]:
+        """Create a conservative ellipse from a region bounding box."""
+        min_r, min_c, max_r, max_c = prop.bbox
+        center = ((min_c + max_c) / 2.0, (min_r + max_r) / 2.0)
+        axes = (max(1, int(max_c - min_c)), max(1, int(max_r - min_r)))
+        return (center, axes, 0.0)
 
     def fill_ellipse_labels(
         self,
@@ -211,14 +312,19 @@ class EllipseHandler:
         Returns:
             list[tuple]: A list of fitted ellipses (center, axes, angle).
         """
-        # Store ellipses
+        # Store ellipses and optional polygon overrides aligned by index.
         ellipses = []
+        ellipse_polygons: list[list[tuple[float, float]] | None] = []
+        min_ellipse_mask_iou = 0.88
+        max_ellipse_area_error = 0.08
+        max_ellipse_bbox_error = 0.18
+        max_ellipse_aspect_error = 0.18
 
         # Use regionprops for optimized component access
         properties = measure.regionprops(self.labels_after_filtering)
 
         for prop in properties:
-            if prop.label == 0 or prop.label == 1:
+            if int(prop.label) == self.background_label:
                 continue
 
             # Create a small local mask for this bubble using its bounding box
@@ -233,30 +339,54 @@ class EllipseHandler:
             local_mask[local_coords[:, 0] + 1, local_coords[:, 1] + 1] = 255
 
             contours, _ = cv2.findContours(local_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if not contours:
+                continue
+            contour = max(contours, key=cv2.contourArea)
+            polygon = self._contour_to_global_polygon(contour, min_r, min_c)
 
-            for contour in contours:
-                if len(contour) >= 5:
-                    ellipse = cv2.fitEllipse(contour)
-                    center, axes, angle = ellipse
-                    ellipse_width, ellipse_height = axes
+            ellipse_iou = 0.0
+            ellipse_area_error = 1.0
+            ellipse_bbox_error = 1.0
+            ellipse_aspect_error = 1.0
+            if len(contour) >= 5:
+                ellipse = cv2.fitEllipse(contour)
+                center, axes, angle = ellipse
+                ellipse_width, ellipse_height = axes
+                if (
+                    ellipse_width > 0
+                    and ellipse_height > 0
+                    and np.isfinite(ellipse_width)
+                    and np.isfinite(ellipse_height)
+                    and np.isfinite(center[0])
+                    and np.isfinite(center[1])
+                    and np.isfinite(angle)
+                ):
+                    (
+                        ellipse_iou,
+                        ellipse_area_error,
+                        ellipse_bbox_error,
+                        ellipse_aspect_error,
+                    ) = self._ellipse_fit_metrics(local_mask, contour, ellipse)
+                    global_center = (center[0] + min_c - 1, center[1] + min_r - 1)
+                    global_ellipse = (global_center, axes, angle)
+                else:
+                    global_ellipse = self._fallback_ellipse_from_bbox(prop)
+            else:
+                global_ellipse = self._fallback_ellipse_from_bbox(prop)
 
-                    # Only add valid ellipses (width and height > 0, finite values)
-                    if (
-                        ellipse_width > 0
-                        and ellipse_height > 0
-                        and np.isfinite(ellipse_width)
-                        and np.isfinite(ellipse_height)
-                        and np.isfinite(center[0])
-                        and np.isfinite(center[1])
-                        and np.isfinite(angle)
-                    ):
-                        # Offset the center back to global coordinates
-                        global_center = (center[0] + min_c - 1, center[1] + min_r - 1)
-                        ellipses.append((global_center, axes, angle))
-                    else:
-                        logging.debug(f"Skipping invalid ellipse with dimensions: {axes}")
+            use_polygon = (
+                int(prop.label) in self.polygon_candidate_labels
+                or len(contour) < 5
+                or ellipse_iou < min_ellipse_mask_iou
+                or ellipse_area_error > max_ellipse_area_error
+                or ellipse_bbox_error > max_ellipse_bbox_error
+                or ellipse_aspect_error > max_ellipse_aspect_error
+            )
+            ellipses.append(global_ellipse)
+            ellipse_polygons.append(polygon if use_polygon else None)
 
         self.ellipses = ellipses  # type: ignore
+        self.ellipse_polygons = ellipse_polygons
 
         return self.ellipses  # type: ignore
 
@@ -276,7 +406,19 @@ class EllipseHandler:
             raise ValueError("img_rgb is not initialized")
         ellipse_image = self.img_rgb.copy()
 
-        for ellipse in self.ellipses:
+        for index, ellipse in enumerate(self.ellipses):
+            polygon = self.ellipse_polygons[index] if index < len(self.ellipse_polygons) else None
+            if polygon:
+                points = np.array([[round(x), round(y)] for x, y in polygon], dtype=np.int32)
+                cv2.polylines(
+                    ellipse_image,
+                    [points],
+                    isClosed=True,
+                    color=(255, 255, 0),
+                    thickness=max(1, thickness // 2),
+                    lineType=cv2.LINE_AA,
+                )
+                continue
             # Validate ellipse parameters before drawing
             center, axes, angle = ellipse
             ellipse_width, ellipse_height = axes
@@ -327,7 +469,13 @@ class EllipseHandler:
         labelled_img = np.ones((img_height, img_width), dtype=np.int_)
 
         current_label = 2  # Start labelling from 2
-        for ellipse in self.ellipses:
+        for index, ellipse in enumerate(self.ellipses):
+            polygon = self.ellipse_polygons[index] if index < len(self.ellipse_polygons) else None
+            if polygon:
+                points = np.array([[round(x), round(y)] for x, y in polygon], dtype=np.int32)
+                cv2.fillPoly(labelled_img, [points], current_label)  # type: ignore
+                current_label += 1
+                continue
             # Validate ellipse parameters before drawing
             _center, axes, _angle = ellipse
             ellipse_width, ellipse_height = axes
