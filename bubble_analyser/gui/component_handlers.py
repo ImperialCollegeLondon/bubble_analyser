@@ -473,7 +473,11 @@ class ImageProcessingModel(QObject):
             state = self.img_dict[name]
             state.ellipses_on_images = result.ellipses_on_images
             state.ellipses_properties = result.ellipses_properties if result.ellipses_properties else []
-            # We don't have ellipses objects here yet in Result, but for UI preview it's enough
+            if result.ellipses is not None:
+                state.ellipses = result.ellipses
+                state.ellipse_polygons = (
+                    result.ellipse_polygons if result.ellipse_polygons is not None else [None] * len(state.ellipses)
+                )
             return result.ellipses_on_images
 
         return np.zeros((0, 0), dtype=np.int_)
@@ -523,6 +527,8 @@ class ImageProcessingModel(QObject):
             image (ImageState): The image state object containing the ellipses to update.
         """
         image.ellipses = self.adjuster.ellipses
+        # The editor does not edit polygons yet: every bubble goes back to its fitted ellipse.
+        image.ellipse_polygons = [None] * len(image.ellipses)
         image.set_fine_tuned()
 
         # Regenerate overlays since ellipses changed
@@ -603,6 +609,11 @@ class ImageProcessingModel(QObject):
                                 state.labelled_ellipses_mask = result.labelled_ellipses_mask
                             if result.ellipses is not None:
                                 state.ellipses = result.ellipses
+                                state.ellipse_polygons = (
+                                    result.ellipse_polygons
+                                    if result.ellipse_polygons is not None
+                                    else [None] * len(state.ellipses)
+                                )
 
                             state.ellipses_properties = result.ellipses_properties if result.ellipses_properties else []
                             self.ellipses_properties.append(state.ellipses_properties)
