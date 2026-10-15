@@ -18,10 +18,10 @@ class _Wheel(_Mouse):
         super().__init__(10, 10)
         self._direction = direction
 
-    def angleDelta(self) -> QPoint:  # noqa: N802 (Qt name)
+    def angleDelta(self) -> QPoint:
         return QPoint(0, self._direction * 120)
 
-    def globalPosition(self) -> QPointF:  # noqa: N802 (Qt name)
+    def globalPosition(self) -> QPointF:
         return QPointF(10, 10)
 
 
@@ -29,7 +29,7 @@ def _label(width: int = 200, height: int = 100) -> ImageLabel:
     QApplication.instance() or QApplication([])
     parent = QWidget()
     label = ImageLabel(parent)
-    label.parent_widget = parent  # keep the parent alive, or Qt deletes the label with it
+    setattr(label, "parent_widget", parent)  # keep the parent alive, or Qt deletes the label with it
     label.set_image(np.zeros((height, width, 3), dtype=np.uint8))
     return label
 

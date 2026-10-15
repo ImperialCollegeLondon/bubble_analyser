@@ -80,8 +80,8 @@ class ImageLabel(QLabel):
 
     def event_to_image_position(self, ev: QMouseEvent) -> tuple[int, int]:
         """Map a mouse event from display coordinates into calibration-image pixels."""
-        x = int(round(ev.position().x() / max(self.display_scale, 1e-6)))
-        y = int(round(ev.position().y() / max(self.display_scale, 1e-6)))
+        x = round(ev.position().x() / max(self.display_scale, 1e-6))
+        y = round(ev.position().y() / max(self.display_scale, 1e-6))
         height, width = self.img.shape[:2]
         return min(max(x, 0), width - 1), min(max(y, 0), height - 1)
 
@@ -109,12 +109,8 @@ class ImageLabel(QLabel):
         if self.panning and self.scroll_area is not None and self.last_pan_global_position is not None:
             current_global = ev.globalPosition().toPoint()
             delta = current_global - self.last_pan_global_position
-            self.scroll_area.horizontalScrollBar().setValue(
-                self.scroll_area.horizontalScrollBar().value() - delta.x()
-            )
-            self.scroll_area.verticalScrollBar().setValue(
-                self.scroll_area.verticalScrollBar().value() - delta.y()
-            )
+            self.scroll_area.horizontalScrollBar().setValue(self.scroll_area.horizontalScrollBar().value() - delta.x())
+            self.scroll_area.verticalScrollBar().setValue(self.scroll_area.verticalScrollBar().value() - delta.y())
             self.last_pan_global_position = current_global
             return
         if self.drawing:
@@ -159,12 +155,8 @@ class ImageLabel(QLabel):
         )
         self.update_image()
         if self.scroll_area is not None:
-            self.scroll_area.horizontalScrollBar().setValue(
-                round(image_x * self.display_scale - viewport_pos.x())
-            )
-            self.scroll_area.verticalScrollBar().setValue(
-                round(image_y * self.display_scale - viewport_pos.y())
-            )
+            self.scroll_area.horizontalScrollBar().setValue(round(image_x * self.display_scale - viewport_pos.x()))
+            self.scroll_area.verticalScrollBar().setValue(round(image_y * self.display_scale - viewport_pos.y()))
 
     def update_image(self) -> None:
         """Update the displayed image with the current drawing state.
