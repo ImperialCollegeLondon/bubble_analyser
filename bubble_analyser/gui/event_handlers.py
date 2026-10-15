@@ -18,11 +18,11 @@ the GUI and the underlying processing logic.
 
 from __future__ import annotations
 
+import importlib.util
 import logging
 import os
 import shutil
 import sys
-import importlib.util
 from datetime import datetime
 from pathlib import Path
 from typing import cast
@@ -1337,8 +1337,7 @@ class ImageProcessingTabHandler(QThread):
             )
         elif weights_path.suffix.lower() != ".pt":
             missing_items.append(
-                "The selected YOLO weights file should be a .pt segmentation model.\n"
-                f"Current file:\n{weights_path}"
+                f"The selected YOLO weights file should be a .pt segmentation model.\nCurrent file:\n{weights_path}"
             )
 
         if importlib.util.find_spec("ultralytics") is None:

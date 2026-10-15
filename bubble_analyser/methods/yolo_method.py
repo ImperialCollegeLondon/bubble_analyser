@@ -74,7 +74,9 @@ class YOLOSegmentation:
             "iou_threshold": "YOLO non-maximum suppression IoU threshold.",
             "resample": "Display/processing scale for the image before segmentation.",
             "max_bubbles": "Maximum number of YOLO masks to keep in one image.",
-            "device": "Compute device for YOLO inference. CPU is always compatible; GPU uses NVIDIA CUDA when available.",
+            "device": (
+                "Compute device for YOLO inference. CPU is always compatible; GPU uses NVIDIA CUDA when available."
+            ),
         }
 
     def update_params(self, params: dict[str, object]) -> None:
@@ -115,8 +117,7 @@ class YOLOSegmentation:
         weights = Path(self.weights_path)
         if not weights.is_file():
             raise FileNotFoundError(
-                "YOLO weights file not found. Set 'weights_path' to a valid .pt segmentation model: "
-                f"{weights}"
+                f"YOLO weights file not found. Set 'weights_path' to a valid .pt segmentation model: {weights}"
             )
 
         try:
