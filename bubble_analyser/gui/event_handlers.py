@@ -1346,7 +1346,7 @@ class ImageProcessingTabHandler(QThread):
             )
 
         if selected_device in ["gpu", "cuda", "0"] and not self.is_torch_cuda_available():
-            params["device"] = "CPU"
+            params["device"] = "CPU"  # type: ignore[assignment]  # YOLO params also hold strings
             self.set_yolo_device_combo_text("CPU")
             QMessageBox.warning(
                 self.gui,
