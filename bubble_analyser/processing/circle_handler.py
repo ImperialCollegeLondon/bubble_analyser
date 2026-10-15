@@ -286,10 +286,7 @@ class EllipseHandler:
         contour_x, contour_y, contour_w, contour_h = cv2.boundingRect(contour)
         ellipse_x, ellipse_y, ellipse_w, ellipse_h = cv2.boundingRect(ellipse_mask)
         bbox_area = max(float(contour_w * contour_h), 1.0)
-        bbox_error = (
-            abs(ellipse_w - contour_w) * contour_h
-            + abs(ellipse_h - contour_h) * contour_w
-        ) / bbox_area
+        bbox_error = (abs(ellipse_w - contour_w) * contour_h + abs(ellipse_h - contour_h) * contour_w) / bbox_area
 
         contour_aspect = contour_w / max(contour_h, 1)
         ellipse_aspect = ellipse_w / max(ellipse_h, 1)
