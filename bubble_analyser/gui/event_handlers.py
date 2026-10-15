@@ -2173,12 +2173,13 @@ class ResultsTabHandler(QThread):
             state = self.model.img_dict.get(name)
             if state is None:
                 continue
+            height, width = state.img_rgb.shape[:2]
             frames.append(
                 FrameAnnotation(
                     image_path=Path(name),
                     ellipses=state.ellipses,
                     polygons=getattr(state, "ellipse_polygons", ()),
-                    annotation_shape=state.img_rgb.shape[:2],
+                    annotation_shape=(height, width),
                     labelled_mask=state.labelled_ellipses_mask,
                 )
             )

@@ -44,7 +44,7 @@ def test_export_button_writes_the_chosen_format(monkeypatch, tmp_path: Path):
     state.img_rgb = np.zeros((100, 200, 3), dtype=np.uint8)
     state.ellipses_on_images = np.zeros((100, 200, 3), dtype=np.uint8)
     state.ellipses_on_images[0, 0] = 1
-    state.ellipses = [((50.0, 50.0), (20.0, 10.0), 0.0)]
+    state.ellipses = [((50.0, 50.0), (20.0, 10.0), 0.0)]  # type: ignore[list-item]
     state.ellipse_polygons = [None]
     state.ellipses_properties = [{"filename": image_path.name}]
     model.img_dict[image_path] = state
@@ -93,11 +93,14 @@ def test_cancelling_the_dialog_writes_nothing(monkeypatch, tmp_path: Path):
         def exec(self):
             return QDialog.DialogCode.Rejected
 
-    asked_for_folder = []
+    asked_for_folder: list[bool] = []
+
+    def pick_folder(*args, **kwargs) -> str:
+        asked_for_folder.append(True)
+        return ""
+
     monkeypatch.setattr(event_handlers, "ExportFormatDialog", Cancelled)
-    monkeypatch.setattr(
-        event_handlers.QFileDialog, "getExistingDirectory", lambda *a, **k: asked_for_folder.append(True) or ""
-    )
+    monkeypatch.setattr(event_handlers.QFileDialog, "getExistingDirectory", pick_folder)
 
     handler.export_ml_data()
 
